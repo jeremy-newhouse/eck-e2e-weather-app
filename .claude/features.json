@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "project_key": "WA",
+  "features": {
+    "WA-2": {
+      "id": "WA-2",
+      "slug": "weather-lookup",
+      "display_name": "Weather Lookup",
+      "description": "Full-stack weather lookup: Express REST API serving weather data from stub, HTML frontend to search by city, health check endpoint, and test suite. 5 acceptance criteria.",
+      "priority": null,
+      "created_at": "2026-05-14T18:23:44.918Z",
+      "updated_at": "2026-05-14T18:24:42.987Z",
+      "remote": {
+        "type": "github",
+        "url": "https://github.com/jeremy-newhouse/eck-e2e-weather-app/issues/8",
+        "repo": "jeremy-newhouse/eck-e2e-weather-app",
+        "issue_number": 8
+      },
+      "archived_at": null
+    }
+  },
+  "next_id": 3
+}
