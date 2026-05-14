@@ -6,14 +6,9 @@
 
 ## Prerequisites
 
-Install dependencies and configure environment:
-
 ```bash
 npm install
-cp .env.example .env  # if .env.example exists
 ```
-
-Requires **Node.js 22+**.
 
 ---
 
@@ -32,8 +27,8 @@ Requires **Node.js 22+**.
 
 ## Branch Conventions
 
-| Prefix    | Purpose            | Example                                   |
-| --------- | ------------------ | ----------------------------------------- |
+| Prefix    | Purpose            | Example                        |
+| --------- | ------------------ | ------------------------------ |
 | `feat/`   | New features       | `feat/WA-42-user-auth`         |
 | `fix/`    | Bug fixes          | `fix/WA-51-login-redirect`     |
 | `hotfix/` | Production patches | `hotfix/WA-99-session-timeout` |
@@ -67,11 +62,11 @@ Refs: WA-XXX
 
 Run these before opening a PR:
 
-| Gate  | Backend                  | Frontend                 |
-| ----- | ------------------------ | ------------------------ |
-| Tests | `node --test`      | `node --test`      |
-| Lint  | `npm run lint`      | `npm run lint`      |
-| Types | `npm run typecheck` | `npm run typecheck` |
+| Gate  | Command             |
+| ----- | ------------------- |
+| Tests | `npm test`          |
+| Lint  | `npm run lint`      |
+| Types | `npm run typecheck` |
 
 All gates must pass before merge.
 
@@ -91,12 +86,12 @@ All gates must pass before merge.
 
 If this project uses [evolv-coder-kit](https://github.com/evolvconsulting/evolv-coder-kit), these slash commands streamline the workflow:
 
-| Command                               | Purpose                                    |
-| ------------------------------------- | ------------------------------------------ |
-| `/eck:design-feature <desc>`         | Design a feature (research, design, tasks) |
-| `/eck:dev-feature WA-XXX` | Implement all tasks under an epic          |
-| `/eck:dev-task WA-XXX`    | Implement a single task (TDD)              |
-| `/eck:validate-quality`              | Run all quality gates                      |
+| Command                       | Purpose                                    |
+| ----------------------------- | ------------------------------------------ |
+| `/<PK>:design-feature <desc>` | Design a feature (research, design, tasks) |
+| `/<PK>:dev-feature WA-XXX`    | Implement all tasks under an epic          |
+| `/<PK>:dev-task WA-XXX`       | Implement a single task (TDD)              |
+| `/<PK>:validate-quality`      | Run all quality gates                      |
 
 > Full workflow details: [development-workflow.md](development-workflow.md)
 

@@ -90,9 +90,9 @@ Concise command reference for the development workflow (v2.0.0).
 
 ```bash
 # Backend
-npm run pytest         # Tests
-npm run ruff check .   # Lint
-npm run mypy .         # Types
+{BACKEND_RUN_CMD} pytest         # Tests
+{BACKEND_RUN_CMD} ruff check .   # Lint
+{BACKEND_RUN_CMD} mypy .         # Types
 
 # Frontend
 npm run test                     # Tests
