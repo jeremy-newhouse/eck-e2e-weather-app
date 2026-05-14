@@ -6,8 +6,8 @@ status: accepted
 # Product Requirements Document — Weather App
 
 **Project:** Weather App (WA)
-**Version:** 1.0.0
-**Date:** 2026-03-26
+**Version:** 1.1.0
+**Date:** 2026-05-14
 **Status:** Accepted
 
 ---
@@ -25,13 +25,16 @@ Browser (HTML/CSS/JS)
         │
         ▼
 Express.js Server (Node.js 22)
-  ├── GET /api/weather?city=<name>     → current conditions
-  ├── GET /api/forecast?city=<name>    → 5-day forecast
+  ├── GET /api/weather/:city           → current conditions (path-param; see ADR-003)
+  ├── GET /api/forecast/:city          → 5-day forecast (planned; not yet implemented)
+  ├── GET /health                      → liveness probe
   └── GET /                            → serves index.html
 ```
 
 **Pattern:** Express monolith — API routes and static file serving in a single process.
 **Data:** In-memory stub data keyed by city name (MVP). No database.
+
+> **Note (2026-05-14):** The original query-param style (`?city=`) shown in earlier revisions of this document has been superseded. Path-param style (`/:city`) is canonical per [ADR-003](../adrs/ADR-003-path-param-api-style-for-city-lookup.md). All API contracts in this document use path-param style.
 
 ---
 
@@ -44,7 +47,7 @@ Users can enter a city name to retrieve weather data.
 **Acceptance Criteria:**
 
 - Search input accepts free-text city name
-- Submitting triggers `GET /api/weather?city=<name>`
+- Submitting triggers `GET /api/weather/:city`
 - Results display within 500ms for stub data
 - Invalid/unknown cities return a user-friendly error message
 
@@ -102,18 +105,18 @@ Replace in-memory stub data with a live weather API.
 
 ## 4. API Contracts
 
-### `GET /api/weather?city={name}`
+> Path-param style is canonical per ADR-003. Query-param style (`?city=`) is not supported.
+
+### `GET /api/weather/:city` (implemented — WA-2/WA-3)
 
 **Response (200):**
 
 ```json
 {
   "city": "London",
-  "country": "GB",
-  "temperature": { "celsius": 12, "fahrenheit": 54 },
-  "humidity": 78,
-  "wind": { "speed": 15, "unit": "km/h" },
-  "description": "Partly cloudy"
+  "temperature": 12,
+  "description": "Partly cloudy",
+  "humidity": 78
 }
 ```
 
@@ -123,11 +126,26 @@ Replace in-memory stub data with a live weather API.
 { "error": "City not found" }
 ```
 
+> City lookup is case-insensitive. Stub data covers: london, miami, tokyo.
+> Full contract: `docs/WA-3-weather-lookup/SPECS.md`
+
 ---
 
-### `GET /api/forecast?city={name}`
+### `GET /health` (implemented — WA-3)
 
 **Response (200):**
+
+```json
+{ "status": "ok" }
+```
+
+> Liveness probe. Always returns 200 while the server is running.
+
+---
+
+### `GET /api/forecast/:city` (planned — WA-5 / Phase 2)
+
+**Response (200) — planned shape:**
 
 ```json
 {
