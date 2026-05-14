@@ -1,0 +1,162 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "FILE=$(cat | jq -r '.tool_input.file_path // empty'); if [ -n \"$FILE\" ]; then if echo \"$FILE\" | grep -qE '\\.py$'; then cd \"$CLAUDE_PROJECT_DIR\" && ruff check --fix \"$FILE\" 2>/dev/null; ruff format \"$FILE\" 2>/dev/null || true; elif echo \"$FILE\" | grep -qE '\\.(ts|tsx|js|jsx|json|md)$'; then npx prettier --write \"$FILE\" 2>/dev/null || true; fi; fi"
+          },
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/checkpoint-save.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/audit-log.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/mcp-error-detect.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/heuristic-capture.sh"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/planning-write-guard.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/planning-bash-guard.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Agent",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/planning-guard.sh"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/stale-branch.sh"
+          },
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/context-recovery.sh"
+          },
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/heuristic-inject.sh"
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/pre-compact.sh"
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/error-detect.sh"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/session-end-reminder.sh"
+          },
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/session-auto-learn.sh"
+          }
+        ]
+      }
+    ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "node ~/.claude/hooks/evolv-statusline.js"
+  },
+  "spinnerVerbs": {
+    "mode": "replace",
+    "verbs": [
+      "Building",
+      "Analyzing",
+      "Generating",
+      "Scaffolding",
+      "Migrating",
+      "Reviewing",
+      "Configuring",
+      "Resolving",
+      "Synthesizing",
+      "Validating",
+      "Compiling",
+      "Optimizing",
+      "Mapping",
+      "Evaluating",
+      "Orchestrating"
+    ]
+  },
+  "companyAnnouncements": [
+    "evolv Coder Kit is active. Run /eck:help to see available skills.",
+    "Tip: Run /eck:project-status to check your project health.",
+    "Tip: Run /eck:audit-current-project to validate your setup.",
+    "Run /eck:list-global-catalog to browse available project components.",
+    "New here? Run /eck:new-project to scaffold a project with best practices."
+  ],
+  "showTurnDuration": true,
+  "terminalProgressBarEnabled": true,
+  "outputStyle": "evolv-standard"
+}

@@ -37,7 +37,7 @@ document
         var errorData = await response.json();
         resultEl.textContent = errorData.error || "An error occurred.";
       }
-    } catch (err) {
+    } catch (_err) {
       resultEl.textContent = "Network error: unable to reach the server.";
     }
   });
