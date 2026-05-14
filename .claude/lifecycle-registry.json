@@ -270,7 +270,7 @@
     },
     "WA-2": {
       "created_at": "2026-05-14T18:23:44.935Z",
-      "updated_at": "2026-05-14T19:00:59.682Z",
+      "updated_at": "2026-05-14T19:08:56.810Z",
       "branch": "feat/WA-2-weather-lookup",
       "issue_number": 8,
       "first_started_at": "2026-05-14T18:26:50.999Z",
@@ -300,12 +300,12 @@
           "started_by_session": "9e2b9611"
         },
         "develop": {
-          "status": "active",
+          "status": "done",
           "started_at": "2026-05-14T19:00:59.682Z",
-          "completed_at": null,
-          "gate_verdict": null,
-          "gate_verdict_at": null,
-          "gate_artifact": null,
+          "completed_at": "2026-05-14T19:08:48.573Z",
+          "gate_verdict": "PASS",
+          "gate_verdict_at": "2026-05-14T19:08:48.573Z",
+          "gate_artifact": "/home/tester/weather-app/docs/WA-2-weather-lookup/DEVELOP-REVIEW.md",
           "forced_at": null,
           "forced_reason": null,
           "started_by_session": "12dbac74"
