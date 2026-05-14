@@ -1,9 +1,15 @@
+---
+revision: 3
+date: 2026-05-14
+status: accepted
+---
+
 # Feature Requirements Document
 
 ## Feature: Weather Lookup — Full-Stack
 
-**Feature ID:** WA-1
-**Status:** Approved
+**Feature ID:** WA-3
+**Status:** Accepted
 
 ## Problem Statement
 
@@ -20,45 +26,14 @@ A full-stack Node.js application with:
 
 ## Acceptance Criteria
 
-### AC-01: Weather API endpoint
-
-**Verification:** Unit test
-
-**Given** a client sends GET /api/weather/:city
-**When** a valid city name is provided (london, miami, tokyo)
-**Then** the API returns JSON with fields: city, temperature, description, and humidity
-
-### AC-02: Health check endpoint
-
-**Verification:** Unit test
-
-**Given** a client sends GET /health
-**When** the server is running
-**Then** the API returns `{ "status": "ok" }` with HTTP 200
-
-### AC-03: Error handling
-
-**Verification:** Unit test
-
-**Given** a client sends GET /api/weather/:city
-**When** the city is not found in the data source
-**Then** the API returns HTTP 404 with `{ "error": "City not found" }`
-
-### AC-04: HTML frontend
-
-**Verification:** Manual inspection
-
-**Given** a user navigates to the root URL (/)
-**When** the page loads
-**Then** an HTML page is served with a city input field and a results display area
-
-### AC-05: Test suite passes
-
-**Verification:** Unit test
-
-**Given** the test suite is run with `npm test`
-**When** all tests execute
-**Then** all tests pass covering: weather API responses, 404 for unknown cities, and health check
+| ID   | Criterion                                                                                                                                                                 | Verification | Status  |
+| ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------ | ------- |
+| AC-1 | Returns HTTP 200 with JSON body containing city, temperature, description, and humidity when GET /api/weather/:city is called with a known city (london, miami, or tokyo) | Unit test    | Pending |
+| AC-2 | Returns HTTP 200 with body { "status": "ok" } when GET /health is called                                                                                                  | Unit test    | Pending |
+| AC-3 | Returns HTTP 404 with body { "error": "City not found" } when GET /api/weather/:city is called with a city not in the stub data                                           | Unit test    | Pending |
+| AC-4 | Serves an HTML page at GET / containing a city input field and a results display area                                                                                     | Manual test  | Pending |
+| AC-5 | Passes all test suite assertions when run with npm test covering weather responses, 404 for unknown cities, and health check                                              | Unit test    | Pending |
+| AC-6 | Returns the same weather payload for city name regardless of case (LONDON, London, and london all resolve to the same stub record)                                        | Unit test    | Pending |
 
 ## Out of Scope
 
@@ -68,3 +43,27 @@ A full-stack Node.js application with:
 - Database persistence
 - Multi-day forecasts or historical data
 - Weather alerts or notifications
+
+## Open Questions
+
+| #   | Question                                                                                                                                                                  | Blocking | Priority | Status |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- | -------- | ------ |
+| Q-1 | Should the PRD's query-param style (`GET /api/weather?city=`) be formally deprecated in favour of the implemented path-param style (`/:city`) via an ADR?                 | No       | Med      | Open   |
+| Q-2 | Should `GET /api/weather/` (missing city segment) return HTTP 404 or HTTP 400? Currently returns 404 via Express default and tests assert this.                           | No       | Low      | Open   |
+| Q-3 | Should frontend JavaScript behaviors (fetch on submit, render four fields, error on non-OK response, network failure message) be covered by explicit AC rows beyond AC-4? | No       | Low      | Open   |
+
+## AC Changelog
+
+| Revision | AC-ID        | Change   | Reason                                                                   |
+| -------- | ------------ | -------- | ------------------------------------------------------------------------ |
+| 3        | AC-1 to AC-5 | Modified | Converted from narrative Given/When/Then to canonical table format       |
+| 3        | AC-6         | Added    | Case-insensitive lookup confirmed in discovery (D2), already implemented |
+| 1        | AC-1 to AC-5 | Added    | Initial draft                                                            |
+
+## Revision History
+
+| Rev | Date       | Author      | Summary                                                |
+| --- | ---------- | ----------- | ------------------------------------------------------ |
+| 1   | 2026-05-14 | AI-assisted | Initial scope seeded from FRD                          |
+| 2   | 2026-05-14 | AI-assisted | Scope verified; no changes needed (extend mode)        |
+| 3   | 2026-05-14 | AI-assisted | Criteria converted to canonical table; AC-6 added (+1) |

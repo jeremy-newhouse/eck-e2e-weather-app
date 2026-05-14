@@ -1,29 +1,3428 @@
 # Frontend Standards
+<!-- Compiled: 2026-05-14T21:13:04Z from evolv-coder-standards -->
 
-> Frontend development standards: React, TypeScript, accessibility, components, API client
 
-**Compiled**: 2026-03-25 13:07
-**Source**: evolv-coder-standards
-**Domain Version**: 2.0.0
+---
+<!-- Source: /home/tester/.claude/evolv-coder-standards/standards/frontend/README.md -->
+
+# Frontend Standards
+
+**Version**: 1.0.0
+**Last Updated**: 2026-01-04
+**Status**: Active
+
+## Overview
+
+This directory contains all standards related to frontend development using React, Next.js, TypeScript, and associated technologies.
+
+## Stack Components
+
+- **Framework**: Next.js 16+ (App Router)
+- **Language**: TypeScript (strict mode)
+- **UI Library**: Shadcn/ui
+- **Styling**: Tailwind CSS
+- **State Management**: React hooks, Server state via server actions
+- **Authentication**: Clerk
+
+## Standards in This Section
+
+### 📄 [tech-stack.md](./tech-stack.md)
+
+Complete Next.js and React technology stack specifications, including:
+
+- Next.js 16 configuration and App Router patterns
+- React 19 best practices
+- Package dependencies and versions
+- Build optimization and performance guidelines
+
+### 📄 [typescript.md](./typescript.md)
+
+TypeScript coding conventions and strict type safety:
+
+- **No `any` types** - Use `unknown` instead
+- **Explicit return types** for all functions
+- **Discriminated unions** for state management
+- Naming conventions and file organization
+- ESLint/Prettier configuration
+- Type guards and narrowing patterns
+
+### 📄 [server-actions.md](./server-actions.md)
+
+Server actions implementation patterns:
+
+- File organization and structure
+- Error handling with ActionResult pattern
+- Type safety across frontend-backend boundary
+- API communication and revalidation
+- Loading states and optimistic updates
+
+### 📄 [testing.md](./testing.md)
+
+Frontend testing patterns:
+
+- Vitest configuration and setup
+- React Testing Library patterns
+- Server action testing
+- E2E testing with Playwright
+- MSW for API mocking
+
+### 📄 [components.md](./components.md)
+
+React component standards:
+
+- Component architecture
+- Shadcn/ui patterns
+- Compound components
+- Props patterns and composition
+- Accessibility standards
+
+### 📄 [forms-validation.md](./forms-validation.md)
+
+Forms and validation patterns:
+
+- React Hook Form setup
+- Zod schema validation
+- Multi-step forms
+- File uploads
+- Form state persistence
+
+### 📄 [error-handling.md](./error-handling.md)
+
+Error handling patterns (v2 — RFC 9457):
+
+- React error boundaries
+- RFC 9457 Problem Details API error handling
+- Server action error handling
+- Network error and retry strategies
+- User-friendly error messaging
+
+### 📄 [api-client.md](./api-client.md)
+
+Frontend API client standard:
+
+- ProblemDetail interface and ApiError class
+- apiFetch with RFC 9457 parsing and fallback
+- DELETE 204 handling
+- Typed pagination and filter parameters
+- Error handling utilities (handleApiError, handleApiFormError)
+
+### 📄 [accessibility.md](./accessibility.md)
+
+Web accessibility standards (WCAG 2.1 AA):
+
+- Semantic HTML and ARIA patterns
+- Keyboard navigation and focus management
+- Color contrast and visual accessibility
+- Screen reader support
+- Accessible form patterns
+- Testing with axe and Playwright
+
+## Quick Decision Guide
+
+```mermaid
+flowchart TD
+    A[Frontend Task] --> B{What type?}
+    B -->|New Page/Route| C[Check tech-stack.md]
+    B -->|Component/Types| D[Check typescript.md]
+    B -->|Data Fetching| E[Check server-actions.md]
+    B -->|Code Style| F[Check typescript.md]
+    B -->|Auth Pattern| G[Check architecture/data-flow.md]
+    B -->|Error Handling| H[Check error-handling.md]
+```
+
+## Key Principles
+
+### 1. Server-Side First
+
+- Use SSR/SSG where possible
+- Server actions for all mutations
+- Client components only when necessary
+
+### 2. Type Safety
+
+```typescript
+// Always define types
+interface Props {
+  id: string;
+  data: UserData;
+}
+
+// Never use 'any'
+const process = (input: unknown): Result => {
+  // Type narrow properly
+};
+```
+
+### 3. Component Hierarchy
+
+```
+app/
+├── (routes)/          # Route groups
+├── components/
+│   ├── ui/           # Shadcn components
+│   ├── features/     # Feature-specific
+│   └── common/       # Shared components
+└── actions/          # Server actions
+```
+
+## Common Patterns
+
+### Server Action Pattern
+
+```typescript
+// app/actions/user.ts
+"use server";
+
+export async function updateUser(data: UpdateUserInput) {
+  const session = await auth();
+  if (!session) throw new Error("Unauthorized");
+
+  const response = await fetch(`${API_URL}/users`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+
+  return response.json();
+}
+```
+
+### Component Pattern
+
+```typescript
+// components/features/UserCard.tsx
+import { Card } from "@/components/ui/card";
+
+interface UserCardProps {
+  user: User;
+  onUpdate: (id: string) => Promise<void>;
+}
+
+export function UserCard({ user, onUpdate }: UserCardProps) {
+  // Component logic
+}
+```
+
+## File Naming Conventions
+
+| Type           | Convention | Example                 |
+| -------------- | ---------- | ----------------------- |
+| Components     | PascalCase | `UserProfile.tsx`       |
+| Utilities      | camelCase  | `formatDate.ts`         |
+| Types          | PascalCase | `UserTypes.ts`          |
+| Server Actions | camelCase  | `userActions.ts`        |
+| Routes         | kebab-case | `user-profile/page.tsx` |
+
+## Performance Checklist
+
+- [ ] Minimize client-side JavaScript
+- [ ] Use `loading.tsx` for route transitions
+- [ ] Implement proper error boundaries
+- [ ] Optimize images with `next/image`
+- [ ] Use dynamic imports for large components
+- [ ] Cache server action results when appropriate
 
 ---
 
-## Contents
+_For backend integration, see [Architecture/data-flow.md](../architecture/data-flow.md)_
 
-- [Tech Stack](#tech-stack)
-- [Typescript](#typescript)
-- [Components](#components)
-- [Server Actions](#server-actions)
-- [Forms Validation](#forms-validation)
-- [Error Handling](#error-handling)
-- [Testing](#testing)
-- [Accessibility](#accessibility)
-- [Api Client](#api-client)
+---
+<!-- Source: /home/tester/.claude/evolv-coder-standards/standards/frontend/accessibility.md -->
+# Frontend Accessibility Standards
+
+**Version**: 1.0.0
+**Last Updated**: 2025-12-30
+**Status**: Active
+
+## Overview
+
+This document establishes accessibility standards for frontend development, ensuring applications are usable by people with disabilities. All components must meet WCAG 2.1 Level AA compliance.
+
+## Quick Reference
+
+| Requirement | Standard | Test Tool |
+|------------|----------|-----------|
+| Color contrast | 4.5:1 (normal), 3:1 (large) | axe, Lighthouse |
+| Keyboard navigation | All interactive elements | Manual + Playwright |
+| Screen reader support | Semantic HTML + ARIA | VoiceOver, NVDA |
+| Focus indicators | Visible focus state | Manual review |
+| Alt text | All meaningful images | axe, Lighthouse |
+
+## Semantic HTML
+
+### Use Native Elements
+
+Always prefer semantic HTML elements over ARIA roles:
+
+```tsx
+// Correct - semantic HTML
+<button onClick={handleClick}>Submit</button>
+<nav aria-label="Main navigation">
+  <ul>
+    <li><a href="/home">Home</a></li>
+  </ul>
+</nav>
+
+// Incorrect - div with role
+<div role="button" onClick={handleClick}>Submit</div>
+<div role="navigation">
+  <div><span onClick={goHome}>Home</span></div>
+</div>
+```
+
+### Heading Hierarchy
+
+Maintain proper heading structure:
+
+```tsx
+// Correct - logical hierarchy
+<h1>Page Title</h1>
+<section>
+  <h2>Section Title</h2>
+  <h3>Subsection Title</h3>
+</section>
+
+// Incorrect - skipping levels
+<h1>Page Title</h1>
+<h3>Subsection Title</h3>  // Skipped h2
+```
+
+### Landmark Regions
+
+Use landmark elements for page structure:
+
+```tsx
+<header role="banner">
+  <nav aria-label="Primary">...</nav>
+</header>
+<main role="main">
+  <article>...</article>
+  <aside role="complementary">...</aside>
+</main>
+<footer role="contentinfo">...</footer>
+```
+
+## ARIA Guidelines
+
+### ARIA Roles
+
+Use ARIA roles only when semantic HTML is insufficient:
+
+```tsx
+// Custom components that need ARIA
+<div
+  role="tablist"
+  aria-label="Settings tabs"
+>
+  <button
+    role="tab"
+    aria-selected={activeTab === 'general'}
+    aria-controls="general-panel"
+    id="general-tab"
+  >
+    General
+  </button>
+</div>
+
+<div
+  role="tabpanel"
+  id="general-panel"
+  aria-labelledby="general-tab"
+  hidden={activeTab !== 'general'}
+>
+  Panel content
+</div>
+```
+
+### ARIA States and Properties
+
+```tsx
+// Loading states
+<button aria-busy={isLoading} disabled={isLoading}>
+  {isLoading ? 'Loading...' : 'Submit'}
+</button>
+
+// Expanded/collapsed
+<button
+  aria-expanded={isOpen}
+  aria-controls="menu-content"
+>
+  Menu
+</button>
+<div id="menu-content" hidden={!isOpen}>
+  Menu items
+</div>
+
+// Error states
+<input
+  aria-invalid={!!error}
+  aria-describedby={error ? 'email-error' : undefined}
+/>
+{error && <span id="email-error" role="alert">{error}</span>}
+```
+
+### Live Regions
+
+Announce dynamic content changes to screen readers:
+
+```tsx
+// Polite announcements (waits for user to finish)
+<div aria-live="polite" aria-atomic="true">
+  {notification}
+</div>
+
+// Assertive announcements (interrupts)
+<div aria-live="assertive" role="alert">
+  {errorMessage}
+</div>
+
+// Status messages
+<div role="status" aria-live="polite">
+  {items.length} items found
+</div>
+```
+
+## Keyboard Navigation
+
+### Focus Management
+
+```tsx
+// Focusable elements need visible focus
+const focusStyles = "focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2";
+
+<button className={focusStyles}>
+  Click me
+</button>
+
+// Skip to main content link
+<a
+  href="#main-content"
+  className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:p-4 focus:bg-white"
+>
+  Skip to main content
+</a>
+
+<main id="main-content" tabIndex={-1}>
+  ...
+</main>
+```
+
+### Focus Trapping in Modals
+
+```tsx
+import { useEffect, useRef } from 'react';
+
+interface ModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  children: React.ReactNode;
+}
+
+export function Modal({ isOpen, onClose, children }: ModalProps): React.ReactElement | null {
+  const modalRef = useRef<HTMLDivElement>(null);
+  const previousFocus = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      // Store current focus
+      previousFocus.current = document.activeElement as HTMLElement;
+
+      // Focus first focusable element
+      const focusable = modalRef.current?.querySelectorAll<HTMLElement>(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      );
+      focusable?.[0]?.focus();
+    } else {
+      // Restore focus when closed
+      previousFocus.current?.focus();
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent): void => {
+      if (!isOpen) return;
+
+      if (e.key === 'Escape') {
+        onClose();
+        return;
+      }
+
+      if (e.key === 'Tab') {
+        const focusable = modalRef.current?.querySelectorAll<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        );
+        if (!focusable?.length) return;
+
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
+  if (!isOpen) return null;
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modal-title"
+      ref={modalRef}
+    >
+      {children}
+    </div>
+  );
+}
+```
+
+### Keyboard Shortcuts
+
+```tsx
+import { useEffect } from 'react';
+
+interface UseKeyboardShortcutOptions {
+  key: string;
+  ctrl?: boolean;
+  shift?: boolean;
+  alt?: boolean;
+  callback: () => void;
+}
+
+export function useKeyboardShortcut({
+  key,
+  ctrl = false,
+  shift = false,
+  alt = false,
+  callback,
+}: UseKeyboardShortcutOptions): void {
+  useEffect(() => {
+    const handler = (e: KeyboardEvent): void => {
+      if (
+        e.key.toLowerCase() === key.toLowerCase() &&
+        e.ctrlKey === ctrl &&
+        e.shiftKey === shift &&
+        e.altKey === alt
+      ) {
+        e.preventDefault();
+        callback();
+      }
+    };
+
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [key, ctrl, shift, alt, callback]);
+}
+
+// Usage
+function SearchComponent(): React.ReactElement {
+  useKeyboardShortcut({
+    key: 'k',
+    ctrl: true,
+    callback: () => openSearch(),
+  });
+
+  return <div>...</div>;
+}
+```
+
+## Color and Contrast
+
+### Contrast Requirements
+
+| Text Size | Minimum Ratio | Example |
+|-----------|--------------|---------|
+| Normal text (<18px) | 4.5:1 | `text-gray-700` on white |
+| Large text (>=18px or >=14px bold) | 3:1 | `text-gray-600` on white |
+| UI components | 3:1 | Button borders, form inputs |
+| Non-text content | 3:1 | Icons, charts |
+
+### Color Utilities
+
+```tsx
+// Accessible color combinations in Tailwind
+const accessibleColors = {
+  // Text on white background
+  bodyText: 'text-gray-900',        // 12.6:1
+  mutedText: 'text-gray-600',       // 5.7:1
+  errorText: 'text-red-700',        // 5.1:1
+  successText: 'text-green-700',    // 5.1:1
+
+  // Button colors
+  primaryButton: 'bg-blue-600 text-white',   // 5.6:1
+  dangerButton: 'bg-red-600 text-white',     // 4.5:1
+
+  // Focus rings
+  focusRing: 'ring-blue-500',       // Visible focus
+};
+
+// Never rely on color alone
+<div>
+  <span className="text-red-600">*</span>
+  <label>Email (required)</label>
+</div>
+
+// Include icons or text for status
+<div className="flex items-center gap-2">
+  <CheckCircleIcon className="text-green-600" aria-hidden="true" />
+  <span className="text-green-700">Success</span>
+</div>
+```
+
+### Dark Mode Considerations
+
+```tsx
+// Ensure contrast in both modes
+<p className="text-gray-900 dark:text-gray-100">
+  High contrast text
+</p>
+
+// Test both color schemes
+const colorSchemes = ['light', 'dark'] as const;
+colorSchemes.forEach((scheme) => {
+  // Test contrast ratios
+});
+```
+
+## Forms and Inputs
+
+### Accessible Form Pattern
+
+```tsx
+import { useId } from 'react';
+
+interface FormFieldProps {
+  label: string;
+  error?: string;
+  required?: boolean;
+  hint?: string;
+  children: (props: {
+    id: string;
+    'aria-describedby'?: string;
+    'aria-invalid'?: boolean;
+    'aria-required'?: boolean;
+  }) => React.ReactNode;
+}
+
+export function FormField({
+  label,
+  error,
+  required,
+  hint,
+  children,
+}: FormFieldProps): React.ReactElement {
+  const id = useId();
+  const hintId = hint ? `${id}-hint` : undefined;
+  const errorId = error ? `${id}-error` : undefined;
+  const describedBy = [hintId, errorId].filter(Boolean).join(' ') || undefined;
+
+  return (
+    <div>
+      <label htmlFor={id} className="block text-sm font-medium">
+        {label}
+        {required && <span aria-hidden="true"> *</span>}
+        {required && <span className="sr-only"> (required)</span>}
+      </label>
+
+      {hint && (
+        <p id={hintId} className="text-sm text-gray-500">
+          {hint}
+        </p>
+      )}
+
+      {children({
+        id,
+        'aria-describedby': describedBy,
+        'aria-invalid': !!error,
+        'aria-required': required,
+      })}
+
+      {error && (
+        <p id={errorId} role="alert" className="text-sm text-red-600">
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
+
+// Usage
+<FormField
+  label="Email"
+  error={errors.email}
+  required
+  hint="We'll never share your email"
+>
+  {(props) => (
+    <input
+      type="email"
+      {...props}
+      {...register('email')}
+      className="mt-1 block w-full rounded-md border-gray-300"
+    />
+  )}
+</FormField>
+```
+
+### Error Summary
+
+```tsx
+interface ErrorSummaryProps {
+  errors: Record<string, { message?: string }>;
+}
+
+export function ErrorSummary({ errors }: ErrorSummaryProps): React.ReactElement | null {
+  const errorList = Object.entries(errors);
+
+  if (errorList.length === 0) return null;
+
+  return (
+    <div
+      role="alert"
+      aria-labelledby="error-summary-title"
+      className="p-4 bg-red-50 border border-red-200 rounded-md"
+    >
+      <h2 id="error-summary-title" className="text-red-800 font-medium">
+        There were {errorList.length} errors with your submission
+      </h2>
+      <ul className="mt-2 list-disc list-inside text-red-700">
+        {errorList.map(([field, error]) => (
+          <li key={field}>
+            <a href={`#${field}`} className="underline">
+              {error.message}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+```
+
+## Images and Media
+
+### Alt Text Guidelines
+
+```tsx
+// Informative images - describe the content
+<img
+  src="/chart.png"
+  alt="Bar chart showing 45% increase in sales from Q1 to Q2 2024"
+/>
+
+// Decorative images - empty alt
+<img src="/decorative-line.png" alt="" role="presentation" />
+
+// Functional images (icons in buttons)
+<button aria-label="Close dialog">
+  <XIcon aria-hidden="true" />
+</button>
+
+// Complex images with extended description
+<figure>
+  <img
+    src="/complex-diagram.png"
+    alt="System architecture diagram"
+    aria-describedby="diagram-description"
+  />
+  <figcaption id="diagram-description">
+    The diagram shows three main components: the frontend Next.js app
+    connects to a FastAPI backend, which communicates with a PostgreSQL
+    database...
+  </figcaption>
+</figure>
+```
+
+### Video and Audio
+
+```tsx
+// Video with captions
+<video controls>
+  <source src="/video.mp4" type="video/mp4" />
+  <track
+    kind="captions"
+    src="/captions.vtt"
+    srcLang="en"
+    label="English"
+    default
+  />
+  Your browser does not support the video tag.
+</video>
+
+// Audio with transcript link
+<div>
+  <audio controls aria-describedby="audio-transcript">
+    <source src="/podcast.mp3" type="audio/mpeg" />
+  </audio>
+  <a id="audio-transcript" href="/transcript.html">
+    Read transcript
+  </a>
+</div>
+```
+
+## Loading States
+
+### Accessible Loading Indicators
+
+```tsx
+// Loading spinner
+<div role="status" aria-live="polite">
+  <svg className="animate-spin" aria-hidden="true">...</svg>
+  <span className="sr-only">Loading...</span>
+</div>
+
+// Skeleton loading
+<div aria-busy="true" aria-label="Loading content">
+  <div className="animate-pulse bg-gray-200 h-4 rounded" />
+</div>
+
+// Progress bar
+<div
+  role="progressbar"
+  aria-valuenow={75}
+  aria-valuemin={0}
+  aria-valuemax={100}
+  aria-label="Upload progress"
+>
+  <div style={{ width: '75%' }} />
+</div>
+```
+
+## Tables
+
+### Accessible Data Tables
+
+```tsx
+<table>
+  <caption>Monthly Sales Report for Q4 2024</caption>
+  <thead>
+    <tr>
+      <th scope="col">Month</th>
+      <th scope="col">Revenue</th>
+      <th scope="col">Growth</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th scope="row">October</th>
+      <td>$45,000</td>
+      <td>+12%</td>
+    </tr>
+    <tr>
+      <th scope="row">November</th>
+      <td>$52,000</td>
+      <td>+15%</td>
+    </tr>
+  </tbody>
+</table>
+```
+
+### Sortable Tables
+
+```tsx
+interface SortableHeaderProps {
+  label: string;
+  sortDirection: 'ascending' | 'descending' | 'none';
+  onSort: () => void;
+}
+
+function SortableHeader({ label, sortDirection, onSort }: SortableHeaderProps): React.ReactElement {
+  return (
+    <th scope="col">
+      <button
+        onClick={onSort}
+        aria-sort={sortDirection}
+        className="flex items-center gap-1"
+      >
+        {label}
+        {sortDirection === 'ascending' && <ChevronUpIcon aria-hidden="true" />}
+        {sortDirection === 'descending' && <ChevronDownIcon aria-hidden="true" />}
+      </button>
+    </th>
+  );
+}
+```
+
+## Testing
+
+### Automated Testing with axe
+
+```tsx
+import { render } from '@testing-library/react';
+import { axe, toHaveNoViolations } from 'jest-axe';
+
+expect.extend(toHaveNoViolations);
+
+describe('Component Accessibility', () => {
+  it('should have no accessibility violations', async () => {
+    const { container } = render(<MyComponent />);
+    const results = await axe(container);
+    expect(results).toHaveNoViolations();
+  });
+});
+```
+
+### Playwright Accessibility Testing
+
+```typescript
+import { test, expect } from '@playwright/test';
+import AxeBuilder from '@axe-core/playwright';
+
+test.describe('Accessibility', () => {
+  test('homepage should pass axe audit', async ({ page }) => {
+    await page.goto('/');
+
+    const accessibilityScanResults = await new AxeBuilder({ page })
+      .withTags(['wcag2a', 'wcag2aa', 'wcag21aa'])
+      .analyze();
+
+    expect(accessibilityScanResults.violations).toEqual([]);
+  });
+
+  test('should be keyboard navigable', async ({ page }) => {
+    await page.goto('/');
+
+    // Tab through interactive elements
+    await page.keyboard.press('Tab');
+    const firstFocused = await page.evaluate(() => document.activeElement?.tagName);
+    expect(['A', 'BUTTON', 'INPUT']).toContain(firstFocused);
+
+    // Check visible focus indicator
+    const focusedElement = page.locator(':focus');
+    await expect(focusedElement).toBeVisible();
+  });
+});
+```
+
+### Manual Testing Checklist
+
+```markdown
+## Keyboard Navigation
+- [ ] All interactive elements reachable via Tab
+- [ ] Logical tab order
+- [ ] Skip to main content link works
+- [ ] Focus visible on all elements
+- [ ] No keyboard traps
+- [ ] Escape closes modals/dropdowns
+- [ ] Arrow keys work in menus/tabs
+
+## Screen Reader
+- [ ] Page has unique, descriptive title
+- [ ] Headings in logical order
+- [ ] Images have appropriate alt text
+- [ ] Form labels announced correctly
+- [ ] Error messages announced
+- [ ] Dynamic content changes announced
+
+## Visual
+- [ ] Color contrast meets requirements
+- [ ] Information not conveyed by color alone
+- [ ] Text resizable to 200% without loss
+- [ ] No horizontal scroll at 320px width
+- [ ] Focus indicators visible
+```
+
+## Component Patterns
+
+### Accessible Button Variants
+
+```tsx
+// Standard button
+<button type="button" onClick={handleClick}>
+  Click me
+</button>
+
+// Icon-only button
+<button type="button" aria-label="Delete item" onClick={handleDelete}>
+  <TrashIcon aria-hidden="true" />
+</button>
+
+// Loading button
+<button type="submit" disabled={isLoading} aria-busy={isLoading}>
+  {isLoading ? (
+    <>
+      <Spinner aria-hidden="true" />
+      <span className="sr-only">Submitting...</span>
+    </>
+  ) : (
+    'Submit'
+  )}
+</button>
+
+// Toggle button
+<button
+  type="button"
+  aria-pressed={isPressed}
+  onClick={() => setIsPressed(!isPressed)}
+>
+  {isPressed ? 'On' : 'Off'}
+</button>
+```
+
+### Accessible Dropdown Menu
+
+```tsx
+import { useState, useRef, useEffect } from 'react';
+
+export function Dropdown(): React.ReactElement {
+  const [isOpen, setIsOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(-1);
+  const menuRef = useRef<HTMLUListElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+
+  const items = ['Edit', 'Duplicate', 'Delete'];
+
+  const handleKeyDown = (e: React.KeyboardEvent): void => {
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault();
+        setActiveIndex((prev) => Math.min(prev + 1, items.length - 1));
+        break;
+      case 'ArrowUp':
+        e.preventDefault();
+        setActiveIndex((prev) => Math.max(prev - 1, 0));
+        break;
+      case 'Enter':
+      case ' ':
+        if (activeIndex >= 0) {
+          e.preventDefault();
+          handleSelect(items[activeIndex]);
+        }
+        break;
+      case 'Escape':
+        setIsOpen(false);
+        buttonRef.current?.focus();
+        break;
+    }
+  };
+
+  return (
+    <div>
+      <button
+        ref={buttonRef}
+        aria-haspopup="true"
+        aria-expanded={isOpen}
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        Actions
+      </button>
+
+      {isOpen && (
+        <ul
+          ref={menuRef}
+          role="menu"
+          aria-label="Actions"
+          onKeyDown={handleKeyDown}
+        >
+          {items.map((item, index) => (
+            <li
+              key={item}
+              role="menuitem"
+              tabIndex={index === activeIndex ? 0 : -1}
+              className={index === activeIndex ? 'bg-blue-100' : ''}
+              onClick={() => handleSelect(item)}
+            >
+              {item}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+```
+
+## Shadcn/ui Accessibility
+
+Shadcn/ui components are built on Radix UI primitives which handle accessibility. Ensure proper usage:
+
+```tsx
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+
+// Dialog - automatically handles focus trap and ARIA
+<Dialog>
+  <DialogTrigger asChild>
+    <Button>Open Dialog</Button>
+  </DialogTrigger>
+  <DialogContent>
+    <DialogHeader>
+      <DialogTitle>Edit Profile</DialogTitle>
+    </DialogHeader>
+    {/* Content */}
+  </DialogContent>
+</Dialog>
+
+// Always provide DialogTitle (even if visually hidden)
+<DialogHeader>
+  <DialogTitle className="sr-only">Menu</DialogTitle>
+</DialogHeader>
+```
+
+## References
+
+- [WCAG 2.1 Guidelines](https://www.w3.org/WAI/WCAG21/quickref/)
+- [MDN Accessibility](https://developer.mozilla.org/en-US/docs/Web/Accessibility)
+- [Radix UI Primitives](https://www.radix-ui.com/docs/primitives)
+- [axe-core Rules](https://dequeuniversity.com/rules/axe/)
 
 ---
 
-<!-- Source: standards/frontend/tech-stack.md (v1.0.0) -->
+*Accessibility is not optional - it's a requirement for inclusive software.*
 
+---
+<!-- Source: /home/tester/.claude/evolv-coder-standards/standards/frontend/api-client.md -->
+
+# Frontend API Client Standard
+
+**Version**: 1.0.0
+**Last Updated**: 2026-03-25
+**Status**: Active
+
+## Overview
+
+The frontend API client must handle the backend's RFC 9457 Problem Details responses, 204 No Content responses, and provide typed parameter interfaces. These patterns are implemented once in the fetch wrapper and shared types, not per-component.
+
+## ProblemDetail Interface & ApiError Class
+
+The backend returns [RFC 9457 Problem Details](https://www.rfc-editor.org/rfc/rfc9457) on all errors. The frontend models this as a `ProblemDetail` interface and wraps it in an `ApiError` class:
+
+```typescript
+/** RFC 9457 Problem Details shape returned by all backend APIs. */
+export interface ProblemDetail {
+  type: string;
+  title: string;
+  status: number;
+  detail: string;
+  instance?: string;
+  request_id?: string | null;
+  timestamp?: string;
+  errors?: Array<{ field: string; message: string; value: unknown }>;
+}
+
+export class ApiError extends Error {
+  readonly status: number;
+  readonly type: string;
+  readonly title: string;
+  readonly requestId: string | null;
+  readonly instance: string | null;
+  readonly problem: ProblemDetail;
+
+  constructor(status: number, problem: ProblemDetail) {
+    super(problem.detail);
+    this.name = "ApiError";
+    this.status = status;
+    this.type = problem.type;
+    this.title = problem.title;
+    this.requestId = problem.request_id ?? null;
+    this.instance = problem.instance ?? null;
+    this.problem = problem;
+  }
+
+  /** Field-level validation errors (present on 422 responses). */
+  get fieldErrors(): Array<{ field: string; message: string; value: unknown }> {
+    return this.problem.errors ?? [];
+  }
+}
+
+export function isApiError(err: unknown): err is ApiError {
+  return err instanceof ApiError;
+}
+```
+
+### Usage in components
+
+```typescript
+try {
+  await createCompany(data);
+} catch (err) {
+  if (isApiError(err)) {
+    if (err.type === "/problems/conflict") {
+      // Handle duplicate
+    }
+    for (const fieldError of err.fieldErrors) {
+      form.setError(fieldError.field, { message: fieldError.message });
+    }
+  }
+}
+```
+
+**Discriminator**: Use `err.type` (URI slug) for programmatic error handling, not `err.status` alone.
+
+## apiFetch Error Handling
+
+The central fetch wrapper must:
+
+1. **Parse Problem Details**: On non-ok responses, parse the RFC 9457 body and throw `ApiError`
+2. **Handle 204**: Return `undefined as T` before calling `response.json()`
+3. **Fallback**: Create synthetic `ProblemDetail` with `type: "about:blank"` for non-JSON bodies
+
+```typescript
+async function apiFetch<T>(url: string, options?: RequestInit): Promise<T> {
+  const response = await fetch(url, options);
+
+  // 204 No Content — return before JSON parse
+  if (response.status === 204) {
+    return undefined as T;
+  }
+
+  if (!response.ok) {
+    let problem: ProblemDetail;
+    try {
+      const body = await response.json();
+      // Detect RFC 9457 shape: all 4 required fields present
+      if (
+        body.type &&
+        body.title &&
+        typeof body.status === "number" &&
+        body.detail
+      ) {
+        problem = body as ProblemDetail;
+      } else {
+        // Fallback for non-compliant backends
+        problem = {
+          type: "about:blank",
+          title: response.statusText,
+          status: response.status,
+          detail: body.detail ?? body.message ?? response.statusText,
+          request_id: body.request_id ?? null,
+          timestamp: new Date().toISOString(),
+        };
+      }
+    } catch {
+      problem = {
+        type: "about:blank",
+        title: response.statusText,
+        status: response.status,
+        detail: response.statusText,
+        request_id: null,
+        timestamp: new Date().toISOString(),
+      };
+    }
+    throw new ApiError(response.status, problem);
+  }
+
+  return response.json();
+}
+```
+
+## DELETE Operations
+
+All delete functions return `Promise<void>` and use `await` (not `return`):
+
+```typescript
+// GOOD
+export async function deleteCompany(id: string): Promise<void> {
+  await apiFetch<void>(`/companies/${id}`, { method: "DELETE" });
+}
+
+// BAD — leaks undefined through Promise chain
+export async function deleteCompany(id: string): Promise<void> {
+  return apiFetch<void>(`/companies/${id}`, { method: "DELETE" });
+}
+```
+
+## Typed Parameters
+
+### BaseFilterParams
+
+```typescript
+export interface BaseFilterParams {
+  search?: string | null;
+  date_from?: string | null;
+  date_to?: string | null;
+}
+```
+
+### ListParams
+
+```typescript
+export interface PaginationParams {
+  limit?: number;
+  cursor?: string | null;
+  sort_by?: string;
+  sort_order?: "asc" | "desc";
+  include_total?: boolean;
+}
+
+export interface ListParams extends PaginationParams, BaseFilterParams {}
+```
+
+### Entity-specific params
+
+Entity list params extend `ListParams` and add entity-specific filters:
+
+```typescript
+export interface DealListParams extends ListParams {
+  company_id?: string;
+  stage_id?: string | null;
+  owner_id?: string | null;
+  archived?: boolean;
+}
+```
+
+**Rule**: Never redeclare `search`, `limit`, `cursor`, etc. in entity params — inherit from `ListParams`.
+
+## Query String Building
+
+```typescript
+function buildQueryString(params: Record<string, unknown>): string {
+  return Object.entries(params)
+    .filter(([, v]) => v != null && v !== "")
+    .map(
+      ([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`,
+    )
+    .join("&");
+}
+```
+
+## Error Handling Utilities
+
+### `handleApiError` — Toast-based error display
+
+```typescript
+export function handleApiError(err: unknown, fallbackMessage?: string): void {
+  if (isApiError(err)) {
+    if (err.requestId) {
+      console.error(`[${err.requestId}] ${err.type}: ${err.message}`);
+    }
+    toast.error(err.message);
+    return;
+  }
+  if (err instanceof Error) {
+    toast.error(err.message);
+    return;
+  }
+  toast.error(fallbackMessage ?? "An unexpected error occurred.");
+}
+```
+
+### `handleApiFormError` — Form field mapping
+
+```typescript
+export function handleApiFormError<T extends FieldValues>(
+  err: unknown,
+  form: UseFormReturn<T>,
+  fallbackMessage?: string,
+): void {
+  if (isApiError(err)) {
+    if (err.requestId) {
+      console.error(`[${err.requestId}] ${err.type}: ${err.message}`);
+    }
+    if (err.fieldErrors.length > 0) {
+      for (const { field, message } of err.fieldErrors) {
+        form.setError(field as Path<T>, { message });
+      }
+      return;
+    }
+    toast.error(err.message);
+    return;
+  }
+  handleApiError(err, fallbackMessage);
+}
+```
+
+## Rules
+
+1. **ApiError for all errors**: Never catch raw `Response` objects in components — use `isApiError()`.
+2. **Discriminate on `type`**: Use `err.type` (URI slug) for programmatic error handling, never `err.status` alone.
+3. **204 before JSON**: The fetch wrapper handles 204 centrally — no per-endpoint 204 checks.
+4. **Delete returns void**: All delete functions are `Promise<void>` with `await` (not `return`).
+5. **Extend ListParams**: Entity filter interfaces inherit from `ListParams`, never redeclare shared fields.
+6. **Encode everything**: All query parameter values pass through `encodeURIComponent`.
+7. **Fallback for non-compliant bodies**: Use `about:blank` as the type when the response isn't valid Problem Details.
+8. **Check all 4 required fields**: RFC 9457 narrowing guard checks `type`, `title`, `status`, and `detail` to confirm a valid Problem Details response.
+
+---
+
+## Related Standards
+
+- [Error Response Contract](../architecture/error-contract.md)
+- [Frontend Error Handling](./error-handling.md)
+- [TypeScript Standards](./typescript.md)
+
+---
+<!-- Source: /home/tester/.claude/evolv-coder-standards/standards/frontend/components.md -->
+# React Component Standards
+
+**Version**: 2.0.0
+**Last Updated**: 2026-01-04
+**Status**: Active
+
+## Purpose
+
+This standard defines the **required rules** for building React components with Shadcn/ui in Next.js applications.
+
+For implementation patterns and code examples, see [Component Patterns](../../patterns/frontend/component-patterns.md).
+
+## Scope
+
+- Component type requirements (server vs client)
+- Directory structure requirements
+- Naming conventions
+- Accessibility requirements
+
+---
+
+## Component Types
+
+### Server vs Client Components (Required)
+
+| Type | Use For | Requirement |
+|------|---------|-------------|
+| Server Component | Data fetching, static content | Default, no `'use client'` directive |
+| Client Component | Interactivity, hooks, browser APIs | **Must** use `'use client'` directive |
+
+**Rules**:
+- Server components are the default - do not add `'use client'` unless required
+- Client components **must** include `'use client'` at the top of the file
+- Data fetching **should** happen in server components
+- Client components **must not** perform direct database access
+
+```tsx
+// Server Component (default) - no directive needed
+// app/users/page.tsx
+import { getUsers } from '@/app/actions/users';
+import { UserList } from '@/components/users/user-list';
+
+export default async function UsersPage() {
+  const users = await getUsers();
+  return <UserList users={users} />;
+}
+
+// Client Component - MUST have 'use client'
+// components/users/user-list.tsx
+'use client';
+
+import { useState } from 'react';
+import { User } from '@/types';
+
+interface UserListProps {
+  users: User[];
+}
+
+export function UserList({ users }: UserListProps) {
+  const [selected, setSelected] = useState<string | null>(null);
+  // ...
+}
+```
+
+---
+
+## Component Organization
+
+### Directory Structure (Required)
+
+Components **must** be organized in the following structure:
+
+```
+components/
+├── ui/                    # Shadcn/ui primitives (required location)
+│   ├── button.tsx
+│   ├── card.tsx
+│   ├── dialog.tsx
+│   └── ...
+├── forms/                 # Form components
+│   ├── form-field.tsx
+│   ├── login-form.tsx
+│   └── user-form.tsx
+├── layout/                # Layout components
+│   ├── header.tsx
+│   ├── footer.tsx
+│   └── sidebar.tsx
+├── features/              # Feature-specific components (required)
+│   ├── users/
+│   │   ├── user-card.tsx
+│   │   ├── user-list.tsx
+│   │   └── user-avatar.tsx
+│   └── projects/
+│       ├── project-card.tsx
+│       └── project-list.tsx
+└── shared/                # Shared/common components
+    ├── loading-spinner.tsx
+    ├── error-boundary.tsx
+    └── empty-state.tsx
+```
+
+**Rules**:
+- Shadcn/ui components **must** be in `components/ui/`
+- Feature-specific components **must** be in `components/features/{feature-name}/`
+- Shared components **should** be in `components/shared/`
+
+### Naming Conventions (Required)
+
+| Type | Convention | Example |
+|------|-----------|---------|
+| Component file | kebab-case | `user-card.tsx` |
+| Component export | PascalCase | `export function UserCard` |
+| Types file | kebab-case | `user-card.types.ts` |
+| Test file | kebab-case + .test | `user-card.test.tsx` |
+
+**Rules**:
+- File names **must** use kebab-case
+- Component exports **must** use PascalCase
+- Types **should** be co-located or in a `.types.ts` file
+
+---
+
+## Accessibility Requirements
+
+### Required ARIA Patterns
+
+All interactive components **must** implement proper ARIA:
+
+| Component Type | Required ARIA |
+|---------------|---------------|
+| Dialog/Modal | `role="dialog"`, `aria-modal="true"`, `aria-labelledby` |
+| Tabs | `role="tablist"`, `role="tab"`, `role="tabpanel"`, `aria-selected` |
+| Menu | `role="menu"`, `role="menuitem"` |
+| Button with icon only | `aria-label` describing action |
+| Form fields | `aria-invalid` for errors, `aria-describedby` for error messages |
+
+### Keyboard Navigation (Required)
+
+Interactive components **must** support keyboard navigation:
+
+| Component | Required Keys |
+|-----------|---------------|
+| Dialogs | Escape to close |
+| Menus | Arrow keys to navigate, Enter/Space to select, Escape to close |
+| Tabs | Arrow keys between tabs |
+| Buttons | Enter/Space to activate |
+
+### Focus Management (Required)
+
+- Dialogs and modals **must** trap focus
+- Dialogs **must** return focus to trigger element on close
+- Focus indicators **must** be visible
+
+---
+
+## Related Patterns
+
+For implementation approaches and code examples:
+
+- [Component Patterns](../../patterns/frontend/component-patterns.md) - Basic components, compound components, props patterns, composition patterns, performance patterns
+- [Component Examples](../../examples/frontend/) - Filled implementations
+
+---
+
+## Related Standards
+
+- [TypeScript Standards](./typescript.md)
+- [Frontend Tech Stack](./tech-stack.md)
+- [Forms and Validation](./forms-validation.md)
+- [Frontend Testing](./testing.md)
+
+---
+
+*Component rules ensure consistency, accessibility, and maintainability.*
+
+---
+<!-- Source: /home/tester/.claude/evolv-coder-standards/standards/frontend/error-handling.md -->
+
+# Frontend Error Handling Standard
+
+**Version**: 2.0.0
+**Last Updated**: 2026-03-25
+**Status**: Active
+**Supersedes**: v1.0.0 (custom error envelope)
+
+## Purpose
+
+This standard defines error handling patterns for Next.js applications, including error boundaries, RFC 9457 Problem Details API error handling, user feedback, and error reporting.
+
+**Error format**: All API errors follow the contract defined in [Error Response Contract](../architecture/error-contract.md). See [Frontend API Client](./api-client.md) for the `ProblemDetail` interface, `ApiError` class, and `apiFetch` implementation.
+
+## Scope
+
+- React error boundaries
+- Server action error handling
+- RFC 9457 API error parsing and discrimination
+- Network error and retry strategies
+- User-friendly error messaging
+- Error logging and reporting
+- Form validation errors
+- Route-level error handling
+
+---
+
+## Error Handling Hierarchy
+
+```
+Route Error Boundary (error.tsx)
+    └── Component Error Boundary
+        └── Try/Catch in Server Actions
+            └── API Error Handling (ApiError + ProblemDetail)
+                └── Validation Errors (fieldErrors)
+```
+
+---
+
+## API Error Handling
+
+### ProblemDetail and ApiError
+
+The backend returns RFC 9457 Problem Details on all errors. The frontend models this as a `ProblemDetail` interface wrapped in an `ApiError` class. See [Frontend API Client](./api-client.md) for the full implementation.
+
+```typescript
+import { isApiError } from "@/lib/api-error";
+
+try {
+  await createCompany(data);
+} catch (err) {
+  if (isApiError(err)) {
+    // Discriminate by problem type (URI slug)
+    if (err.type === "/problems/conflict") {
+      // Handle duplicate
+    }
+    // Field-level validation errors (422)
+    for (const fieldError of err.fieldErrors) {
+      form.setError(fieldError.field, { message: fieldError.message });
+    }
+  }
+}
+```
+
+**Key change from v1**: Use `err.type` (URI slug) for programmatic error handling, not `err.code` (SCREAMING_SNAKE) or `err.status` alone.
+
+### Error Handling Utilities
+
+```typescript
+// lib/handle-api-error.ts
+import { isApiError } from "@/lib/api-error";
+import { toast } from "sonner";
+
+export function handleApiError(err: unknown, fallbackMessage?: string): void {
+  if (isApiError(err)) {
+    if (err.requestId) {
+      console.error(`[${err.requestId}] ${err.type}: ${err.message}`);
+    }
+    toast.error(err.message);
+    return;
+  }
+  if (err instanceof Error) {
+    toast.error(err.message);
+    return;
+  }
+  toast.error(fallbackMessage ?? "An unexpected error occurred.");
+}
+
+export function handleApiFormError<T extends FieldValues>(
+  err: unknown,
+  form: UseFormReturn<T>,
+  fallbackMessage?: string,
+): void {
+  if (isApiError(err)) {
+    if (err.requestId) {
+      console.error(`[${err.requestId}] ${err.type}: ${err.message}`);
+    }
+    if (err.fieldErrors.length > 0) {
+      for (const { field, message } of err.fieldErrors) {
+        form.setError(field as Path<T>, { message });
+      }
+      return;
+    }
+    toast.error(err.message);
+    return;
+  }
+  handleApiError(err, fallbackMessage);
+}
+```
+
+---
+
+## Route Error Boundaries
+
+### Error File Convention
+
+```typescript
+// app/dashboard/error.tsx
+'use client';
+
+import { useEffect } from 'react';
+import { Button } from '@/components/ui/button';
+import { AlertTriangle } from 'lucide-react';
+
+interface ErrorProps {
+  error: Error & { digest?: string };
+  reset: () => void;
+}
+
+export default function DashboardError({ error, reset }: ErrorProps) {
+  useEffect(() => {
+    console.error('Dashboard error:', error);
+  }, [error]);
+
+  return (
+    <div className="flex min-h-[400px] flex-col items-center justify-center gap-4">
+      <AlertTriangle className="h-12 w-12 text-destructive" />
+      <h2 className="text-xl font-semibold">Something went wrong</h2>
+      <p className="text-muted-foreground text-center max-w-md">
+        We encountered an error loading the dashboard. Please try again.
+      </p>
+      <Button onClick={reset} variant="outline">
+        Try again
+      </Button>
+    </div>
+  );
+}
+```
+
+---
+
+## Component Error Boundaries
+
+```typescript
+// components/error-boundary.tsx
+'use client';
+
+import { Component, ErrorInfo, ReactNode } from 'react';
+import { Button } from '@/components/ui/button';
+import { AlertCircle } from 'lucide-react';
+
+interface Props {
+  children: ReactNode;
+  fallback?: ReactNode;
+  onError?: (error: Error, errorInfo: ErrorInfo) => void;
+}
+
+interface State {
+  hasError: boolean;
+  error: Error | null;
+}
+
+export class ErrorBoundary extends Component<Props, State> {
+  constructor(props: Props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error): State {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error('ErrorBoundary caught:', error, errorInfo);
+    this.props.onError?.(error, errorInfo);
+  }
+
+  handleReset = () => {
+    this.setState({ hasError: false, error: null });
+  };
+
+  render() {
+    if (this.state.hasError) {
+      if (this.props.fallback) {
+        return this.props.fallback;
+      }
+      return (
+        <div className="flex flex-col items-center gap-4 p-6 border border-destructive/20 rounded-lg bg-destructive/5">
+          <AlertCircle className="h-8 w-8 text-destructive" />
+          <p className="text-sm text-muted-foreground">
+            Something went wrong loading this component.
+          </p>
+          <Button variant="outline" size="sm" onClick={this.handleReset}>
+            Try again
+          </Button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+```
+
+---
+
+## Server Action Error Handling
+
+```typescript
+// types/actions.ts
+export type ActionResult<T = void> =
+  | { success: true; data: T }
+  | { success: false; error: string; errors?: FieldErrors };
+
+export type FieldErrors = Array<{
+  field: string;
+  message: string;
+}>;
+```
+
+```typescript
+// app/actions/user.ts
+"use server";
+
+export async function updateProfile(
+  input: UpdateProfileInput,
+): Promise<ActionResult<{ id: string }>> {
+  try {
+    const { userId } = await auth();
+    if (!userId) {
+      return { success: false, error: "You must be logged in" };
+    }
+
+    const result = updateProfileSchema.safeParse(input);
+    if (!result.success) {
+      return {
+        success: false,
+        error: "Validation failed",
+        errors: result.error.issues.map((issue) => ({
+          field: issue.path.join("."),
+          message: issue.message,
+        })),
+      };
+    }
+
+    const response = await apiFetch(`/users/${userId}`, {
+      method: "PUT",
+      body: JSON.stringify(result.data),
+    });
+
+    revalidatePath("/profile");
+    return { success: true, data: { id: response.id } };
+  } catch (error) {
+    if (isApiError(error)) {
+      return { success: false, error: error.message };
+    }
+    return { success: false, error: "An unexpected error occurred." };
+  }
+}
+```
+
+---
+
+## Network Error Handling
+
+### Retry Strategy
+
+```typescript
+// lib/fetch-with-retry.ts
+export async function fetchWithRetry(
+  url: string,
+  options?: RequestInit,
+  config?: { maxRetries?: number; baseDelay?: number; maxDelay?: number },
+): Promise<Response> {
+  const maxRetries = config?.maxRetries ?? 3;
+  const baseDelay = config?.baseDelay ?? 1000;
+  const maxDelay = config?.maxDelay ?? 10000;
+  let lastError: Error | null = null;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const response = await fetch(url, options);
+      if (!response.ok && response.status >= 500 && attempt < maxRetries) {
+        await sleep(Math.min(baseDelay * Math.pow(2, attempt), maxDelay));
+        continue;
+      }
+      return response;
+    } catch (error) {
+      lastError = error as Error;
+      if (attempt < maxRetries) {
+        await sleep(Math.min(baseDelay * Math.pow(2, attempt), maxDelay));
+      }
+    }
+  }
+  throw lastError || new Error("Request failed after retries");
+}
+```
+
+### React Query Error Handling
+
+```typescript
+export const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: (failureCount, error) => {
+        // Don't retry on 4xx errors
+        if (isApiError(error) && error.status < 500) {
+          return false;
+        }
+        return failureCount < 3;
+      },
+      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+    },
+    mutations: {
+      onError: (error) => {
+        handleApiError(error);
+      },
+    },
+  },
+});
+```
+
+---
+
+## Loading and Error States
+
+```typescript
+// app/dashboard/page.tsx
+import { Suspense } from 'react';
+import { ErrorBoundary } from '@/components/error-boundary';
+
+export default function DashboardPage() {
+  return (
+    <ErrorBoundary>
+      <Suspense fallback={<DashboardSkeleton />}>
+        <DashboardContent />
+      </Suspense>
+    </ErrorBoundary>
+  );
+}
+```
+
+---
+
+## Best Practices
+
+### Do
+
+- Use error boundaries at appropriate granularity
+- Discriminate errors by `err.type` (problem type URI), not status code alone
+- Use `isApiError()` type guard for API errors
+- Provide meaningful error messages to users
+- Log errors with request IDs for correlation
+- Implement retry logic for transient failures (5xx only)
+
+### Don't
+
+- Show raw error messages to users in production
+- Discriminate errors using `err.status` when `err.type` is available
+- Swallow errors silently without logging
+- Retry on 4xx errors (client errors are not transient)
+- Expose sensitive information in error messages
+
+---
+
+## Migration from v1.0.0
+
+Projects using the v1.0.0 custom envelope need to:
+
+1. Replace `ApiErrorDetail` interface with `ProblemDetail`
+2. Update `ApiError` class: add `type`, `title`, `instance`; remove `code`
+3. Update `apiFetch` to parse flat RFC 9457 shape instead of `{ error: {...} }`
+4. Update error logging to use `err.type` instead of `err.code`
+5. Update error discrimination: `err.type === '/problems/conflict'` instead of `err.code === 'CONFLICT'`
+6. Update `fieldErrors` getter to read from `problem.errors` (top-level, not nested)
+
+See [Error Response Contract](../architecture/error-contract.md) for the complete migration mapping.
+
+---
+
+## Related Standards
+
+- [Error Response Contract](../architecture/error-contract.md)
+- [Frontend API Client](./api-client.md)
+- [TypeScript Standards](./typescript.md)
+- [Server Actions](./server-actions.md)
+- [Backend Error Handling](../backend/error-handling.md)
+
+---
+
+_Proper error handling with RFC 9457 improves user experience and makes debugging faster._
+
+---
+<!-- Source: /home/tester/.claude/evolv-coder-standards/standards/frontend/forms-validation.md -->
+# Forms and Validation Standard
+
+**Version**: 1.0.0
+**Last Updated**: 2025-12-30
+**Status**: Active
+
+## Purpose
+
+This standard defines patterns for building forms with React Hook Form and Zod validation in Next.js applications.
+
+## Scope
+
+- React Hook Form patterns
+- Zod schema validation
+- Multi-step forms
+- File uploads
+- Error handling
+- Form state persistence
+
+---
+
+## Tech Stack
+
+| Library | Purpose | Version |
+|---------|---------|---------|
+| React Hook Form | Form state management | v7+ |
+| Zod | Schema validation | v3+ |
+| @hookform/resolvers | Zod integration | Latest |
+
+---
+
+## Basic Form Setup
+
+### Schema Definition
+
+```typescript
+// lib/validations/user.ts
+import { z } from 'zod';
+
+export const userSchema = z.object({
+  email: z
+    .string()
+    .min(1, 'Email is required')
+    .email('Invalid email address'),
+  password: z
+    .string()
+    .min(8, 'Password must be at least 8 characters')
+    .regex(
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
+      'Password must contain uppercase, lowercase, and number'
+    ),
+  confirmPassword: z.string(),
+  name: z
+    .string()
+    .min(1, 'Name is required')
+    .max(100, 'Name is too long'),
+  bio: z
+    .string()
+    .max(500, 'Bio must be less than 500 characters')
+    .optional(),
+  website: z
+    .string()
+    .url('Invalid URL')
+    .optional()
+    .or(z.literal('')),
+  role: z.enum(['user', 'admin', 'moderator'], {
+    errorMap: () => ({ message: 'Please select a role' }),
+  }),
+  terms: z.literal(true, {
+    errorMap: () => ({ message: 'You must accept the terms' }),
+  }),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: 'Passwords do not match',
+  path: ['confirmPassword'],
+});
+
+export type UserFormData = z.infer<typeof userSchema>;
+
+// Partial schema for updates
+export const userUpdateSchema = userSchema.partial().omit({
+  password: true,
+  confirmPassword: true,
+  terms: true,
+});
+
+export type UserUpdateData = z.infer<typeof userUpdateSchema>;
+```
+
+### Form Component
+
+```tsx
+// components/forms/user-form.tsx
+'use client';
+
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { userSchema, type UserFormData } from '@/lib/validations/user';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
+
+interface UserFormProps {
+  onSubmit: (data: UserFormData) => Promise<void>;
+  defaultValues?: Partial<UserFormData>;
+}
+
+export function UserForm({ onSubmit, defaultValues }: UserFormProps) {
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+    setValue,
+    watch,
+  } = useForm<UserFormData>({
+    resolver: zodResolver(userSchema),
+    defaultValues: {
+      email: '',
+      password: '',
+      confirmPassword: '',
+      name: '',
+      bio: '',
+      website: '',
+      role: 'user',
+      terms: false,
+      ...defaultValues,
+    },
+  });
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      {/* Email */}
+      <div className="space-y-2">
+        <Label htmlFor="email">Email</Label>
+        <Input
+          id="email"
+          type="email"
+          {...register('email')}
+          aria-invalid={!!errors.email}
+        />
+        {errors.email && (
+          <p className="text-sm text-destructive">{errors.email.message}</p>
+        )}
+      </div>
+
+      {/* Password */}
+      <div className="space-y-2">
+        <Label htmlFor="password">Password</Label>
+        <Input
+          id="password"
+          type="password"
+          {...register('password')}
+          aria-invalid={!!errors.password}
+        />
+        {errors.password && (
+          <p className="text-sm text-destructive">{errors.password.message}</p>
+        )}
+      </div>
+
+      {/* Confirm Password */}
+      <div className="space-y-2">
+        <Label htmlFor="confirmPassword">Confirm Password</Label>
+        <Input
+          id="confirmPassword"
+          type="password"
+          {...register('confirmPassword')}
+          aria-invalid={!!errors.confirmPassword}
+        />
+        {errors.confirmPassword && (
+          <p className="text-sm text-destructive">{errors.confirmPassword.message}</p>
+        )}
+      </div>
+
+      {/* Name */}
+      <div className="space-y-2">
+        <Label htmlFor="name">Name</Label>
+        <Input
+          id="name"
+          {...register('name')}
+          aria-invalid={!!errors.name}
+        />
+        {errors.name && (
+          <p className="text-sm text-destructive">{errors.name.message}</p>
+        )}
+      </div>
+
+      {/* Bio (optional) */}
+      <div className="space-y-2">
+        <Label htmlFor="bio">Bio (optional)</Label>
+        <Textarea
+          id="bio"
+          {...register('bio')}
+          aria-invalid={!!errors.bio}
+        />
+        {errors.bio && (
+          <p className="text-sm text-destructive">{errors.bio.message}</p>
+        )}
+      </div>
+
+      {/* Role - Select component */}
+      <div className="space-y-2">
+        <Label htmlFor="role">Role</Label>
+        <Select
+          value={watch('role')}
+          onValueChange={(value) => setValue('role', value as 'user' | 'admin' | 'moderator')}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Select a role" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="user">User</SelectItem>
+            <SelectItem value="moderator">Moderator</SelectItem>
+            <SelectItem value="admin">Admin</SelectItem>
+          </SelectContent>
+        </Select>
+        {errors.role && (
+          <p className="text-sm text-destructive">{errors.role.message}</p>
+        )}
+      </div>
+
+      {/* Terms Checkbox */}
+      <div className="flex items-center space-x-2">
+        <Checkbox
+          id="terms"
+          checked={watch('terms')}
+          onCheckedChange={(checked) => setValue('terms', checked === true)}
+        />
+        <Label htmlFor="terms" className="text-sm">
+          I accept the terms and conditions
+        </Label>
+      </div>
+      {errors.terms && (
+        <p className="text-sm text-destructive">{errors.terms.message}</p>
+      )}
+
+      <Button type="submit" disabled={isSubmitting} className="w-full">
+        {isSubmitting ? 'Submitting...' : 'Submit'}
+      </Button>
+    </form>
+  );
+}
+```
+
+---
+
+## Form with Server Action
+
+```tsx
+// components/forms/create-project-form.tsx
+'use client';
+
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useRouter } from 'next/navigation';
+import { useState } from 'react';
+import { z } from 'zod';
+import { createProject } from '@/app/actions/projects';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+
+const projectSchema = z.object({
+  name: z.string().min(1, 'Name is required').max(100),
+  description: z.string().max(500).optional(),
+});
+
+type ProjectFormData = z.infer<typeof projectSchema>;
+
+export function CreateProjectForm() {
+  const router = useRouter();
+  const [serverError, setServerError] = useState<string | null>(null);
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+    setError,
+  } = useForm<ProjectFormData>({
+    resolver: zodResolver(projectSchema),
+  });
+
+  const onSubmit = async (data: ProjectFormData) => {
+    setServerError(null);
+
+    const result = await createProject(data);
+
+    if (!result.success) {
+      // Handle field-specific errors from server
+      if (result.errors) {
+        result.errors.forEach((error) => {
+          setError(error.field as keyof ProjectFormData, {
+            message: error.message,
+          });
+        });
+      } else if (result.error) {
+        setServerError(result.error);
+      }
+      return;
+    }
+
+    // Success - redirect
+    router.push(`/projects/${result.data.id}`);
+  };
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      {serverError && (
+        <Alert variant="destructive">
+          <AlertDescription>{serverError}</AlertDescription>
+        </Alert>
+      )}
+
+      <div className="space-y-2">
+        <Label htmlFor="name">Project Name</Label>
+        <Input id="name" {...register('name')} />
+        {errors.name && (
+          <p className="text-sm text-destructive">{errors.name.message}</p>
+        )}
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="description">Description</Label>
+        <Input id="description" {...register('description')} />
+        {errors.description && (
+          <p className="text-sm text-destructive">{errors.description.message}</p>
+        )}
+      </div>
+
+      <Button type="submit" disabled={isSubmitting}>
+        {isSubmitting ? 'Creating...' : 'Create Project'}
+      </Button>
+    </form>
+  );
+}
+```
+
+---
+
+## Multi-Step Form
+
+```tsx
+// components/forms/onboarding-form.tsx
+'use client';
+
+import { useState } from 'react';
+import { useForm, FormProvider } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
+
+// Step schemas
+const step1Schema = z.object({
+  firstName: z.string().min(1, 'First name is required'),
+  lastName: z.string().min(1, 'Last name is required'),
+});
+
+const step2Schema = z.object({
+  company: z.string().min(1, 'Company is required'),
+  role: z.string().min(1, 'Role is required'),
+});
+
+const step3Schema = z.object({
+  interests: z.array(z.string()).min(1, 'Select at least one interest'),
+});
+
+// Combined schema
+const onboardingSchema = step1Schema.merge(step2Schema).merge(step3Schema);
+
+type OnboardingData = z.infer<typeof onboardingSchema>;
+
+const stepSchemas = [step1Schema, step2Schema, step3Schema];
+
+interface MultiStepFormProps {
+  onComplete: (data: OnboardingData) => Promise<void>;
+}
+
+export function OnboardingForm({ onComplete }: MultiStepFormProps) {
+  const [step, setStep] = useState(0);
+  const totalSteps = 3;
+
+  const methods = useForm<OnboardingData>({
+    resolver: zodResolver(onboardingSchema),
+    mode: 'onChange',
+    defaultValues: {
+      firstName: '',
+      lastName: '',
+      company: '',
+      role: '',
+      interests: [],
+    },
+  });
+
+  const { handleSubmit, trigger, formState: { isSubmitting } } = methods;
+
+  const handleNext = async () => {
+    // Validate current step
+    const currentSchema = stepSchemas[step];
+    const fields = Object.keys(currentSchema.shape) as (keyof OnboardingData)[];
+
+    const isValid = await trigger(fields);
+    if (isValid) {
+      setStep((prev) => Math.min(prev + 1, totalSteps - 1));
+    }
+  };
+
+  const handleBack = () => {
+    setStep((prev) => Math.max(prev - 1, 0));
+  };
+
+  const onSubmit = async (data: OnboardingData) => {
+    await onComplete(data);
+  };
+
+  return (
+    <FormProvider {...methods}>
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+        {/* Progress */}
+        <div className="space-y-2">
+          <div className="flex justify-between text-sm">
+            <span>Step {step + 1} of {totalSteps}</span>
+            <span>{Math.round(((step + 1) / totalSteps) * 100)}%</span>
+          </div>
+          <Progress value={((step + 1) / totalSteps) * 100} />
+        </div>
+
+        {/* Step Content */}
+        {step === 0 && <Step1 />}
+        {step === 1 && <Step2 />}
+        {step === 2 && <Step3 />}
+
+        {/* Navigation */}
+        <div className="flex justify-between">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleBack}
+            disabled={step === 0}
+          >
+            Back
+          </Button>
+
+          {step < totalSteps - 1 ? (
+            <Button type="button" onClick={handleNext}>
+              Next
+            </Button>
+          ) : (
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? 'Completing...' : 'Complete'}
+            </Button>
+          )}
+        </div>
+      </form>
+    </FormProvider>
+  );
+}
+
+// Step components use useFormContext
+function Step1() {
+  const { register, formState: { errors } } = useFormContext<OnboardingData>();
+
+  return (
+    <div className="space-y-4">
+      <h2 className="text-lg font-semibold">Personal Information</h2>
+      <div className="space-y-2">
+        <Label htmlFor="firstName">First Name</Label>
+        <Input id="firstName" {...register('firstName')} />
+        {errors.firstName && (
+          <p className="text-sm text-destructive">{errors.firstName.message}</p>
+        )}
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="lastName">Last Name</Label>
+        <Input id="lastName" {...register('lastName')} />
+        {errors.lastName && (
+          <p className="text-sm text-destructive">{errors.lastName.message}</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ... Step2 and Step3 components
+```
+
+---
+
+## File Upload Form
+
+```tsx
+// components/forms/file-upload-form.tsx
+'use client';
+
+import { useState, useCallback } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { Upload, X, File } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
+
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
+
+const uploadSchema = z.object({
+  title: z.string().min(1, 'Title is required'),
+  file: z
+    .instanceof(File)
+    .refine((file) => file.size <= MAX_FILE_SIZE, 'File must be less than 5MB')
+    .refine(
+      (file) => ACCEPTED_TYPES.includes(file.type),
+      'Only JPEG, PNG, WebP, and PDF files are allowed'
+    ),
+});
+
+type UploadFormData = z.infer<typeof uploadSchema>;
+
+interface FileUploadFormProps {
+  onSubmit: (data: FormData) => Promise<void>;
+}
+
+export function FileUploadForm({ onSubmit }: FileUploadFormProps) {
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [dragActive, setDragActive] = useState(false);
+
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    watch,
+    formState: { errors, isSubmitting },
+    reset,
+  } = useForm<UploadFormData>({
+    resolver: zodResolver(uploadSchema),
+  });
+
+  const selectedFile = watch('file');
+
+  const handleDrag = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === 'dragenter' || e.type === 'dragover') {
+      setDragActive(true);
+    } else if (e.type === 'dragleave') {
+      setDragActive(false);
+    }
+  }, []);
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setDragActive(false);
+
+      if (e.dataTransfer.files?.[0]) {
+        setValue('file', e.dataTransfer.files[0], { shouldValidate: true });
+      }
+    },
+    [setValue]
+  );
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files?.[0]) {
+      setValue('file', e.target.files[0], { shouldValidate: true });
+    }
+  };
+
+  const removeFile = () => {
+    setValue('file', undefined as unknown as File);
+  };
+
+  const handleFormSubmit = async (data: UploadFormData) => {
+    const formData = new FormData();
+    formData.append('title', data.title);
+    formData.append('file', data.file);
+
+    // Simulate progress
+    const progressInterval = setInterval(() => {
+      setUploadProgress((prev) => Math.min(prev + 10, 90));
+    }, 100);
+
+    try {
+      await onSubmit(formData);
+      setUploadProgress(100);
+      reset();
+    } finally {
+      clearInterval(progressInterval);
+      setUploadProgress(0);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
+      {/* Title */}
+      <div className="space-y-2">
+        <Label htmlFor="title">Title</Label>
+        <Input id="title" {...register('title')} />
+        {errors.title && (
+          <p className="text-sm text-destructive">{errors.title.message}</p>
+        )}
+      </div>
+
+      {/* Drop Zone */}
+      <div
+        className={cn(
+          'border-2 border-dashed rounded-lg p-8 text-center transition-colors',
+          dragActive ? 'border-primary bg-primary/5' : 'border-muted-foreground/25',
+          errors.file && 'border-destructive'
+        )}
+        onDragEnter={handleDrag}
+        onDragLeave={handleDrag}
+        onDragOver={handleDrag}
+        onDrop={handleDrop}
+      >
+        {selectedFile ? (
+          <div className="flex items-center justify-center gap-2">
+            <File className="h-8 w-8 text-muted-foreground" />
+            <div className="text-left">
+              <p className="font-medium">{selectedFile.name}</p>
+              <p className="text-sm text-muted-foreground">
+                {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={removeFile}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <Upload className="mx-auto h-12 w-12 text-muted-foreground" />
+            <div>
+              <label htmlFor="file" className="cursor-pointer">
+                <span className="text-primary hover:underline">Click to upload</span>
+                {' '}or drag and drop
+              </label>
+              <input
+                id="file"
+                type="file"
+                className="hidden"
+                accept={ACCEPTED_TYPES.join(',')}
+                onChange={handleFileChange}
+              />
+            </div>
+            <p className="text-sm text-muted-foreground">
+              JPEG, PNG, WebP, or PDF (max 5MB)
+            </p>
+          </div>
+        )}
+      </div>
+      {errors.file && (
+        <p className="text-sm text-destructive">{errors.file.message}</p>
+      )}
+
+      {/* Upload Progress */}
+      {uploadProgress > 0 && (
+        <Progress value={uploadProgress} className="h-2" />
+      )}
+
+      <Button type="submit" disabled={isSubmitting || !selectedFile}>
+        {isSubmitting ? 'Uploading...' : 'Upload'}
+      </Button>
+    </form>
+  );
+}
+```
+
+---
+
+## Dynamic Form Fields
+
+```tsx
+// components/forms/dynamic-fields-form.tsx
+'use client';
+
+import { useForm, useFieldArray } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { Plus, Trash2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+
+const teamMemberSchema = z.object({
+  name: z.string().min(1, 'Name is required'),
+  email: z.string().email('Invalid email'),
+  role: z.string().min(1, 'Role is required'),
+});
+
+const teamSchema = z.object({
+  teamName: z.string().min(1, 'Team name is required'),
+  members: z.array(teamMemberSchema).min(1, 'Add at least one member'),
+});
+
+type TeamFormData = z.infer<typeof teamSchema>;
+
+export function TeamForm({ onSubmit }: { onSubmit: (data: TeamFormData) => void }) {
+  const {
+    register,
+    handleSubmit,
+    control,
+    formState: { errors },
+  } = useForm<TeamFormData>({
+    resolver: zodResolver(teamSchema),
+    defaultValues: {
+      teamName: '',
+      members: [{ name: '', email: '', role: '' }],
+    },
+  });
+
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: 'members',
+  });
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+      {/* Team Name */}
+      <div className="space-y-2">
+        <Label htmlFor="teamName">Team Name</Label>
+        <Input id="teamName" {...register('teamName')} />
+        {errors.teamName && (
+          <p className="text-sm text-destructive">{errors.teamName.message}</p>
+        )}
+      </div>
+
+      {/* Dynamic Members */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <Label>Team Members</Label>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => append({ name: '', email: '', role: '' })}
+          >
+            <Plus className="h-4 w-4 mr-1" />
+            Add Member
+          </Button>
+        </div>
+
+        {fields.map((field, index) => (
+          <div key={field.id} className="flex gap-2 items-start p-4 border rounded-lg">
+            <div className="flex-1 space-y-2">
+              <Input
+                placeholder="Name"
+                {...register(`members.${index}.name`)}
+              />
+              {errors.members?.[index]?.name && (
+                <p className="text-sm text-destructive">
+                  {errors.members[index]?.name?.message}
+                </p>
+              )}
+            </div>
+
+            <div className="flex-1 space-y-2">
+              <Input
+                placeholder="Email"
+                type="email"
+                {...register(`members.${index}.email`)}
+              />
+              {errors.members?.[index]?.email && (
+                <p className="text-sm text-destructive">
+                  {errors.members[index]?.email?.message}
+                </p>
+              )}
+            </div>
+
+            <div className="flex-1 space-y-2">
+              <Input
+                placeholder="Role"
+                {...register(`members.${index}.role`)}
+              />
+              {errors.members?.[index]?.role && (
+                <p className="text-sm text-destructive">
+                  {errors.members[index]?.role?.message}
+                </p>
+              )}
+            </div>
+
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={() => remove(index)}
+              disabled={fields.length === 1}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        ))}
+
+        {errors.members?.root && (
+          <p className="text-sm text-destructive">{errors.members.root.message}</p>
+        )}
+      </div>
+
+      <Button type="submit">Create Team</Button>
+    </form>
+  );
+}
+```
+
+---
+
+## Form State Persistence
+
+```tsx
+// hooks/use-persisted-form.ts
+import { useEffect } from 'react';
+import { useForm, UseFormProps, FieldValues, Path } from 'react-hook-form';
+
+interface UsePersistedFormProps<T extends FieldValues> extends UseFormProps<T> {
+  storageKey: string;
+  storage?: Storage;
+}
+
+export function usePersistedForm<T extends FieldValues>({
+  storageKey,
+  storage = typeof window !== 'undefined' ? localStorage : undefined,
+  defaultValues,
+  ...rest
+}: UsePersistedFormProps<T>) {
+  // Load persisted values
+  const getPersistedValues = (): Partial<T> | undefined => {
+    if (!storage) return undefined;
+
+    try {
+      const stored = storage.getItem(storageKey);
+      return stored ? JSON.parse(stored) : undefined;
+    } catch {
+      return undefined;
+    }
+  };
+
+  const form = useForm<T>({
+    defaultValues: {
+      ...defaultValues,
+      ...getPersistedValues(),
+    } as UseFormProps<T>['defaultValues'],
+    ...rest,
+  });
+
+  // Persist on change
+  useEffect(() => {
+    if (!storage) return;
+
+    const subscription = form.watch((data) => {
+      storage.setItem(storageKey, JSON.stringify(data));
+    });
+
+    return () => subscription.unsubscribe();
+  }, [form, storage, storageKey]);
+
+  // Clear persisted data
+  const clearPersistedData = () => {
+    storage?.removeItem(storageKey);
+    form.reset(defaultValues as T);
+  };
+
+  return { ...form, clearPersistedData };
+}
+
+// Usage
+const { register, handleSubmit, clearPersistedData } = usePersistedForm({
+  storageKey: 'draft-post',
+  defaultValues: { title: '', content: '' },
+});
+```
+
+---
+
+## Validation Patterns
+
+### Conditional Validation
+
+```typescript
+const formSchema = z.object({
+  accountType: z.enum(['personal', 'business']),
+  companyName: z.string().optional(),
+  taxId: z.string().optional(),
+}).refine(
+  (data) => {
+    if (data.accountType === 'business') {
+      return !!data.companyName && !!data.taxId;
+    }
+    return true;
+  },
+  {
+    message: 'Company name and tax ID are required for business accounts',
+    path: ['companyName'],
+  }
+);
+```
+
+### Async Validation
+
+```typescript
+const usernameSchema = z.object({
+  username: z
+    .string()
+    .min(3)
+    .max(20)
+    .regex(/^[a-zA-Z0-9_]+$/, 'Only letters, numbers, and underscores')
+    .refine(
+      async (username) => {
+        const response = await fetch(`/api/check-username?username=${username}`);
+        const { available } = await response.json();
+        return available;
+      },
+      'Username is already taken'
+    ),
+});
+```
+
+### Cross-Field Validation
+
+```typescript
+const dateRangeSchema = z.object({
+  startDate: z.date(),
+  endDate: z.date(),
+}).refine(
+  (data) => data.endDate > data.startDate,
+  {
+    message: 'End date must be after start date',
+    path: ['endDate'],
+  }
+);
+```
+
+---
+
+## Error Handling Patterns
+
+### Server Error Display
+
+```tsx
+interface ServerError {
+  field: string;
+  message: string;
+}
+
+function handleServerErrors(
+  errors: ServerError[],
+  setError: UseFormSetError<FormData>
+) {
+  errors.forEach((error) => {
+    setError(error.field as keyof FormData, {
+      type: 'server',
+      message: error.message,
+    });
+  });
+}
+```
+
+### Error Summary
+
+```tsx
+function ErrorSummary({ errors }: { errors: FieldErrors }) {
+  const errorMessages = Object.entries(errors)
+    .filter(([_, error]) => error?.message)
+    .map(([field, error]) => ({
+      field,
+      message: error?.message as string,
+    }));
+
+  if (errorMessages.length === 0) return null;
+
+  return (
+    <Alert variant="destructive">
+      <AlertTitle>Please fix the following errors:</AlertTitle>
+      <AlertDescription>
+        <ul className="list-disc pl-4 space-y-1">
+          {errorMessages.map(({ field, message }) => (
+            <li key={field}>{message}</li>
+          ))}
+        </ul>
+      </AlertDescription>
+    </Alert>
+  );
+}
+```
+
+---
+
+## Related Standards
+
+- [TypeScript Standards](./typescript.md)
+- [Component Standards](./components.md)
+- [Frontend Testing](./testing.md)
+- [Server Actions](./server-actions.md)
+
+---
+
+*Well-designed forms with proper validation improve user experience and data integrity.*
+
+---
+<!-- Source: /home/tester/.claude/evolv-coder-standards/standards/frontend/server-actions.md -->
+# Server Actions Standard
+
+**Version**: 1.0.0
+**Last Updated**: 2026-01-04
+**Status**: Active
+
+## Overview
+
+Server actions are the primary method for frontend-backend communication in our Next.js architecture. They provide type-safe, server-side mutations while maintaining SSR benefits.
+
+**Error handling**: Server actions must return errors following the [Error Response Contract](../architecture/error-contract.md).
+
+## Core Principles
+
+1. **All data mutations go through server actions**
+2. **Server actions call FastAPI endpoints**
+3. **Never direct database access**
+4. **Always handle errors gracefully**
+5. **Maintain type safety throughout**
+
+## File Organization
+
+```
+app/
+├── actions/              # All server actions
+│   ├── users.ts         # User-related actions
+│   ├── orders.ts        # Order-related actions
+│   ├── auth.ts          # Authentication actions
+│   └── types.ts         # Shared action types
+```
+
+## Basic Server Action Pattern
+
+```typescript
+// app/actions/users.ts
+'use server';
+
+import { auth } from '@clerk/nextjs';
+import { revalidatePath } from 'next/cache';
+
+interface CreateUserInput {
+  name: string;
+  email: string;
+}
+
+interface ActionResult<T> {
+  success: boolean;
+  data?: T;
+  error?: string;
+}
+
+export async function createUser(
+  input: CreateUserInput
+): Promise<ActionResult<User>> {
+  // 1. Authentication check
+  const { userId } = auth();
+  if (!userId) {
+    return { success: false, error: 'Unauthorized' };
+  }
+
+  try {
+    // 2. Call FastAPI backend
+    const response = await fetch(`${process.env.API_URL}/users`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${await getToken()}`,
+      },
+      body: JSON.stringify(input),
+    });
+
+    // 3. Handle response
+    if (!response.ok) {
+      const error = await response.text();
+      return { success: false, error };
+    }
+
+    const user = await response.json();
+
+    // 4. Revalidate cache
+    revalidatePath('/users');
+
+    return { success: true, data: user };
+  } catch (error) {
+    // 5. Error handling
+    console.error('Create user error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
+}
+```
+
+## FormData Pattern
+
+```typescript
+'use server';
+
+export async function createUserFromForm(
+  prevState: any,
+  formData: FormData
+): Promise<ActionResult<User>> {
+  // Extract and validate form data
+  const name = formData.get('name') as string;
+  const email = formData.get('email') as string;
+
+  if (!name || !email) {
+    return { success: false, error: 'Missing required fields' };
+  }
+
+  return createUser({ name, email });
+}
+```
+
+## Using with useActionState Hook
+
+```typescript
+// components/UserForm.tsx
+'use client';
+
+import { useActionState } from 'react';
+import { createUserFromForm } from '@/app/actions/users';
+
+export function UserForm() {
+  const [state, formAction, isPending] = useActionState(
+    createUserFromForm,
+    null
+  );
+
+  return (
+    <form action={formAction}>
+      <input name="name" required />
+      <input name="email" type="email" required />
+
+      <button type="submit" disabled={isPending}>
+        {isPending ? 'Creating...' : 'Create User'}
+      </button>
+
+      {state?.error && (
+        <p className="text-red-500">{state.error}</p>
+      )}
+
+      {state?.success && (
+        <p className="text-green-500">User created successfully!</p>
+      )}
+    </form>
+  );
+}
+```
+
+## Optimistic Updates
+
+```typescript
+'use client';
+
+import { useOptimistic } from 'react';
+import { updateUser } from '@/app/actions/users';
+
+export function UserList({ users }: { users: User[] }) {
+  const [optimisticUsers, addOptimisticUser] = useOptimistic(
+    users,
+    (state, newUser: User) => [...state, newUser]
+  );
+
+  async function handleAdd(formData: FormData) {
+    const newUser = {
+      id: Date.now(),
+      name: formData.get('name') as string,
+      email: formData.get('email') as string,
+    };
+
+    // Show optimistically
+    addOptimisticUser(newUser);
+
+    // Actually save
+    await createUser(newUser);
+  }
+
+  return (
+    <form action={handleAdd}>
+      {/* Form content */}
+    </form>
+  );
+}
+```
+
+## Error Handling Patterns
+
+### Structured Error Response
+```typescript
+interface ActionError {
+  code: string;
+  message: string;
+  field?: string;
+}
+
+interface ActionResult<T> {
+  success: boolean;
+  data?: T;
+  errors?: ActionError[];
+}
+
+export async function createUser(
+  input: CreateUserInput
+): Promise<ActionResult<User>> {
+  try {
+    const response = await fetch(`${API_URL}/users`, {
+      method: 'POST',
+      body: JSON.stringify(input),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      return {
+        success: false,
+        errors: errorData.errors || [
+          { code: 'UNKNOWN', message: 'An error occurred' }
+        ],
+      };
+    }
+
+    return { success: true, data: await response.json() };
+  } catch (error) {
+    return {
+      success: false,
+      errors: [{ code: 'NETWORK', message: 'Network error occurred' }],
+    };
+  }
+}
+```
+
+### Field-Level Validation
+```typescript
+import { z } from 'zod';
+
+const userSchema = z.object({
+  name: z.string().min(2),
+  email: z.string().email(),
+});
+
+export async function createUser(
+  formData: FormData
+): Promise<ActionResult<User>> {
+  // Validate input
+  const validation = userSchema.safeParse({
+    name: formData.get('name'),
+    email: formData.get('email'),
+  });
+
+  if (!validation.success) {
+    return {
+      success: false,
+      errors: validation.error.errors.map(err => ({
+        code: 'VALIDATION',
+        message: err.message,
+        field: err.path.join('.'),
+      })),
+    };
+  }
+
+  // Proceed with API call
+  // ...
+}
+```
+
+## Pagination Pattern
+
+```typescript
+interface PaginatedResult<T> {
+  items: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+  hasMore: boolean;
+}
+
+export async function getUsers(
+  page: number = 1,
+  pageSize: number = 20
+): Promise<ActionResult<PaginatedResult<User>>> {
+  const { userId } = auth();
+  if (!userId) {
+    return { success: false, error: 'Unauthorized' };
+  }
+
+  try {
+    const response = await fetch(
+      `${API_URL}/users?page=${page}&page_size=${pageSize}`,
+      {
+        headers: {
+          'Authorization': `Bearer ${await getToken()}`,
+        },
+      }
+    );
+
+    if (!response.ok) {
+      return { success: false, error: 'Failed to fetch users' };
+    }
+
+    const data = await response.json();
+
+    return {
+      success: true,
+      data: {
+        items: data.items,
+        total: data.total,
+        page: data.page,
+        pageSize: data.page_size,
+        hasMore: data.page * data.page_size < data.total,
+      },
+    };
+  } catch (error) {
+    return { success: false, error: 'Network error' };
+  }
+}
+```
+
+## File Upload Pattern
+
+```typescript
+export async function uploadFile(
+  formData: FormData
+): Promise<ActionResult<{ url: string }>> {
+  const file = formData.get('file') as File;
+
+  if (!file) {
+    return { success: false, error: 'No file provided' };
+  }
+
+  // Create FormData for backend
+  const backendFormData = new FormData();
+  backendFormData.append('file', file);
+
+  try {
+    const response = await fetch(`${API_URL}/upload`, {
+      method: 'POST',
+      body: backendFormData,
+      headers: {
+        'Authorization': `Bearer ${await getToken()}`,
+      },
+    });
+
+    if (!response.ok) {
+      return { success: false, error: 'Upload failed' };
+    }
+
+    const { url } = await response.json();
+    return { success: true, data: { url } };
+  } catch (error) {
+    return { success: false, error: 'Upload error' };
+  }
+}
+```
+
+## Caching and Revalidation
+
+```typescript
+import { revalidatePath, revalidateTag } from 'next/cache';
+
+export async function updateUser(
+  id: number,
+  data: UpdateUserInput
+): Promise<ActionResult<User>> {
+  const result = await fetch(`${API_URL}/users/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+
+  if (result.ok) {
+    // Revalidate specific paths
+    revalidatePath('/users');
+    revalidatePath(`/users/${id}`);
+
+    // Or revalidate by tag
+    revalidateTag('users');
+
+    return { success: true, data: await result.json() };
+  }
+
+  return { success: false, error: 'Update failed' };
+}
+```
+
+## Testing Server Actions
+
+```typescript
+// __tests__/actions/users.test.ts
+import { createUser } from '@/app/actions/users';
+import { auth } from '@clerk/nextjs';
+
+jest.mock('@clerk/nextjs');
+
+describe('createUser', () => {
+  beforeEach(() => {
+    (auth as jest.Mock).mockReturnValue({ userId: 'test-user' });
+  });
+
+  it('should create user successfully', async () => {
+    global.fetch = jest.fn().mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ id: 1, name: 'John', email: 'john@example.com' }),
+    });
+
+    const result = await createUser({
+      name: 'John',
+      email: 'john@example.com',
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.data?.name).toBe('John');
+  });
+
+  it('should handle unauthorized access', async () => {
+    (auth as jest.Mock).mockReturnValue({ userId: null });
+
+    const result = await createUser({
+      name: 'John',
+      email: 'john@example.com',
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.error).toBe('Unauthorized');
+  });
+});
+```
+
+## Best Practices
+
+### ✅ DO
+- Always authenticate before processing
+- Return structured results with success/error
+- Revalidate relevant cache after mutations
+- Use TypeScript for all inputs/outputs
+- Handle network errors gracefully
+- Log errors for debugging
+- Use Zod for input validation
+
+### ❌ DON'T
+- Access database directly
+- Return raw API responses
+- Ignore error cases
+- Use untyped FormData
+- Forget to revalidate cache
+- Expose sensitive error details
+- Mix client and server code
+
+## Common Patterns Reference
+
+```typescript
+// Basic CRUD operations
+export async function createItem(data: CreateInput): Promise<ActionResult<Item>>;
+export async function getItem(id: number): Promise<ActionResult<Item>>;
+export async function updateItem(id: number, data: UpdateInput): Promise<ActionResult<Item>>;
+export async function deleteItem(id: number): Promise<ActionResult<void>>;
+export async function listItems(params: ListParams): Promise<ActionResult<Item[]>>;
+
+// Authentication required
+const { userId } = auth();
+if (!userId) return { success: false, error: 'Unauthorized' };
+
+// API call pattern
+const response = await fetch(`${API_URL}/endpoint`, {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${token}`,
+  },
+  body: JSON.stringify(data),
+});
+
+// Cache revalidation
+revalidatePath('/path');
+revalidateTag('tag');
+```
+
+---
+
+*Server actions are the bridge between frontend and backend. Always ensure type safety and proper error handling.*
+
+---
+<!-- Source: /home/tester/.claude/evolv-coder-standards/standards/frontend/tech-stack.md -->
 # Frontend Tech Stack Standard
 
 **Version**: 1.0.0
@@ -1877,9 +5276,912 @@ import { motion, AnimatePresence } from 'framer-motion';
 *Last updated: December 2025*
 
 ---
+<!-- Source: /home/tester/.claude/evolv-coder-standards/standards/frontend/testing.md -->
+# Frontend Testing Standard
 
-<!-- Source: standards/frontend/typescript.md (v1.0.0) -->
+**Version**: 1.0.0
+**Last Updated**: 2025-12-30
+**Status**: Active
 
+## Purpose
+
+This standard defines testing patterns and best practices for Next.js applications using Vitest, React Testing Library, and Playwright.
+
+## Scope
+
+- Unit testing with Vitest
+- Component testing with React Testing Library
+- End-to-end testing with Playwright
+- Testing server actions
+- Mocking patterns with MSW
+- Accessibility testing
+
+---
+
+## Testing Stack
+
+| Tool | Purpose | Use For |
+|------|---------|---------|
+| Vitest | Test runner | Unit tests, component tests |
+| React Testing Library | Component testing | User interaction testing |
+| Playwright | E2E testing | Full user flow testing |
+| MSW (Mock Service Worker) | API mocking | Consistent API responses |
+| @testing-library/user-event | User interactions | Realistic event simulation |
+
+---
+
+## Project Setup
+
+### Vitest Configuration
+
+```typescript
+// vitest.config.ts
+import { defineConfig } from 'vitest/config';
+import react from '@vitejs/plugin-react';
+import tsconfigPaths from 'vite-tsconfig-paths';
+
+export default defineConfig({
+  plugins: [react(), tsconfigPaths()],
+  test: {
+    environment: 'jsdom',
+    globals: true,
+    setupFiles: ['./src/test/setup.ts'],
+    include: ['**/*.{test,spec}.{js,ts,jsx,tsx}'],
+    exclude: ['**/node_modules/**', '**/e2e/**'],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'json', 'html'],
+      exclude: [
+        'node_modules/',
+        'src/test/',
+        '**/*.d.ts',
+        '**/*.config.*',
+        '**/types/**',
+      ],
+      thresholds: {
+        global: {
+          branches: 80,
+          functions: 80,
+          lines: 80,
+          statements: 80,
+        },
+      },
+    },
+  },
+});
+```
+
+### Test Setup File
+
+```typescript
+// src/test/setup.ts
+import '@testing-library/jest-dom/vitest';
+import { cleanup } from '@testing-library/react';
+import { afterEach, beforeAll, afterAll } from 'vitest';
+import { server } from './mocks/server';
+
+// Start MSW server before all tests
+beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
+
+// Reset handlers after each test
+afterEach(() => {
+  cleanup();
+  server.resetHandlers();
+});
+
+// Close server after all tests
+afterAll(() => server.close());
+
+// Mock window.matchMedia
+Object.defineProperty(window, 'matchMedia', {
+  writable: true,
+  value: vi.fn().mockImplementation((query) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  })),
+});
+
+// Mock IntersectionObserver
+global.IntersectionObserver = vi.fn().mockImplementation(() => ({
+  observe: vi.fn(),
+  unobserve: vi.fn(),
+  disconnect: vi.fn(),
+}));
+
+// Mock ResizeObserver
+global.ResizeObserver = vi.fn().mockImplementation(() => ({
+  observe: vi.fn(),
+  unobserve: vi.fn(),
+  disconnect: vi.fn(),
+}));
+```
+
+---
+
+## Unit Testing
+
+### Testing Utility Functions
+
+```typescript
+// lib/utils.test.ts
+import { describe, it, expect } from 'vitest';
+import { formatCurrency, slugify, truncate } from './utils';
+
+describe('formatCurrency', () => {
+  it('formats positive numbers correctly', () => {
+    expect(formatCurrency(1234.56)).toBe('$1,234.56');
+  });
+
+  it('formats zero correctly', () => {
+    expect(formatCurrency(0)).toBe('$0.00');
+  });
+
+  it('formats negative numbers correctly', () => {
+    expect(formatCurrency(-50)).toBe('-$50.00');
+  });
+
+  it('handles different currencies', () => {
+    expect(formatCurrency(100, 'EUR')).toBe('€100.00');
+  });
+});
+
+describe('slugify', () => {
+  it('converts spaces to hyphens', () => {
+    expect(slugify('Hello World')).toBe('hello-world');
+  });
+
+  it('removes special characters', () => {
+    expect(slugify('Hello, World!')).toBe('hello-world');
+  });
+
+  it('handles multiple spaces', () => {
+    expect(slugify('Hello   World')).toBe('hello-world');
+  });
+});
+
+describe('truncate', () => {
+  it('truncates long strings', () => {
+    expect(truncate('Hello World', 5)).toBe('Hello...');
+  });
+
+  it('does not truncate short strings', () => {
+    expect(truncate('Hi', 5)).toBe('Hi');
+  });
+});
+```
+
+### Testing Custom Hooks
+
+```typescript
+// hooks/use-debounce.test.ts
+import { describe, it, expect, vi } from 'vitest';
+import { renderHook, act } from '@testing-library/react';
+import { useDebounce } from './use-debounce';
+
+describe('useDebounce', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('returns initial value immediately', () => {
+    const { result } = renderHook(() => useDebounce('initial', 500));
+    expect(result.current).toBe('initial');
+  });
+
+  it('debounces value changes', () => {
+    const { result, rerender } = renderHook(
+      ({ value }) => useDebounce(value, 500),
+      { initialProps: { value: 'initial' } }
+    );
+
+    // Change value
+    rerender({ value: 'updated' });
+
+    // Value should not change immediately
+    expect(result.current).toBe('initial');
+
+    // Advance timer
+    act(() => {
+      vi.advanceTimersByTime(500);
+    });
+
+    // Now value should update
+    expect(result.current).toBe('updated');
+  });
+});
+```
+
+---
+
+## Component Testing
+
+### Basic Component Test
+
+```typescript
+// components/button.test.tsx
+import { describe, it, expect, vi } from 'vitest';
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { Button } from './button';
+
+describe('Button', () => {
+  it('renders with text', () => {
+    render(<Button>Click me</Button>);
+    expect(screen.getByRole('button', { name: /click me/i })).toBeInTheDocument();
+  });
+
+  it('calls onClick when clicked', async () => {
+    const user = userEvent.setup();
+    const handleClick = vi.fn();
+
+    render(<Button onClick={handleClick}>Click me</Button>);
+
+    await user.click(screen.getByRole('button'));
+    expect(handleClick).toHaveBeenCalledTimes(1);
+  });
+
+  it('is disabled when disabled prop is true', () => {
+    render(<Button disabled>Click me</Button>);
+    expect(screen.getByRole('button')).toBeDisabled();
+  });
+
+  it('shows loading state', () => {
+    render(<Button loading>Submit</Button>);
+    expect(screen.getByRole('button')).toBeDisabled();
+    expect(screen.getByTestId('loading-spinner')).toBeInTheDocument();
+  });
+
+  it('applies variant styles', () => {
+    render(<Button variant="destructive">Delete</Button>);
+    expect(screen.getByRole('button')).toHaveClass('bg-destructive');
+  });
+});
+```
+
+### Testing Forms
+
+```typescript
+// components/login-form.test.tsx
+import { describe, it, expect, vi } from 'vitest';
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { LoginForm } from './login-form';
+
+describe('LoginForm', () => {
+  it('submits form with valid data', async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn();
+
+    render(<LoginForm onSubmit={onSubmit} />);
+
+    await user.type(screen.getByLabelText(/email/i), 'test@example.com');
+    await user.type(screen.getByLabelText(/password/i), 'password123');
+    await user.click(screen.getByRole('button', { name: /sign in/i }));
+
+    await waitFor(() => {
+      expect(onSubmit).toHaveBeenCalledWith({
+        email: 'test@example.com',
+        password: 'password123',
+      });
+    });
+  });
+
+  it('shows validation errors for empty fields', async () => {
+    const user = userEvent.setup();
+
+    render(<LoginForm onSubmit={vi.fn()} />);
+
+    await user.click(screen.getByRole('button', { name: /sign in/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/email is required/i)).toBeInTheDocument();
+      expect(screen.getByText(/password is required/i)).toBeInTheDocument();
+    });
+  });
+
+  it('shows error for invalid email', async () => {
+    const user = userEvent.setup();
+
+    render(<LoginForm onSubmit={vi.fn()} />);
+
+    await user.type(screen.getByLabelText(/email/i), 'invalid-email');
+    await user.click(screen.getByRole('button', { name: /sign in/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/invalid email/i)).toBeInTheDocument();
+    });
+  });
+
+  it('disables submit button while submitting', async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn(() => new Promise((r) => setTimeout(r, 100)));
+
+    render(<LoginForm onSubmit={onSubmit} />);
+
+    await user.type(screen.getByLabelText(/email/i), 'test@example.com');
+    await user.type(screen.getByLabelText(/password/i), 'password123');
+    await user.click(screen.getByRole('button', { name: /sign in/i }));
+
+    expect(screen.getByRole('button', { name: /signing in/i })).toBeDisabled();
+  });
+});
+```
+
+### Testing with Context
+
+```typescript
+// components/user-profile.test.tsx
+import { describe, it, expect } from 'vitest';
+import { render, screen } from '@testing-library/react';
+import { UserProfile } from './user-profile';
+import { UserProvider } from '@/contexts/user-context';
+
+const mockUser = {
+  id: '1',
+  name: 'John Doe',
+  email: 'john@example.com',
+  avatar: '/avatar.jpg',
+};
+
+function renderWithUser(ui: React.ReactElement, user = mockUser) {
+  return render(
+    <UserProvider initialUser={user}>
+      {ui}
+    </UserProvider>
+  );
+}
+
+describe('UserProfile', () => {
+  it('displays user information', () => {
+    renderWithUser(<UserProfile />);
+
+    expect(screen.getByText('John Doe')).toBeInTheDocument();
+    expect(screen.getByText('john@example.com')).toBeInTheDocument();
+    expect(screen.getByAltText('John Doe')).toHaveAttribute('src', '/avatar.jpg');
+  });
+
+  it('shows loading state when user is null', () => {
+    render(
+      <UserProvider initialUser={null}>
+        <UserProfile />
+      </UserProvider>
+    );
+
+    expect(screen.getByTestId('loading-skeleton')).toBeInTheDocument();
+  });
+});
+```
+
+---
+
+## Testing Server Actions
+
+### Mocking Server Actions
+
+```typescript
+// __tests__/actions/user.test.ts
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { createUser, updateUser } from '@/app/actions/user';
+
+// Mock the auth function
+vi.mock('@clerk/nextjs/server', () => ({
+  auth: vi.fn(() => ({ userId: 'test-user-id' })),
+  currentUser: vi.fn(() => ({
+    id: 'test-user-id',
+    emailAddresses: [{ emailAddress: 'test@example.com' }],
+  })),
+}));
+
+// Mock fetch for API calls
+global.fetch = vi.fn();
+
+describe('User Server Actions', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  describe('createUser', () => {
+    it('creates a user successfully', async () => {
+      const mockResponse = {
+        id: '1',
+        email: 'new@example.com',
+        name: 'New User',
+      };
+
+      (global.fetch as vi.Mock).mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockResponse,
+      });
+
+      const result = await createUser({
+        email: 'new@example.com',
+        name: 'New User',
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.data).toEqual(mockResponse);
+    });
+
+    it('returns error when API fails', async () => {
+      (global.fetch as vi.Mock).mockResolvedValueOnce({
+        ok: false,
+        json: async () => ({ detail: 'Email already exists' }),
+      });
+
+      const result = await createUser({
+        email: 'existing@example.com',
+        name: 'User',
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Email already exists');
+    });
+
+    it('handles network errors', async () => {
+      (global.fetch as vi.Mock).mockRejectedValueOnce(new Error('Network error'));
+
+      const result = await createUser({
+        email: 'test@example.com',
+        name: 'User',
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('Network error');
+    });
+  });
+});
+```
+
+### Testing Components with Server Actions
+
+```typescript
+// components/create-user-form.test.tsx
+import { describe, it, expect, vi } from 'vitest';
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { CreateUserForm } from './create-user-form';
+
+// Mock the server action
+vi.mock('@/app/actions/user', () => ({
+  createUser: vi.fn(),
+}));
+
+import { createUser } from '@/app/actions/user';
+
+describe('CreateUserForm', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('submits form and shows success message', async () => {
+    const user = userEvent.setup();
+    (createUser as vi.Mock).mockResolvedValueOnce({
+      success: true,
+      data: { id: '1', name: 'John', email: 'john@example.com' },
+    });
+
+    render(<CreateUserForm />);
+
+    await user.type(screen.getByLabelText(/name/i), 'John');
+    await user.type(screen.getByLabelText(/email/i), 'john@example.com');
+    await user.click(screen.getByRole('button', { name: /create/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/user created successfully/i)).toBeInTheDocument();
+    });
+  });
+
+  it('displays error message on failure', async () => {
+    const user = userEvent.setup();
+    (createUser as vi.Mock).mockResolvedValueOnce({
+      success: false,
+      error: 'Email already exists',
+    });
+
+    render(<CreateUserForm />);
+
+    await user.type(screen.getByLabelText(/name/i), 'John');
+    await user.type(screen.getByLabelText(/email/i), 'existing@example.com');
+    await user.click(screen.getByRole('button', { name: /create/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/email already exists/i)).toBeInTheDocument();
+    });
+  });
+});
+```
+
+---
+
+## API Mocking with MSW
+
+### Handler Setup
+
+```typescript
+// src/test/mocks/handlers.ts
+import { http, HttpResponse } from 'msw';
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
+export const handlers = [
+  // GET /api/users
+  http.get(`${API_URL}/api/users`, () => {
+    return HttpResponse.json([
+      { id: '1', name: 'John Doe', email: 'john@example.com' },
+      { id: '2', name: 'Jane Doe', email: 'jane@example.com' },
+    ]);
+  }),
+
+  // GET /api/users/:id
+  http.get(`${API_URL}/api/users/:id`, ({ params }) => {
+    const { id } = params;
+    if (id === 'not-found') {
+      return HttpResponse.json({ detail: 'User not found' }, { status: 404 });
+    }
+    return HttpResponse.json({
+      id,
+      name: 'John Doe',
+      email: 'john@example.com',
+    });
+  }),
+
+  // POST /api/users
+  http.post(`${API_URL}/api/users`, async ({ request }) => {
+    const body = await request.json();
+    return HttpResponse.json({
+      id: '3',
+      ...body,
+    }, { status: 201 });
+  }),
+
+  // PUT /api/users/:id
+  http.put(`${API_URL}/api/users/:id`, async ({ params, request }) => {
+    const { id } = params;
+    const body = await request.json();
+    return HttpResponse.json({
+      id,
+      ...body,
+    });
+  }),
+
+  // DELETE /api/users/:id
+  http.delete(`${API_URL}/api/users/:id`, () => {
+    return new HttpResponse(null, { status: 204 });
+  }),
+];
+```
+
+### MSW Server Setup
+
+```typescript
+// src/test/mocks/server.ts
+import { setupServer } from 'msw/node';
+import { handlers } from './handlers';
+
+export const server = setupServer(...handlers);
+```
+
+### Using MSW in Tests
+
+```typescript
+// components/user-list.test.tsx
+import { describe, it, expect } from 'vitest';
+import { render, screen, waitFor } from '@testing-library/react';
+import { http, HttpResponse } from 'msw';
+import { server } from '@/test/mocks/server';
+import { UserList } from './user-list';
+
+describe('UserList', () => {
+  it('displays users from API', async () => {
+    render(<UserList />);
+
+    await waitFor(() => {
+      expect(screen.getByText('John Doe')).toBeInTheDocument();
+      expect(screen.getByText('Jane Doe')).toBeInTheDocument();
+    });
+  });
+
+  it('shows error message when API fails', async () => {
+    // Override handler for this test
+    server.use(
+      http.get('*/api/users', () => {
+        return HttpResponse.json(
+          { detail: 'Server error' },
+          { status: 500 }
+        );
+      })
+    );
+
+    render(<UserList />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/failed to load users/i)).toBeInTheDocument();
+    });
+  });
+
+  it('shows empty state when no users', async () => {
+    server.use(
+      http.get('*/api/users', () => {
+        return HttpResponse.json([]);
+      })
+    );
+
+    render(<UserList />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/no users found/i)).toBeInTheDocument();
+    });
+  });
+});
+```
+
+---
+
+## End-to-End Testing with Playwright
+
+### Playwright Configuration
+
+```typescript
+// playwright.config.ts
+import { defineConfig, devices } from '@playwright/test';
+
+export default defineConfig({
+  testDir: './e2e',
+  fullyParallel: true,
+  forbidOnly: !!process.env.CI,
+  retries: process.env.CI ? 2 : 0,
+  workers: process.env.CI ? 1 : undefined,
+  reporter: 'html',
+  use: {
+    baseURL: 'http://localhost:3000',
+    trace: 'on-first-retry',
+    screenshot: 'only-on-failure',
+  },
+  projects: [
+    {
+      name: 'chromium',
+      use: { ...devices['Desktop Chrome'] },
+    },
+    {
+      name: 'firefox',
+      use: { ...devices['Desktop Firefox'] },
+    },
+    {
+      name: 'webkit',
+      use: { ...devices['Desktop Safari'] },
+    },
+    {
+      name: 'Mobile Chrome',
+      use: { ...devices['Pixel 5'] },
+    },
+  ],
+  webServer: {
+    command: 'npm run dev',
+    url: 'http://localhost:3000',
+    reuseExistingServer: !process.env.CI,
+  },
+});
+```
+
+### E2E Test Examples
+
+```typescript
+// e2e/auth.spec.ts
+import { test, expect } from '@playwright/test';
+
+test.describe('Authentication', () => {
+  test('redirects unauthenticated user to login', async ({ page }) => {
+    await page.goto('/dashboard');
+    await expect(page).toHaveURL(/.*sign-in/);
+  });
+
+  test('allows user to sign in', async ({ page }) => {
+    await page.goto('/sign-in');
+
+    await page.fill('[name="email"]', 'test@example.com');
+    await page.fill('[name="password"]', 'password123');
+    await page.click('button[type="submit"]');
+
+    await expect(page).toHaveURL('/dashboard');
+    await expect(page.locator('text=Welcome')).toBeVisible();
+  });
+
+  test('shows error for invalid credentials', async ({ page }) => {
+    await page.goto('/sign-in');
+
+    await page.fill('[name="email"]', 'wrong@example.com');
+    await page.fill('[name="password"]', 'wrongpassword');
+    await page.click('button[type="submit"]');
+
+    await expect(page.locator('text=Invalid credentials')).toBeVisible();
+  });
+});
+```
+
+### Page Object Model
+
+```typescript
+// e2e/pages/login.page.ts
+import { Page, Locator, expect } from '@playwright/test';
+
+export class LoginPage {
+  readonly page: Page;
+  readonly emailInput: Locator;
+  readonly passwordInput: Locator;
+  readonly submitButton: Locator;
+  readonly errorMessage: Locator;
+
+  constructor(page: Page) {
+    this.page = page;
+    this.emailInput = page.locator('[name="email"]');
+    this.passwordInput = page.locator('[name="password"]');
+    this.submitButton = page.locator('button[type="submit"]');
+    this.errorMessage = page.locator('[role="alert"]');
+  }
+
+  async goto() {
+    await this.page.goto('/sign-in');
+  }
+
+  async login(email: string, password: string) {
+    await this.emailInput.fill(email);
+    await this.passwordInput.fill(password);
+    await this.submitButton.click();
+  }
+
+  async expectError(message: string) {
+    await expect(this.errorMessage).toContainText(message);
+  }
+
+  async expectRedirectToDashboard() {
+    await expect(this.page).toHaveURL('/dashboard');
+  }
+}
+
+// Usage in test
+import { test } from '@playwright/test';
+import { LoginPage } from './pages/login.page';
+
+test('user can login', async ({ page }) => {
+  const loginPage = new LoginPage(page);
+  await loginPage.goto();
+  await loginPage.login('test@example.com', 'password123');
+  await loginPage.expectRedirectToDashboard();
+});
+```
+
+---
+
+## Accessibility Testing
+
+### With React Testing Library
+
+```typescript
+// components/modal.test.tsx
+import { describe, it, expect } from 'vitest';
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { Modal } from './modal';
+
+describe('Modal Accessibility', () => {
+  it('has correct ARIA attributes', () => {
+    render(<Modal isOpen title="Test Modal"><p>Content</p></Modal>);
+
+    const dialog = screen.getByRole('dialog');
+    expect(dialog).toHaveAttribute('aria-modal', 'true');
+    expect(dialog).toHaveAttribute('aria-labelledby');
+  });
+
+  it('traps focus within modal', async () => {
+    const user = userEvent.setup();
+    render(
+      <Modal isOpen title="Test Modal">
+        <button>First</button>
+        <button>Second</button>
+      </Modal>
+    );
+
+    const buttons = screen.getAllByRole('button');
+
+    // Focus should start on first focusable element
+    expect(buttons[0]).toHaveFocus();
+
+    // Tab to second button
+    await user.tab();
+    expect(buttons[1]).toHaveFocus();
+
+    // Tab again should wrap to first button (focus trap)
+    await user.tab();
+    expect(buttons[0]).toHaveFocus();
+  });
+
+  it('closes on Escape key', async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+
+    render(
+      <Modal isOpen onClose={onClose} title="Test Modal">
+        <p>Content</p>
+      </Modal>
+    );
+
+    await user.keyboard('{Escape}');
+    expect(onClose).toHaveBeenCalled();
+  });
+});
+```
+
+### With Playwright
+
+```typescript
+// e2e/accessibility.spec.ts
+import { test, expect } from '@playwright/test';
+import AxeBuilder from '@axe-core/playwright';
+
+test.describe('Accessibility', () => {
+  test('homepage has no accessibility violations', async ({ page }) => {
+    await page.goto('/');
+
+    const accessibilityScanResults = await new AxeBuilder({ page }).analyze();
+
+    expect(accessibilityScanResults.violations).toEqual([]);
+  });
+
+  test('dashboard has no accessibility violations', async ({ page }) => {
+    // Assume authenticated
+    await page.goto('/dashboard');
+
+    const accessibilityScanResults = await new AxeBuilder({ page })
+      .include('#main-content')
+      .exclude('.third-party-widget')
+      .analyze();
+
+    expect(accessibilityScanResults.violations).toEqual([]);
+  });
+});
+```
+
+---
+
+## Running Tests
+
+```bash
+# Unit and component tests
+npm test                    # Run all tests
+npm test -- --watch         # Watch mode
+npm test -- --coverage      # With coverage
+npm test -- user            # Run tests matching "user"
+
+# E2E tests
+npm run test:e2e           # Run Playwright tests
+npm run test:e2e -- --ui   # Interactive UI mode
+npm run test:e2e -- --debug # Debug mode
+```
+
+---
+
+## Related Standards
+
+- [TypeScript Standards](./typescript.md)
+- [Frontend Tech Stack](./tech-stack.md)
+- [Backend Testing](../backend/testing.md)
+
+---
+
+*Comprehensive testing ensures reliability and catches bugs before they reach production.*
+
+---
+<!-- Source: /home/tester/.claude/evolv-coder-standards/standards/frontend/typescript.md -->
 # TypeScript Coding Standards
 
 **Version**: 1.0.0
@@ -3474,4126 +7776,3 @@ For implementation approaches and code examples:
 ---
 
 *Last updated: December 2025*
-
----
-
-<!-- Source: standards/frontend/components.md (v1.0.0) -->
-
-# React Component Standards
-
-**Version**: 2.0.0
-**Last Updated**: 2026-01-04
-**Status**: Active
-
-## Purpose
-
-This standard defines the **required rules** for building React components with Shadcn/ui in Next.js applications.
-
-For implementation patterns and code examples, see [Component Patterns](../../patterns/frontend/component-patterns.md).
-
-## Scope
-
-- Component type requirements (server vs client)
-- Directory structure requirements
-- Naming conventions
-- Accessibility requirements
-
----
-
-## Component Types
-
-### Server vs Client Components (Required)
-
-| Type | Use For | Requirement |
-|------|---------|-------------|
-| Server Component | Data fetching, static content | Default, no `'use client'` directive |
-| Client Component | Interactivity, hooks, browser APIs | **Must** use `'use client'` directive |
-
-**Rules**:
-- Server components are the default - do not add `'use client'` unless required
-- Client components **must** include `'use client'` at the top of the file
-- Data fetching **should** happen in server components
-- Client components **must not** perform direct database access
-
-```tsx
-// Server Component (default) - no directive needed
-// app/users/page.tsx
-import { getUsers } from '@/app/actions/users';
-import { UserList } from '@/components/users/user-list';
-
-export default async function UsersPage() {
-  const users = await getUsers();
-  return <UserList users={users} />;
-}
-
-// Client Component - MUST have 'use client'
-// components/users/user-list.tsx
-'use client';
-
-import { useState } from 'react';
-import { User } from '@/types';
-
-interface UserListProps {
-  users: User[];
-}
-
-export function UserList({ users }: UserListProps) {
-  const [selected, setSelected] = useState<string | null>(null);
-  // ...
-}
-```
-
----
-
-## Component Organization
-
-### Directory Structure (Required)
-
-Components **must** be organized in the following structure:
-
-```
-components/
-├── ui/                    # Shadcn/ui primitives (required location)
-│   ├── button.tsx
-│   ├── card.tsx
-│   ├── dialog.tsx
-│   └── ...
-├── forms/                 # Form components
-│   ├── form-field.tsx
-│   ├── login-form.tsx
-│   └── user-form.tsx
-├── layout/                # Layout components
-│   ├── header.tsx
-│   ├── footer.tsx
-│   └── sidebar.tsx
-├── features/              # Feature-specific components (required)
-│   ├── users/
-│   │   ├── user-card.tsx
-│   │   ├── user-list.tsx
-│   │   └── user-avatar.tsx
-│   └── projects/
-│       ├── project-card.tsx
-│       └── project-list.tsx
-└── shared/                # Shared/common components
-    ├── loading-spinner.tsx
-    ├── error-boundary.tsx
-    └── empty-state.tsx
-```
-
-**Rules**:
-- Shadcn/ui components **must** be in `components/ui/`
-- Feature-specific components **must** be in `components/features/{feature-name}/`
-- Shared components **should** be in `components/shared/`
-
-### Naming Conventions (Required)
-
-| Type | Convention | Example |
-|------|-----------|---------|
-| Component file | kebab-case | `user-card.tsx` |
-| Component export | PascalCase | `export function UserCard` |
-| Types file | kebab-case | `user-card.types.ts` |
-| Test file | kebab-case + .test | `user-card.test.tsx` |
-
-**Rules**:
-- File names **must** use kebab-case
-- Component exports **must** use PascalCase
-- Types **should** be co-located or in a `.types.ts` file
-
----
-
-## Accessibility Requirements
-
-### Required ARIA Patterns
-
-All interactive components **must** implement proper ARIA:
-
-| Component Type | Required ARIA |
-|---------------|---------------|
-| Dialog/Modal | `role="dialog"`, `aria-modal="true"`, `aria-labelledby` |
-| Tabs | `role="tablist"`, `role="tab"`, `role="tabpanel"`, `aria-selected` |
-| Menu | `role="menu"`, `role="menuitem"` |
-| Button with icon only | `aria-label` describing action |
-| Form fields | `aria-invalid` for errors, `aria-describedby` for error messages |
-
-### Keyboard Navigation (Required)
-
-Interactive components **must** support keyboard navigation:
-
-| Component | Required Keys |
-|-----------|---------------|
-| Dialogs | Escape to close |
-| Menus | Arrow keys to navigate, Enter/Space to select, Escape to close |
-| Tabs | Arrow keys between tabs |
-| Buttons | Enter/Space to activate |
-
-### Focus Management (Required)
-
-- Dialogs and modals **must** trap focus
-- Dialogs **must** return focus to trigger element on close
-- Focus indicators **must** be visible
-
----
-
-## Related Patterns
-
-For implementation approaches and code examples:
-
-- [Component Patterns](../../patterns/frontend/component-patterns.md) - Basic components, compound components, props patterns, composition patterns, performance patterns
-- [Component Examples](../../examples/frontend/) - Filled implementations
-
----
-
-## Related Standards
-
-- [TypeScript Standards](./typescript.md)
-- [Frontend Tech Stack](./tech-stack.md)
-- [Forms and Validation](./forms-validation.md)
-- [Frontend Testing](./testing.md)
-
----
-
-*Component rules ensure consistency, accessibility, and maintainability.*
-
----
-
-<!-- Source: standards/frontend/server-actions.md (v1.0.0) -->
-
-# Server Actions Standard
-
-**Version**: 1.0.0
-**Last Updated**: 2026-01-04
-**Status**: Active
-
-## Overview
-
-Server actions are the primary method for frontend-backend communication in our Next.js architecture. They provide type-safe, server-side mutations while maintaining SSR benefits.
-
-**Error handling**: Server actions must return errors following the [Error Response Contract](../architecture/error-contract.md).
-
-## Core Principles
-
-1. **All data mutations go through server actions**
-2. **Server actions call FastAPI endpoints**
-3. **Never direct database access**
-4. **Always handle errors gracefully**
-5. **Maintain type safety throughout**
-
-## File Organization
-
-```
-app/
-├── actions/              # All server actions
-│   ├── users.ts         # User-related actions
-│   ├── orders.ts        # Order-related actions
-│   ├── auth.ts          # Authentication actions
-│   └── types.ts         # Shared action types
-```
-
-## Basic Server Action Pattern
-
-```typescript
-// app/actions/users.ts
-'use server';
-
-import { auth } from '@clerk/nextjs';
-import { revalidatePath } from 'next/cache';
-
-interface CreateUserInput {
-  name: string;
-  email: string;
-}
-
-interface ActionResult<T> {
-  success: boolean;
-  data?: T;
-  error?: string;
-}
-
-export async function createUser(
-  input: CreateUserInput
-): Promise<ActionResult<User>> {
-  // 1. Authentication check
-  const { userId } = auth();
-  if (!userId) {
-    return { success: false, error: 'Unauthorized' };
-  }
-
-  try {
-    // 2. Call FastAPI backend
-    const response = await fetch(`${process.env.API_URL}/users`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${await getToken()}`,
-      },
-      body: JSON.stringify(input),
-    });
-
-    // 3. Handle response
-    if (!response.ok) {
-      const error = await response.text();
-      return { success: false, error };
-    }
-
-    const user = await response.json();
-
-    // 4. Revalidate cache
-    revalidatePath('/users');
-
-    return { success: true, data: user };
-  } catch (error) {
-    // 5. Error handling
-    console.error('Create user error:', error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
-    };
-  }
-}
-```
-
-## FormData Pattern
-
-```typescript
-'use server';
-
-export async function createUserFromForm(
-  prevState: any,
-  formData: FormData
-): Promise<ActionResult<User>> {
-  // Extract and validate form data
-  const name = formData.get('name') as string;
-  const email = formData.get('email') as string;
-
-  if (!name || !email) {
-    return { success: false, error: 'Missing required fields' };
-  }
-
-  return createUser({ name, email });
-}
-```
-
-## Using with useActionState Hook
-
-```typescript
-// components/UserForm.tsx
-'use client';
-
-import { useActionState } from 'react';
-import { createUserFromForm } from '@/app/actions/users';
-
-export function UserForm() {
-  const [state, formAction, isPending] = useActionState(
-    createUserFromForm,
-    null
-  );
-
-  return (
-    <form action={formAction}>
-      <input name="name" required />
-      <input name="email" type="email" required />
-
-      <button type="submit" disabled={isPending}>
-        {isPending ? 'Creating...' : 'Create User'}
-      </button>
-
-      {state?.error && (
-        <p className="text-red-500">{state.error}</p>
-      )}
-
-      {state?.success && (
-        <p className="text-green-500">User created successfully!</p>
-      )}
-    </form>
-  );
-}
-```
-
-## Optimistic Updates
-
-```typescript
-'use client';
-
-import { useOptimistic } from 'react';
-import { updateUser } from '@/app/actions/users';
-
-export function UserList({ users }: { users: User[] }) {
-  const [optimisticUsers, addOptimisticUser] = useOptimistic(
-    users,
-    (state, newUser: User) => [...state, newUser]
-  );
-
-  async function handleAdd(formData: FormData) {
-    const newUser = {
-      id: Date.now(),
-      name: formData.get('name') as string,
-      email: formData.get('email') as string,
-    };
-
-    // Show optimistically
-    addOptimisticUser(newUser);
-
-    // Actually save
-    await createUser(newUser);
-  }
-
-  return (
-    <form action={handleAdd}>
-      {/* Form content */}
-    </form>
-  );
-}
-```
-
-## Error Handling Patterns
-
-### Structured Error Response
-```typescript
-interface ActionError {
-  code: string;
-  message: string;
-  field?: string;
-}
-
-interface ActionResult<T> {
-  success: boolean;
-  data?: T;
-  errors?: ActionError[];
-}
-
-export async function createUser(
-  input: CreateUserInput
-): Promise<ActionResult<User>> {
-  try {
-    const response = await fetch(`${API_URL}/users`, {
-      method: 'POST',
-      body: JSON.stringify(input),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      return {
-        success: false,
-        errors: errorData.errors || [
-          { code: 'UNKNOWN', message: 'An error occurred' }
-        ],
-      };
-    }
-
-    return { success: true, data: await response.json() };
-  } catch (error) {
-    return {
-      success: false,
-      errors: [{ code: 'NETWORK', message: 'Network error occurred' }],
-    };
-  }
-}
-```
-
-### Field-Level Validation
-```typescript
-import { z } from 'zod';
-
-const userSchema = z.object({
-  name: z.string().min(2),
-  email: z.string().email(),
-});
-
-export async function createUser(
-  formData: FormData
-): Promise<ActionResult<User>> {
-  // Validate input
-  const validation = userSchema.safeParse({
-    name: formData.get('name'),
-    email: formData.get('email'),
-  });
-
-  if (!validation.success) {
-    return {
-      success: false,
-      errors: validation.error.errors.map(err => ({
-        code: 'VALIDATION',
-        message: err.message,
-        field: err.path.join('.'),
-      })),
-    };
-  }
-
-  // Proceed with API call
-  // ...
-}
-```
-
-## Pagination Pattern
-
-```typescript
-interface PaginatedResult<T> {
-  items: T[];
-  total: number;
-  page: number;
-  pageSize: number;
-  hasMore: boolean;
-}
-
-export async function getUsers(
-  page: number = 1,
-  pageSize: number = 20
-): Promise<ActionResult<PaginatedResult<User>>> {
-  const { userId } = auth();
-  if (!userId) {
-    return { success: false, error: 'Unauthorized' };
-  }
-
-  try {
-    const response = await fetch(
-      `${API_URL}/users?page=${page}&page_size=${pageSize}`,
-      {
-        headers: {
-          'Authorization': `Bearer ${await getToken()}`,
-        },
-      }
-    );
-
-    if (!response.ok) {
-      return { success: false, error: 'Failed to fetch users' };
-    }
-
-    const data = await response.json();
-
-    return {
-      success: true,
-      data: {
-        items: data.items,
-        total: data.total,
-        page: data.page,
-        pageSize: data.page_size,
-        hasMore: data.page * data.page_size < data.total,
-      },
-    };
-  } catch (error) {
-    return { success: false, error: 'Network error' };
-  }
-}
-```
-
-## File Upload Pattern
-
-```typescript
-export async function uploadFile(
-  formData: FormData
-): Promise<ActionResult<{ url: string }>> {
-  const file = formData.get('file') as File;
-
-  if (!file) {
-    return { success: false, error: 'No file provided' };
-  }
-
-  // Create FormData for backend
-  const backendFormData = new FormData();
-  backendFormData.append('file', file);
-
-  try {
-    const response = await fetch(`${API_URL}/upload`, {
-      method: 'POST',
-      body: backendFormData,
-      headers: {
-        'Authorization': `Bearer ${await getToken()}`,
-      },
-    });
-
-    if (!response.ok) {
-      return { success: false, error: 'Upload failed' };
-    }
-
-    const { url } = await response.json();
-    return { success: true, data: { url } };
-  } catch (error) {
-    return { success: false, error: 'Upload error' };
-  }
-}
-```
-
-## Caching and Revalidation
-
-```typescript
-import { revalidatePath, revalidateTag } from 'next/cache';
-
-export async function updateUser(
-  id: number,
-  data: UpdateUserInput
-): Promise<ActionResult<User>> {
-  const result = await fetch(`${API_URL}/users/${id}`, {
-    method: 'PATCH',
-    body: JSON.stringify(data),
-  });
-
-  if (result.ok) {
-    // Revalidate specific paths
-    revalidatePath('/users');
-    revalidatePath(`/users/${id}`);
-
-    // Or revalidate by tag
-    revalidateTag('users');
-
-    return { success: true, data: await result.json() };
-  }
-
-  return { success: false, error: 'Update failed' };
-}
-```
-
-## Testing Server Actions
-
-```typescript
-// __tests__/actions/users.test.ts
-import { createUser } from '@/app/actions/users';
-import { auth } from '@clerk/nextjs';
-
-jest.mock('@clerk/nextjs');
-
-describe('createUser', () => {
-  beforeEach(() => {
-    (auth as jest.Mock).mockReturnValue({ userId: 'test-user' });
-  });
-
-  it('should create user successfully', async () => {
-    global.fetch = jest.fn().mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ id: 1, name: 'John', email: 'john@example.com' }),
-    });
-
-    const result = await createUser({
-      name: 'John',
-      email: 'john@example.com',
-    });
-
-    expect(result.success).toBe(true);
-    expect(result.data?.name).toBe('John');
-  });
-
-  it('should handle unauthorized access', async () => {
-    (auth as jest.Mock).mockReturnValue({ userId: null });
-
-    const result = await createUser({
-      name: 'John',
-      email: 'john@example.com',
-    });
-
-    expect(result.success).toBe(false);
-    expect(result.error).toBe('Unauthorized');
-  });
-});
-```
-
-## Best Practices
-
-### ✅ DO
-- Always authenticate before processing
-- Return structured results with success/error
-- Revalidate relevant cache after mutations
-- Use TypeScript for all inputs/outputs
-- Handle network errors gracefully
-- Log errors for debugging
-- Use Zod for input validation
-
-### ❌ DON'T
-- Access database directly
-- Return raw API responses
-- Ignore error cases
-- Use untyped FormData
-- Forget to revalidate cache
-- Expose sensitive error details
-- Mix client and server code
-
-## Common Patterns Reference
-
-```typescript
-// Basic CRUD operations
-export async function createItem(data: CreateInput): Promise<ActionResult<Item>>;
-export async function getItem(id: number): Promise<ActionResult<Item>>;
-export async function updateItem(id: number, data: UpdateInput): Promise<ActionResult<Item>>;
-export async function deleteItem(id: number): Promise<ActionResult<void>>;
-export async function listItems(params: ListParams): Promise<ActionResult<Item[]>>;
-
-// Authentication required
-const { userId } = auth();
-if (!userId) return { success: false, error: 'Unauthorized' };
-
-// API call pattern
-const response = await fetch(`${API_URL}/endpoint`, {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-    'Authorization': `Bearer ${token}`,
-  },
-  body: JSON.stringify(data),
-});
-
-// Cache revalidation
-revalidatePath('/path');
-revalidateTag('tag');
-```
-
----
-
-*Server actions are the bridge between frontend and backend. Always ensure type safety and proper error handling.*
-
----
-
-<!-- Source: standards/frontend/forms-validation.md (v1.0.0) -->
-
-# Forms and Validation Standard
-
-**Version**: 1.0.0
-**Last Updated**: 2025-12-30
-**Status**: Active
-
-## Purpose
-
-This standard defines patterns for building forms with React Hook Form and Zod validation in Next.js applications.
-
-## Scope
-
-- React Hook Form patterns
-- Zod schema validation
-- Multi-step forms
-- File uploads
-- Error handling
-- Form state persistence
-
----
-
-## Tech Stack
-
-| Library | Purpose | Version |
-|---------|---------|---------|
-| React Hook Form | Form state management | v7+ |
-| Zod | Schema validation | v3+ |
-| @hookform/resolvers | Zod integration | Latest |
-
----
-
-## Basic Form Setup
-
-### Schema Definition
-
-```typescript
-// lib/validations/user.ts
-import { z } from 'zod';
-
-export const userSchema = z.object({
-  email: z
-    .string()
-    .min(1, 'Email is required')
-    .email('Invalid email address'),
-  password: z
-    .string()
-    .min(8, 'Password must be at least 8 characters')
-    .regex(
-      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
-      'Password must contain uppercase, lowercase, and number'
-    ),
-  confirmPassword: z.string(),
-  name: z
-    .string()
-    .min(1, 'Name is required')
-    .max(100, 'Name is too long'),
-  bio: z
-    .string()
-    .max(500, 'Bio must be less than 500 characters')
-    .optional(),
-  website: z
-    .string()
-    .url('Invalid URL')
-    .optional()
-    .or(z.literal('')),
-  role: z.enum(['user', 'admin', 'moderator'], {
-    errorMap: () => ({ message: 'Please select a role' }),
-  }),
-  terms: z.literal(true, {
-    errorMap: () => ({ message: 'You must accept the terms' }),
-  }),
-}).refine((data) => data.password === data.confirmPassword, {
-  message: 'Passwords do not match',
-  path: ['confirmPassword'],
-});
-
-export type UserFormData = z.infer<typeof userSchema>;
-
-// Partial schema for updates
-export const userUpdateSchema = userSchema.partial().omit({
-  password: true,
-  confirmPassword: true,
-  terms: true,
-});
-
-export type UserUpdateData = z.infer<typeof userUpdateSchema>;
-```
-
-### Form Component
-
-```tsx
-// components/forms/user-form.tsx
-'use client';
-
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { userSchema, type UserFormData } from '@/lib/validations/user';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Checkbox } from '@/components/ui/checkbox';
-
-interface UserFormProps {
-  onSubmit: (data: UserFormData) => Promise<void>;
-  defaultValues?: Partial<UserFormData>;
-}
-
-export function UserForm({ onSubmit, defaultValues }: UserFormProps) {
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isSubmitting },
-    setValue,
-    watch,
-  } = useForm<UserFormData>({
-    resolver: zodResolver(userSchema),
-    defaultValues: {
-      email: '',
-      password: '',
-      confirmPassword: '',
-      name: '',
-      bio: '',
-      website: '',
-      role: 'user',
-      terms: false,
-      ...defaultValues,
-    },
-  });
-
-  return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-      {/* Email */}
-      <div className="space-y-2">
-        <Label htmlFor="email">Email</Label>
-        <Input
-          id="email"
-          type="email"
-          {...register('email')}
-          aria-invalid={!!errors.email}
-        />
-        {errors.email && (
-          <p className="text-sm text-destructive">{errors.email.message}</p>
-        )}
-      </div>
-
-      {/* Password */}
-      <div className="space-y-2">
-        <Label htmlFor="password">Password</Label>
-        <Input
-          id="password"
-          type="password"
-          {...register('password')}
-          aria-invalid={!!errors.password}
-        />
-        {errors.password && (
-          <p className="text-sm text-destructive">{errors.password.message}</p>
-        )}
-      </div>
-
-      {/* Confirm Password */}
-      <div className="space-y-2">
-        <Label htmlFor="confirmPassword">Confirm Password</Label>
-        <Input
-          id="confirmPassword"
-          type="password"
-          {...register('confirmPassword')}
-          aria-invalid={!!errors.confirmPassword}
-        />
-        {errors.confirmPassword && (
-          <p className="text-sm text-destructive">{errors.confirmPassword.message}</p>
-        )}
-      </div>
-
-      {/* Name */}
-      <div className="space-y-2">
-        <Label htmlFor="name">Name</Label>
-        <Input
-          id="name"
-          {...register('name')}
-          aria-invalid={!!errors.name}
-        />
-        {errors.name && (
-          <p className="text-sm text-destructive">{errors.name.message}</p>
-        )}
-      </div>
-
-      {/* Bio (optional) */}
-      <div className="space-y-2">
-        <Label htmlFor="bio">Bio (optional)</Label>
-        <Textarea
-          id="bio"
-          {...register('bio')}
-          aria-invalid={!!errors.bio}
-        />
-        {errors.bio && (
-          <p className="text-sm text-destructive">{errors.bio.message}</p>
-        )}
-      </div>
-
-      {/* Role - Select component */}
-      <div className="space-y-2">
-        <Label htmlFor="role">Role</Label>
-        <Select
-          value={watch('role')}
-          onValueChange={(value) => setValue('role', value as 'user' | 'admin' | 'moderator')}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Select a role" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="user">User</SelectItem>
-            <SelectItem value="moderator">Moderator</SelectItem>
-            <SelectItem value="admin">Admin</SelectItem>
-          </SelectContent>
-        </Select>
-        {errors.role && (
-          <p className="text-sm text-destructive">{errors.role.message}</p>
-        )}
-      </div>
-
-      {/* Terms Checkbox */}
-      <div className="flex items-center space-x-2">
-        <Checkbox
-          id="terms"
-          checked={watch('terms')}
-          onCheckedChange={(checked) => setValue('terms', checked === true)}
-        />
-        <Label htmlFor="terms" className="text-sm">
-          I accept the terms and conditions
-        </Label>
-      </div>
-      {errors.terms && (
-        <p className="text-sm text-destructive">{errors.terms.message}</p>
-      )}
-
-      <Button type="submit" disabled={isSubmitting} className="w-full">
-        {isSubmitting ? 'Submitting...' : 'Submit'}
-      </Button>
-    </form>
-  );
-}
-```
-
----
-
-## Form with Server Action
-
-```tsx
-// components/forms/create-project-form.tsx
-'use client';
-
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { useRouter } from 'next/navigation';
-import { useState } from 'react';
-import { z } from 'zod';
-import { createProject } from '@/app/actions/projects';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-
-const projectSchema = z.object({
-  name: z.string().min(1, 'Name is required').max(100),
-  description: z.string().max(500).optional(),
-});
-
-type ProjectFormData = z.infer<typeof projectSchema>;
-
-export function CreateProjectForm() {
-  const router = useRouter();
-  const [serverError, setServerError] = useState<string | null>(null);
-
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isSubmitting },
-    setError,
-  } = useForm<ProjectFormData>({
-    resolver: zodResolver(projectSchema),
-  });
-
-  const onSubmit = async (data: ProjectFormData) => {
-    setServerError(null);
-
-    const result = await createProject(data);
-
-    if (!result.success) {
-      // Handle field-specific errors from server
-      if (result.errors) {
-        result.errors.forEach((error) => {
-          setError(error.field as keyof ProjectFormData, {
-            message: error.message,
-          });
-        });
-      } else if (result.error) {
-        setServerError(result.error);
-      }
-      return;
-    }
-
-    // Success - redirect
-    router.push(`/projects/${result.data.id}`);
-  };
-
-  return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-      {serverError && (
-        <Alert variant="destructive">
-          <AlertDescription>{serverError}</AlertDescription>
-        </Alert>
-      )}
-
-      <div className="space-y-2">
-        <Label htmlFor="name">Project Name</Label>
-        <Input id="name" {...register('name')} />
-        {errors.name && (
-          <p className="text-sm text-destructive">{errors.name.message}</p>
-        )}
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="description">Description</Label>
-        <Input id="description" {...register('description')} />
-        {errors.description && (
-          <p className="text-sm text-destructive">{errors.description.message}</p>
-        )}
-      </div>
-
-      <Button type="submit" disabled={isSubmitting}>
-        {isSubmitting ? 'Creating...' : 'Create Project'}
-      </Button>
-    </form>
-  );
-}
-```
-
----
-
-## Multi-Step Form
-
-```tsx
-// components/forms/onboarding-form.tsx
-'use client';
-
-import { useState } from 'react';
-import { useForm, FormProvider } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
-
-// Step schemas
-const step1Schema = z.object({
-  firstName: z.string().min(1, 'First name is required'),
-  lastName: z.string().min(1, 'Last name is required'),
-});
-
-const step2Schema = z.object({
-  company: z.string().min(1, 'Company is required'),
-  role: z.string().min(1, 'Role is required'),
-});
-
-const step3Schema = z.object({
-  interests: z.array(z.string()).min(1, 'Select at least one interest'),
-});
-
-// Combined schema
-const onboardingSchema = step1Schema.merge(step2Schema).merge(step3Schema);
-
-type OnboardingData = z.infer<typeof onboardingSchema>;
-
-const stepSchemas = [step1Schema, step2Schema, step3Schema];
-
-interface MultiStepFormProps {
-  onComplete: (data: OnboardingData) => Promise<void>;
-}
-
-export function OnboardingForm({ onComplete }: MultiStepFormProps) {
-  const [step, setStep] = useState(0);
-  const totalSteps = 3;
-
-  const methods = useForm<OnboardingData>({
-    resolver: zodResolver(onboardingSchema),
-    mode: 'onChange',
-    defaultValues: {
-      firstName: '',
-      lastName: '',
-      company: '',
-      role: '',
-      interests: [],
-    },
-  });
-
-  const { handleSubmit, trigger, formState: { isSubmitting } } = methods;
-
-  const handleNext = async () => {
-    // Validate current step
-    const currentSchema = stepSchemas[step];
-    const fields = Object.keys(currentSchema.shape) as (keyof OnboardingData)[];
-
-    const isValid = await trigger(fields);
-    if (isValid) {
-      setStep((prev) => Math.min(prev + 1, totalSteps - 1));
-    }
-  };
-
-  const handleBack = () => {
-    setStep((prev) => Math.max(prev - 1, 0));
-  };
-
-  const onSubmit = async (data: OnboardingData) => {
-    await onComplete(data);
-  };
-
-  return (
-    <FormProvider {...methods}>
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-        {/* Progress */}
-        <div className="space-y-2">
-          <div className="flex justify-between text-sm">
-            <span>Step {step + 1} of {totalSteps}</span>
-            <span>{Math.round(((step + 1) / totalSteps) * 100)}%</span>
-          </div>
-          <Progress value={((step + 1) / totalSteps) * 100} />
-        </div>
-
-        {/* Step Content */}
-        {step === 0 && <Step1 />}
-        {step === 1 && <Step2 />}
-        {step === 2 && <Step3 />}
-
-        {/* Navigation */}
-        <div className="flex justify-between">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={handleBack}
-            disabled={step === 0}
-          >
-            Back
-          </Button>
-
-          {step < totalSteps - 1 ? (
-            <Button type="button" onClick={handleNext}>
-              Next
-            </Button>
-          ) : (
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? 'Completing...' : 'Complete'}
-            </Button>
-          )}
-        </div>
-      </form>
-    </FormProvider>
-  );
-}
-
-// Step components use useFormContext
-function Step1() {
-  const { register, formState: { errors } } = useFormContext<OnboardingData>();
-
-  return (
-    <div className="space-y-4">
-      <h2 className="text-lg font-semibold">Personal Information</h2>
-      <div className="space-y-2">
-        <Label htmlFor="firstName">First Name</Label>
-        <Input id="firstName" {...register('firstName')} />
-        {errors.firstName && (
-          <p className="text-sm text-destructive">{errors.firstName.message}</p>
-        )}
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="lastName">Last Name</Label>
-        <Input id="lastName" {...register('lastName')} />
-        {errors.lastName && (
-          <p className="text-sm text-destructive">{errors.lastName.message}</p>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ... Step2 and Step3 components
-```
-
----
-
-## File Upload Form
-
-```tsx
-// components/forms/file-upload-form.tsx
-'use client';
-
-import { useState, useCallback } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { Upload, X, File } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
-
-const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
-const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
-
-const uploadSchema = z.object({
-  title: z.string().min(1, 'Title is required'),
-  file: z
-    .instanceof(File)
-    .refine((file) => file.size <= MAX_FILE_SIZE, 'File must be less than 5MB')
-    .refine(
-      (file) => ACCEPTED_TYPES.includes(file.type),
-      'Only JPEG, PNG, WebP, and PDF files are allowed'
-    ),
-});
-
-type UploadFormData = z.infer<typeof uploadSchema>;
-
-interface FileUploadFormProps {
-  onSubmit: (data: FormData) => Promise<void>;
-}
-
-export function FileUploadForm({ onSubmit }: FileUploadFormProps) {
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [dragActive, setDragActive] = useState(false);
-
-  const {
-    register,
-    handleSubmit,
-    setValue,
-    watch,
-    formState: { errors, isSubmitting },
-    reset,
-  } = useForm<UploadFormData>({
-    resolver: zodResolver(uploadSchema),
-  });
-
-  const selectedFile = watch('file');
-
-  const handleDrag = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.type === 'dragenter' || e.type === 'dragover') {
-      setDragActive(true);
-    } else if (e.type === 'dragleave') {
-      setDragActive(false);
-    }
-  }, []);
-
-  const handleDrop = useCallback(
-    (e: React.DragEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      setDragActive(false);
-
-      if (e.dataTransfer.files?.[0]) {
-        setValue('file', e.dataTransfer.files[0], { shouldValidate: true });
-      }
-    },
-    [setValue]
-  );
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files?.[0]) {
-      setValue('file', e.target.files[0], { shouldValidate: true });
-    }
-  };
-
-  const removeFile = () => {
-    setValue('file', undefined as unknown as File);
-  };
-
-  const handleFormSubmit = async (data: UploadFormData) => {
-    const formData = new FormData();
-    formData.append('title', data.title);
-    formData.append('file', data.file);
-
-    // Simulate progress
-    const progressInterval = setInterval(() => {
-      setUploadProgress((prev) => Math.min(prev + 10, 90));
-    }, 100);
-
-    try {
-      await onSubmit(formData);
-      setUploadProgress(100);
-      reset();
-    } finally {
-      clearInterval(progressInterval);
-      setUploadProgress(0);
-    }
-  };
-
-  return (
-    <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
-      {/* Title */}
-      <div className="space-y-2">
-        <Label htmlFor="title">Title</Label>
-        <Input id="title" {...register('title')} />
-        {errors.title && (
-          <p className="text-sm text-destructive">{errors.title.message}</p>
-        )}
-      </div>
-
-      {/* Drop Zone */}
-      <div
-        className={cn(
-          'border-2 border-dashed rounded-lg p-8 text-center transition-colors',
-          dragActive ? 'border-primary bg-primary/5' : 'border-muted-foreground/25',
-          errors.file && 'border-destructive'
-        )}
-        onDragEnter={handleDrag}
-        onDragLeave={handleDrag}
-        onDragOver={handleDrag}
-        onDrop={handleDrop}
-      >
-        {selectedFile ? (
-          <div className="flex items-center justify-center gap-2">
-            <File className="h-8 w-8 text-muted-foreground" />
-            <div className="text-left">
-              <p className="font-medium">{selectedFile.name}</p>
-              <p className="text-sm text-muted-foreground">
-                {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
-              </p>
-            </div>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              onClick={removeFile}
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            <Upload className="mx-auto h-12 w-12 text-muted-foreground" />
-            <div>
-              <label htmlFor="file" className="cursor-pointer">
-                <span className="text-primary hover:underline">Click to upload</span>
-                {' '}or drag and drop
-              </label>
-              <input
-                id="file"
-                type="file"
-                className="hidden"
-                accept={ACCEPTED_TYPES.join(',')}
-                onChange={handleFileChange}
-              />
-            </div>
-            <p className="text-sm text-muted-foreground">
-              JPEG, PNG, WebP, or PDF (max 5MB)
-            </p>
-          </div>
-        )}
-      </div>
-      {errors.file && (
-        <p className="text-sm text-destructive">{errors.file.message}</p>
-      )}
-
-      {/* Upload Progress */}
-      {uploadProgress > 0 && (
-        <Progress value={uploadProgress} className="h-2" />
-      )}
-
-      <Button type="submit" disabled={isSubmitting || !selectedFile}>
-        {isSubmitting ? 'Uploading...' : 'Upload'}
-      </Button>
-    </form>
-  );
-}
-```
-
----
-
-## Dynamic Form Fields
-
-```tsx
-// components/forms/dynamic-fields-form.tsx
-'use client';
-
-import { useForm, useFieldArray } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { Plus, Trash2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-
-const teamMemberSchema = z.object({
-  name: z.string().min(1, 'Name is required'),
-  email: z.string().email('Invalid email'),
-  role: z.string().min(1, 'Role is required'),
-});
-
-const teamSchema = z.object({
-  teamName: z.string().min(1, 'Team name is required'),
-  members: z.array(teamMemberSchema).min(1, 'Add at least one member'),
-});
-
-type TeamFormData = z.infer<typeof teamSchema>;
-
-export function TeamForm({ onSubmit }: { onSubmit: (data: TeamFormData) => void }) {
-  const {
-    register,
-    handleSubmit,
-    control,
-    formState: { errors },
-  } = useForm<TeamFormData>({
-    resolver: zodResolver(teamSchema),
-    defaultValues: {
-      teamName: '',
-      members: [{ name: '', email: '', role: '' }],
-    },
-  });
-
-  const { fields, append, remove } = useFieldArray({
-    control,
-    name: 'members',
-  });
-
-  return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-      {/* Team Name */}
-      <div className="space-y-2">
-        <Label htmlFor="teamName">Team Name</Label>
-        <Input id="teamName" {...register('teamName')} />
-        {errors.teamName && (
-          <p className="text-sm text-destructive">{errors.teamName.message}</p>
-        )}
-      </div>
-
-      {/* Dynamic Members */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <Label>Team Members</Label>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => append({ name: '', email: '', role: '' })}
-          >
-            <Plus className="h-4 w-4 mr-1" />
-            Add Member
-          </Button>
-        </div>
-
-        {fields.map((field, index) => (
-          <div key={field.id} className="flex gap-2 items-start p-4 border rounded-lg">
-            <div className="flex-1 space-y-2">
-              <Input
-                placeholder="Name"
-                {...register(`members.${index}.name`)}
-              />
-              {errors.members?.[index]?.name && (
-                <p className="text-sm text-destructive">
-                  {errors.members[index]?.name?.message}
-                </p>
-              )}
-            </div>
-
-            <div className="flex-1 space-y-2">
-              <Input
-                placeholder="Email"
-                type="email"
-                {...register(`members.${index}.email`)}
-              />
-              {errors.members?.[index]?.email && (
-                <p className="text-sm text-destructive">
-                  {errors.members[index]?.email?.message}
-                </p>
-              )}
-            </div>
-
-            <div className="flex-1 space-y-2">
-              <Input
-                placeholder="Role"
-                {...register(`members.${index}.role`)}
-              />
-              {errors.members?.[index]?.role && (
-                <p className="text-sm text-destructive">
-                  {errors.members[index]?.role?.message}
-                </p>
-              )}
-            </div>
-
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              onClick={() => remove(index)}
-              disabled={fields.length === 1}
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </div>
-        ))}
-
-        {errors.members?.root && (
-          <p className="text-sm text-destructive">{errors.members.root.message}</p>
-        )}
-      </div>
-
-      <Button type="submit">Create Team</Button>
-    </form>
-  );
-}
-```
-
----
-
-## Form State Persistence
-
-```tsx
-// hooks/use-persisted-form.ts
-import { useEffect } from 'react';
-import { useForm, UseFormProps, FieldValues, Path } from 'react-hook-form';
-
-interface UsePersistedFormProps<T extends FieldValues> extends UseFormProps<T> {
-  storageKey: string;
-  storage?: Storage;
-}
-
-export function usePersistedForm<T extends FieldValues>({
-  storageKey,
-  storage = typeof window !== 'undefined' ? localStorage : undefined,
-  defaultValues,
-  ...rest
-}: UsePersistedFormProps<T>) {
-  // Load persisted values
-  const getPersistedValues = (): Partial<T> | undefined => {
-    if (!storage) return undefined;
-
-    try {
-      const stored = storage.getItem(storageKey);
-      return stored ? JSON.parse(stored) : undefined;
-    } catch {
-      return undefined;
-    }
-  };
-
-  const form = useForm<T>({
-    defaultValues: {
-      ...defaultValues,
-      ...getPersistedValues(),
-    } as UseFormProps<T>['defaultValues'],
-    ...rest,
-  });
-
-  // Persist on change
-  useEffect(() => {
-    if (!storage) return;
-
-    const subscription = form.watch((data) => {
-      storage.setItem(storageKey, JSON.stringify(data));
-    });
-
-    return () => subscription.unsubscribe();
-  }, [form, storage, storageKey]);
-
-  // Clear persisted data
-  const clearPersistedData = () => {
-    storage?.removeItem(storageKey);
-    form.reset(defaultValues as T);
-  };
-
-  return { ...form, clearPersistedData };
-}
-
-// Usage
-const { register, handleSubmit, clearPersistedData } = usePersistedForm({
-  storageKey: 'draft-post',
-  defaultValues: { title: '', content: '' },
-});
-```
-
----
-
-## Validation Patterns
-
-### Conditional Validation
-
-```typescript
-const formSchema = z.object({
-  accountType: z.enum(['personal', 'business']),
-  companyName: z.string().optional(),
-  taxId: z.string().optional(),
-}).refine(
-  (data) => {
-    if (data.accountType === 'business') {
-      return !!data.companyName && !!data.taxId;
-    }
-    return true;
-  },
-  {
-    message: 'Company name and tax ID are required for business accounts',
-    path: ['companyName'],
-  }
-);
-```
-
-### Async Validation
-
-```typescript
-const usernameSchema = z.object({
-  username: z
-    .string()
-    .min(3)
-    .max(20)
-    .regex(/^[a-zA-Z0-9_]+$/, 'Only letters, numbers, and underscores')
-    .refine(
-      async (username) => {
-        const response = await fetch(`/api/check-username?username=${username}`);
-        const { available } = await response.json();
-        return available;
-      },
-      'Username is already taken'
-    ),
-});
-```
-
-### Cross-Field Validation
-
-```typescript
-const dateRangeSchema = z.object({
-  startDate: z.date(),
-  endDate: z.date(),
-}).refine(
-  (data) => data.endDate > data.startDate,
-  {
-    message: 'End date must be after start date',
-    path: ['endDate'],
-  }
-);
-```
-
----
-
-## Error Handling Patterns
-
-### Server Error Display
-
-```tsx
-interface ServerError {
-  field: string;
-  message: string;
-}
-
-function handleServerErrors(
-  errors: ServerError[],
-  setError: UseFormSetError<FormData>
-) {
-  errors.forEach((error) => {
-    setError(error.field as keyof FormData, {
-      type: 'server',
-      message: error.message,
-    });
-  });
-}
-```
-
-### Error Summary
-
-```tsx
-function ErrorSummary({ errors }: { errors: FieldErrors }) {
-  const errorMessages = Object.entries(errors)
-    .filter(([_, error]) => error?.message)
-    .map(([field, error]) => ({
-      field,
-      message: error?.message as string,
-    }));
-
-  if (errorMessages.length === 0) return null;
-
-  return (
-    <Alert variant="destructive">
-      <AlertTitle>Please fix the following errors:</AlertTitle>
-      <AlertDescription>
-        <ul className="list-disc pl-4 space-y-1">
-          {errorMessages.map(({ field, message }) => (
-            <li key={field}>{message}</li>
-          ))}
-        </ul>
-      </AlertDescription>
-    </Alert>
-  );
-}
-```
-
----
-
-## Related Standards
-
-- [TypeScript Standards](./typescript.md)
-- [Component Standards](./components.md)
-- [Frontend Testing](./testing.md)
-- [Server Actions](./server-actions.md)
-
----
-
-*Well-designed forms with proper validation improve user experience and data integrity.*
-
----
-
-<!-- Source: standards/frontend/error-handling.md (v2.0.0) -->
-
-# Frontend Error Handling Standard
-
-**Version**: 2.0.0
-**Last Updated**: 2026-03-25
-**Status**: Active
-**Supersedes**: v1.0.0 (custom error envelope)
-
-## Purpose
-
-This standard defines error handling patterns for Next.js applications, including error boundaries, RFC 9457 Problem Details API error handling, user feedback, and error reporting.
-
-**Error format**: All API errors follow the contract defined in [Error Response Contract](../architecture/error-contract.md). See [Frontend API Client](./api-client.md) for the `ProblemDetail` interface, `ApiError` class, and `apiFetch` implementation.
-
-## Scope
-
-- React error boundaries
-- Server action error handling
-- RFC 9457 API error parsing and discrimination
-- Network error and retry strategies
-- User-friendly error messaging
-- Error logging and reporting
-- Form validation errors
-- Route-level error handling
-
----
-
-## Error Handling Hierarchy
-
-```
-Route Error Boundary (error.tsx)
-    └── Component Error Boundary
-        └── Try/Catch in Server Actions
-            └── API Error Handling (ApiError + ProblemDetail)
-                └── Validation Errors (fieldErrors)
-```
-
----
-
-## API Error Handling
-
-### ProblemDetail and ApiError
-
-The backend returns RFC 9457 Problem Details on all errors. The frontend models this as a `ProblemDetail` interface wrapped in an `ApiError` class. See [Frontend API Client](./api-client.md) for the full implementation.
-
-```typescript
-import { isApiError } from "@/lib/api-error";
-
-try {
-  await createCompany(data);
-} catch (err) {
-  if (isApiError(err)) {
-    // Discriminate by problem type (URI slug)
-    if (err.type === "/problems/conflict") {
-      // Handle duplicate
-    }
-    // Field-level validation errors (422)
-    for (const fieldError of err.fieldErrors) {
-      form.setError(fieldError.field, { message: fieldError.message });
-    }
-  }
-}
-```
-
-**Key change from v1**: Use `err.type` (URI slug) for programmatic error handling, not `err.code` (SCREAMING_SNAKE) or `err.status` alone.
-
-### Error Handling Utilities
-
-```typescript
-// lib/handle-api-error.ts
-import { isApiError } from "@/lib/api-error";
-import { toast } from "sonner";
-
-export function handleApiError(err: unknown, fallbackMessage?: string): void {
-  if (isApiError(err)) {
-    if (err.requestId) {
-      console.error(`[${err.requestId}] ${err.type}: ${err.message}`);
-    }
-    toast.error(err.message);
-    return;
-  }
-  if (err instanceof Error) {
-    toast.error(err.message);
-    return;
-  }
-  toast.error(fallbackMessage ?? "An unexpected error occurred.");
-}
-
-export function handleApiFormError<T extends FieldValues>(
-  err: unknown,
-  form: UseFormReturn<T>,
-  fallbackMessage?: string,
-): void {
-  if (isApiError(err)) {
-    if (err.requestId) {
-      console.error(`[${err.requestId}] ${err.type}: ${err.message}`);
-    }
-    if (err.fieldErrors.length > 0) {
-      for (const { field, message } of err.fieldErrors) {
-        form.setError(field as Path<T>, { message });
-      }
-      return;
-    }
-    toast.error(err.message);
-    return;
-  }
-  handleApiError(err, fallbackMessage);
-}
-```
-
----
-
-## Route Error Boundaries
-
-### Error File Convention
-
-```typescript
-// app/dashboard/error.tsx
-'use client';
-
-import { useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { AlertTriangle } from 'lucide-react';
-
-interface ErrorProps {
-  error: Error & { digest?: string };
-  reset: () => void;
-}
-
-export default function DashboardError({ error, reset }: ErrorProps) {
-  useEffect(() => {
-    console.error('Dashboard error:', error);
-  }, [error]);
-
-  return (
-    <div className="flex min-h-[400px] flex-col items-center justify-center gap-4">
-      <AlertTriangle className="h-12 w-12 text-destructive" />
-      <h2 className="text-xl font-semibold">Something went wrong</h2>
-      <p className="text-muted-foreground text-center max-w-md">
-        We encountered an error loading the dashboard. Please try again.
-      </p>
-      <Button onClick={reset} variant="outline">
-        Try again
-      </Button>
-    </div>
-  );
-}
-```
-
----
-
-## Component Error Boundaries
-
-```typescript
-// components/error-boundary.tsx
-'use client';
-
-import { Component, ErrorInfo, ReactNode } from 'react';
-import { Button } from '@/components/ui/button';
-import { AlertCircle } from 'lucide-react';
-
-interface Props {
-  children: ReactNode;
-  fallback?: ReactNode;
-  onError?: (error: Error, errorInfo: ErrorInfo) => void;
-}
-
-interface State {
-  hasError: boolean;
-  error: Error | null;
-}
-
-export class ErrorBoundary extends Component<Props, State> {
-  constructor(props: Props) {
-    super(props);
-    this.state = { hasError: false, error: null };
-  }
-
-  static getDerivedStateFromError(error: Error): State {
-    return { hasError: true, error };
-  }
-
-  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('ErrorBoundary caught:', error, errorInfo);
-    this.props.onError?.(error, errorInfo);
-  }
-
-  handleReset = () => {
-    this.setState({ hasError: false, error: null });
-  };
-
-  render() {
-    if (this.state.hasError) {
-      if (this.props.fallback) {
-        return this.props.fallback;
-      }
-      return (
-        <div className="flex flex-col items-center gap-4 p-6 border border-destructive/20 rounded-lg bg-destructive/5">
-          <AlertCircle className="h-8 w-8 text-destructive" />
-          <p className="text-sm text-muted-foreground">
-            Something went wrong loading this component.
-          </p>
-          <Button variant="outline" size="sm" onClick={this.handleReset}>
-            Try again
-          </Button>
-        </div>
-      );
-    }
-    return this.props.children;
-  }
-}
-```
-
----
-
-## Server Action Error Handling
-
-```typescript
-// types/actions.ts
-export type ActionResult<T = void> =
-  | { success: true; data: T }
-  | { success: false; error: string; errors?: FieldErrors };
-
-export type FieldErrors = Array<{
-  field: string;
-  message: string;
-}>;
-```
-
-```typescript
-// app/actions/user.ts
-"use server";
-
-export async function updateProfile(
-  input: UpdateProfileInput,
-): Promise<ActionResult<{ id: string }>> {
-  try {
-    const { userId } = await auth();
-    if (!userId) {
-      return { success: false, error: "You must be logged in" };
-    }
-
-    const result = updateProfileSchema.safeParse(input);
-    if (!result.success) {
-      return {
-        success: false,
-        error: "Validation failed",
-        errors: result.error.issues.map((issue) => ({
-          field: issue.path.join("."),
-          message: issue.message,
-        })),
-      };
-    }
-
-    const response = await apiFetch(`/users/${userId}`, {
-      method: "PUT",
-      body: JSON.stringify(result.data),
-    });
-
-    revalidatePath("/profile");
-    return { success: true, data: { id: response.id } };
-  } catch (error) {
-    if (isApiError(error)) {
-      return { success: false, error: error.message };
-    }
-    return { success: false, error: "An unexpected error occurred." };
-  }
-}
-```
-
----
-
-## Network Error Handling
-
-### Retry Strategy
-
-```typescript
-// lib/fetch-with-retry.ts
-export async function fetchWithRetry(
-  url: string,
-  options?: RequestInit,
-  config?: { maxRetries?: number; baseDelay?: number; maxDelay?: number },
-): Promise<Response> {
-  const maxRetries = config?.maxRetries ?? 3;
-  const baseDelay = config?.baseDelay ?? 1000;
-  const maxDelay = config?.maxDelay ?? 10000;
-  let lastError: Error | null = null;
-
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    try {
-      const response = await fetch(url, options);
-      if (!response.ok && response.status >= 500 && attempt < maxRetries) {
-        await sleep(Math.min(baseDelay * Math.pow(2, attempt), maxDelay));
-        continue;
-      }
-      return response;
-    } catch (error) {
-      lastError = error as Error;
-      if (attempt < maxRetries) {
-        await sleep(Math.min(baseDelay * Math.pow(2, attempt), maxDelay));
-      }
-    }
-  }
-  throw lastError || new Error("Request failed after retries");
-}
-```
-
-### React Query Error Handling
-
-```typescript
-export const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: (failureCount, error) => {
-        // Don't retry on 4xx errors
-        if (isApiError(error) && error.status < 500) {
-          return false;
-        }
-        return failureCount < 3;
-      },
-      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
-    },
-    mutations: {
-      onError: (error) => {
-        handleApiError(error);
-      },
-    },
-  },
-});
-```
-
----
-
-## Loading and Error States
-
-```typescript
-// app/dashboard/page.tsx
-import { Suspense } from 'react';
-import { ErrorBoundary } from '@/components/error-boundary';
-
-export default function DashboardPage() {
-  return (
-    <ErrorBoundary>
-      <Suspense fallback={<DashboardSkeleton />}>
-        <DashboardContent />
-      </Suspense>
-    </ErrorBoundary>
-  );
-}
-```
-
----
-
-## Best Practices
-
-### Do
-
-- Use error boundaries at appropriate granularity
-- Discriminate errors by `err.type` (problem type URI), not status code alone
-- Use `isApiError()` type guard for API errors
-- Provide meaningful error messages to users
-- Log errors with request IDs for correlation
-- Implement retry logic for transient failures (5xx only)
-
-### Don't
-
-- Show raw error messages to users in production
-- Discriminate errors using `err.status` when `err.type` is available
-- Swallow errors silently without logging
-- Retry on 4xx errors (client errors are not transient)
-- Expose sensitive information in error messages
-
----
-
-## Migration from v1.0.0
-
-Projects using the v1.0.0 custom envelope need to:
-
-1. Replace `ApiErrorDetail` interface with `ProblemDetail`
-2. Update `ApiError` class: add `type`, `title`, `instance`; remove `code`
-3. Update `apiFetch` to parse flat RFC 9457 shape instead of `{ error: {...} }`
-4. Update error logging to use `err.type` instead of `err.code`
-5. Update error discrimination: `err.type === '/problems/conflict'` instead of `err.code === 'CONFLICT'`
-6. Update `fieldErrors` getter to read from `problem.errors` (top-level, not nested)
-
-See [Error Response Contract](../architecture/error-contract.md) for the complete migration mapping.
-
----
-
-## Related Standards
-
-- [Error Response Contract](../architecture/error-contract.md)
-- [Frontend API Client](./api-client.md)
-- [TypeScript Standards](./typescript.md)
-- [Server Actions](./server-actions.md)
-- [Backend Error Handling](../backend/error-handling.md)
-
----
-
-_Proper error handling with RFC 9457 improves user experience and makes debugging faster._
-
----
-
-<!-- Source: standards/frontend/testing.md (v1.0.0) -->
-
-# Frontend Testing Standard
-
-**Version**: 1.0.0
-**Last Updated**: 2025-12-30
-**Status**: Active
-
-## Purpose
-
-This standard defines testing patterns and best practices for Next.js applications using Vitest, React Testing Library, and Playwright.
-
-## Scope
-
-- Unit testing with Vitest
-- Component testing with React Testing Library
-- End-to-end testing with Playwright
-- Testing server actions
-- Mocking patterns with MSW
-- Accessibility testing
-
----
-
-## Testing Stack
-
-| Tool | Purpose | Use For |
-|------|---------|---------|
-| Vitest | Test runner | Unit tests, component tests |
-| React Testing Library | Component testing | User interaction testing |
-| Playwright | E2E testing | Full user flow testing |
-| MSW (Mock Service Worker) | API mocking | Consistent API responses |
-| @testing-library/user-event | User interactions | Realistic event simulation |
-
----
-
-## Project Setup
-
-### Vitest Configuration
-
-```typescript
-// vitest.config.ts
-import { defineConfig } from 'vitest/config';
-import react from '@vitejs/plugin-react';
-import tsconfigPaths from 'vite-tsconfig-paths';
-
-export default defineConfig({
-  plugins: [react(), tsconfigPaths()],
-  test: {
-    environment: 'jsdom',
-    globals: true,
-    setupFiles: ['./src/test/setup.ts'],
-    include: ['**/*.{test,spec}.{js,ts,jsx,tsx}'],
-    exclude: ['**/node_modules/**', '**/e2e/**'],
-    coverage: {
-      provider: 'v8',
-      reporter: ['text', 'json', 'html'],
-      exclude: [
-        'node_modules/',
-        'src/test/',
-        '**/*.d.ts',
-        '**/*.config.*',
-        '**/types/**',
-      ],
-      thresholds: {
-        global: {
-          branches: 80,
-          functions: 80,
-          lines: 80,
-          statements: 80,
-        },
-      },
-    },
-  },
-});
-```
-
-### Test Setup File
-
-```typescript
-// src/test/setup.ts
-import '@testing-library/jest-dom/vitest';
-import { cleanup } from '@testing-library/react';
-import { afterEach, beforeAll, afterAll } from 'vitest';
-import { server } from './mocks/server';
-
-// Start MSW server before all tests
-beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
-
-// Reset handlers after each test
-afterEach(() => {
-  cleanup();
-  server.resetHandlers();
-});
-
-// Close server after all tests
-afterAll(() => server.close());
-
-// Mock window.matchMedia
-Object.defineProperty(window, 'matchMedia', {
-  writable: true,
-  value: vi.fn().mockImplementation((query) => ({
-    matches: false,
-    media: query,
-    onchange: null,
-    addListener: vi.fn(),
-    removeListener: vi.fn(),
-    addEventListener: vi.fn(),
-    removeEventListener: vi.fn(),
-    dispatchEvent: vi.fn(),
-  })),
-});
-
-// Mock IntersectionObserver
-global.IntersectionObserver = vi.fn().mockImplementation(() => ({
-  observe: vi.fn(),
-  unobserve: vi.fn(),
-  disconnect: vi.fn(),
-}));
-
-// Mock ResizeObserver
-global.ResizeObserver = vi.fn().mockImplementation(() => ({
-  observe: vi.fn(),
-  unobserve: vi.fn(),
-  disconnect: vi.fn(),
-}));
-```
-
----
-
-## Unit Testing
-
-### Testing Utility Functions
-
-```typescript
-// lib/utils.test.ts
-import { describe, it, expect } from 'vitest';
-import { formatCurrency, slugify, truncate } from './utils';
-
-describe('formatCurrency', () => {
-  it('formats positive numbers correctly', () => {
-    expect(formatCurrency(1234.56)).toBe('$1,234.56');
-  });
-
-  it('formats zero correctly', () => {
-    expect(formatCurrency(0)).toBe('$0.00');
-  });
-
-  it('formats negative numbers correctly', () => {
-    expect(formatCurrency(-50)).toBe('-$50.00');
-  });
-
-  it('handles different currencies', () => {
-    expect(formatCurrency(100, 'EUR')).toBe('€100.00');
-  });
-});
-
-describe('slugify', () => {
-  it('converts spaces to hyphens', () => {
-    expect(slugify('Hello World')).toBe('hello-world');
-  });
-
-  it('removes special characters', () => {
-    expect(slugify('Hello, World!')).toBe('hello-world');
-  });
-
-  it('handles multiple spaces', () => {
-    expect(slugify('Hello   World')).toBe('hello-world');
-  });
-});
-
-describe('truncate', () => {
-  it('truncates long strings', () => {
-    expect(truncate('Hello World', 5)).toBe('Hello...');
-  });
-
-  it('does not truncate short strings', () => {
-    expect(truncate('Hi', 5)).toBe('Hi');
-  });
-});
-```
-
-### Testing Custom Hooks
-
-```typescript
-// hooks/use-debounce.test.ts
-import { describe, it, expect, vi } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
-import { useDebounce } from './use-debounce';
-
-describe('useDebounce', () => {
-  beforeEach(() => {
-    vi.useFakeTimers();
-  });
-
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
-  it('returns initial value immediately', () => {
-    const { result } = renderHook(() => useDebounce('initial', 500));
-    expect(result.current).toBe('initial');
-  });
-
-  it('debounces value changes', () => {
-    const { result, rerender } = renderHook(
-      ({ value }) => useDebounce(value, 500),
-      { initialProps: { value: 'initial' } }
-    );
-
-    // Change value
-    rerender({ value: 'updated' });
-
-    // Value should not change immediately
-    expect(result.current).toBe('initial');
-
-    // Advance timer
-    act(() => {
-      vi.advanceTimersByTime(500);
-    });
-
-    // Now value should update
-    expect(result.current).toBe('updated');
-  });
-});
-```
-
----
-
-## Component Testing
-
-### Basic Component Test
-
-```typescript
-// components/button.test.tsx
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import { Button } from './button';
-
-describe('Button', () => {
-  it('renders with text', () => {
-    render(<Button>Click me</Button>);
-    expect(screen.getByRole('button', { name: /click me/i })).toBeInTheDocument();
-  });
-
-  it('calls onClick when clicked', async () => {
-    const user = userEvent.setup();
-    const handleClick = vi.fn();
-
-    render(<Button onClick={handleClick}>Click me</Button>);
-
-    await user.click(screen.getByRole('button'));
-    expect(handleClick).toHaveBeenCalledTimes(1);
-  });
-
-  it('is disabled when disabled prop is true', () => {
-    render(<Button disabled>Click me</Button>);
-    expect(screen.getByRole('button')).toBeDisabled();
-  });
-
-  it('shows loading state', () => {
-    render(<Button loading>Submit</Button>);
-    expect(screen.getByRole('button')).toBeDisabled();
-    expect(screen.getByTestId('loading-spinner')).toBeInTheDocument();
-  });
-
-  it('applies variant styles', () => {
-    render(<Button variant="destructive">Delete</Button>);
-    expect(screen.getByRole('button')).toHaveClass('bg-destructive');
-  });
-});
-```
-
-### Testing Forms
-
-```typescript
-// components/login-form.test.tsx
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import { LoginForm } from './login-form';
-
-describe('LoginForm', () => {
-  it('submits form with valid data', async () => {
-    const user = userEvent.setup();
-    const onSubmit = vi.fn();
-
-    render(<LoginForm onSubmit={onSubmit} />);
-
-    await user.type(screen.getByLabelText(/email/i), 'test@example.com');
-    await user.type(screen.getByLabelText(/password/i), 'password123');
-    await user.click(screen.getByRole('button', { name: /sign in/i }));
-
-    await waitFor(() => {
-      expect(onSubmit).toHaveBeenCalledWith({
-        email: 'test@example.com',
-        password: 'password123',
-      });
-    });
-  });
-
-  it('shows validation errors for empty fields', async () => {
-    const user = userEvent.setup();
-
-    render(<LoginForm onSubmit={vi.fn()} />);
-
-    await user.click(screen.getByRole('button', { name: /sign in/i }));
-
-    await waitFor(() => {
-      expect(screen.getByText(/email is required/i)).toBeInTheDocument();
-      expect(screen.getByText(/password is required/i)).toBeInTheDocument();
-    });
-  });
-
-  it('shows error for invalid email', async () => {
-    const user = userEvent.setup();
-
-    render(<LoginForm onSubmit={vi.fn()} />);
-
-    await user.type(screen.getByLabelText(/email/i), 'invalid-email');
-    await user.click(screen.getByRole('button', { name: /sign in/i }));
-
-    await waitFor(() => {
-      expect(screen.getByText(/invalid email/i)).toBeInTheDocument();
-    });
-  });
-
-  it('disables submit button while submitting', async () => {
-    const user = userEvent.setup();
-    const onSubmit = vi.fn(() => new Promise((r) => setTimeout(r, 100)));
-
-    render(<LoginForm onSubmit={onSubmit} />);
-
-    await user.type(screen.getByLabelText(/email/i), 'test@example.com');
-    await user.type(screen.getByLabelText(/password/i), 'password123');
-    await user.click(screen.getByRole('button', { name: /sign in/i }));
-
-    expect(screen.getByRole('button', { name: /signing in/i })).toBeDisabled();
-  });
-});
-```
-
-### Testing with Context
-
-```typescript
-// components/user-profile.test.tsx
-import { describe, it, expect } from 'vitest';
-import { render, screen } from '@testing-library/react';
-import { UserProfile } from './user-profile';
-import { UserProvider } from '@/contexts/user-context';
-
-const mockUser = {
-  id: '1',
-  name: 'John Doe',
-  email: 'john@example.com',
-  avatar: '/avatar.jpg',
-};
-
-function renderWithUser(ui: React.ReactElement, user = mockUser) {
-  return render(
-    <UserProvider initialUser={user}>
-      {ui}
-    </UserProvider>
-  );
-}
-
-describe('UserProfile', () => {
-  it('displays user information', () => {
-    renderWithUser(<UserProfile />);
-
-    expect(screen.getByText('John Doe')).toBeInTheDocument();
-    expect(screen.getByText('john@example.com')).toBeInTheDocument();
-    expect(screen.getByAltText('John Doe')).toHaveAttribute('src', '/avatar.jpg');
-  });
-
-  it('shows loading state when user is null', () => {
-    render(
-      <UserProvider initialUser={null}>
-        <UserProfile />
-      </UserProvider>
-    );
-
-    expect(screen.getByTestId('loading-skeleton')).toBeInTheDocument();
-  });
-});
-```
-
----
-
-## Testing Server Actions
-
-### Mocking Server Actions
-
-```typescript
-// __tests__/actions/user.test.ts
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { createUser, updateUser } from '@/app/actions/user';
-
-// Mock the auth function
-vi.mock('@clerk/nextjs/server', () => ({
-  auth: vi.fn(() => ({ userId: 'test-user-id' })),
-  currentUser: vi.fn(() => ({
-    id: 'test-user-id',
-    emailAddresses: [{ emailAddress: 'test@example.com' }],
-  })),
-}));
-
-// Mock fetch for API calls
-global.fetch = vi.fn();
-
-describe('User Server Actions', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  describe('createUser', () => {
-    it('creates a user successfully', async () => {
-      const mockResponse = {
-        id: '1',
-        email: 'new@example.com',
-        name: 'New User',
-      };
-
-      (global.fetch as vi.Mock).mockResolvedValueOnce({
-        ok: true,
-        json: async () => mockResponse,
-      });
-
-      const result = await createUser({
-        email: 'new@example.com',
-        name: 'New User',
-      });
-
-      expect(result.success).toBe(true);
-      expect(result.data).toEqual(mockResponse);
-    });
-
-    it('returns error when API fails', async () => {
-      (global.fetch as vi.Mock).mockResolvedValueOnce({
-        ok: false,
-        json: async () => ({ detail: 'Email already exists' }),
-      });
-
-      const result = await createUser({
-        email: 'existing@example.com',
-        name: 'User',
-      });
-
-      expect(result.success).toBe(false);
-      expect(result.error).toBe('Email already exists');
-    });
-
-    it('handles network errors', async () => {
-      (global.fetch as vi.Mock).mockRejectedValueOnce(new Error('Network error'));
-
-      const result = await createUser({
-        email: 'test@example.com',
-        name: 'User',
-      });
-
-      expect(result.success).toBe(false);
-      expect(result.error).toContain('Network error');
-    });
-  });
-});
-```
-
-### Testing Components with Server Actions
-
-```typescript
-// components/create-user-form.test.tsx
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import { CreateUserForm } from './create-user-form';
-
-// Mock the server action
-vi.mock('@/app/actions/user', () => ({
-  createUser: vi.fn(),
-}));
-
-import { createUser } from '@/app/actions/user';
-
-describe('CreateUserForm', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it('submits form and shows success message', async () => {
-    const user = userEvent.setup();
-    (createUser as vi.Mock).mockResolvedValueOnce({
-      success: true,
-      data: { id: '1', name: 'John', email: 'john@example.com' },
-    });
-
-    render(<CreateUserForm />);
-
-    await user.type(screen.getByLabelText(/name/i), 'John');
-    await user.type(screen.getByLabelText(/email/i), 'john@example.com');
-    await user.click(screen.getByRole('button', { name: /create/i }));
-
-    await waitFor(() => {
-      expect(screen.getByText(/user created successfully/i)).toBeInTheDocument();
-    });
-  });
-
-  it('displays error message on failure', async () => {
-    const user = userEvent.setup();
-    (createUser as vi.Mock).mockResolvedValueOnce({
-      success: false,
-      error: 'Email already exists',
-    });
-
-    render(<CreateUserForm />);
-
-    await user.type(screen.getByLabelText(/name/i), 'John');
-    await user.type(screen.getByLabelText(/email/i), 'existing@example.com');
-    await user.click(screen.getByRole('button', { name: /create/i }));
-
-    await waitFor(() => {
-      expect(screen.getByText(/email already exists/i)).toBeInTheDocument();
-    });
-  });
-});
-```
-
----
-
-## API Mocking with MSW
-
-### Handler Setup
-
-```typescript
-// src/test/mocks/handlers.ts
-import { http, HttpResponse } from 'msw';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-
-export const handlers = [
-  // GET /api/users
-  http.get(`${API_URL}/api/users`, () => {
-    return HttpResponse.json([
-      { id: '1', name: 'John Doe', email: 'john@example.com' },
-      { id: '2', name: 'Jane Doe', email: 'jane@example.com' },
-    ]);
-  }),
-
-  // GET /api/users/:id
-  http.get(`${API_URL}/api/users/:id`, ({ params }) => {
-    const { id } = params;
-    if (id === 'not-found') {
-      return HttpResponse.json({ detail: 'User not found' }, { status: 404 });
-    }
-    return HttpResponse.json({
-      id,
-      name: 'John Doe',
-      email: 'john@example.com',
-    });
-  }),
-
-  // POST /api/users
-  http.post(`${API_URL}/api/users`, async ({ request }) => {
-    const body = await request.json();
-    return HttpResponse.json({
-      id: '3',
-      ...body,
-    }, { status: 201 });
-  }),
-
-  // PUT /api/users/:id
-  http.put(`${API_URL}/api/users/:id`, async ({ params, request }) => {
-    const { id } = params;
-    const body = await request.json();
-    return HttpResponse.json({
-      id,
-      ...body,
-    });
-  }),
-
-  // DELETE /api/users/:id
-  http.delete(`${API_URL}/api/users/:id`, () => {
-    return new HttpResponse(null, { status: 204 });
-  }),
-];
-```
-
-### MSW Server Setup
-
-```typescript
-// src/test/mocks/server.ts
-import { setupServer } from 'msw/node';
-import { handlers } from './handlers';
-
-export const server = setupServer(...handlers);
-```
-
-### Using MSW in Tests
-
-```typescript
-// components/user-list.test.tsx
-import { describe, it, expect } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
-import { http, HttpResponse } from 'msw';
-import { server } from '@/test/mocks/server';
-import { UserList } from './user-list';
-
-describe('UserList', () => {
-  it('displays users from API', async () => {
-    render(<UserList />);
-
-    await waitFor(() => {
-      expect(screen.getByText('John Doe')).toBeInTheDocument();
-      expect(screen.getByText('Jane Doe')).toBeInTheDocument();
-    });
-  });
-
-  it('shows error message when API fails', async () => {
-    // Override handler for this test
-    server.use(
-      http.get('*/api/users', () => {
-        return HttpResponse.json(
-          { detail: 'Server error' },
-          { status: 500 }
-        );
-      })
-    );
-
-    render(<UserList />);
-
-    await waitFor(() => {
-      expect(screen.getByText(/failed to load users/i)).toBeInTheDocument();
-    });
-  });
-
-  it('shows empty state when no users', async () => {
-    server.use(
-      http.get('*/api/users', () => {
-        return HttpResponse.json([]);
-      })
-    );
-
-    render(<UserList />);
-
-    await waitFor(() => {
-      expect(screen.getByText(/no users found/i)).toBeInTheDocument();
-    });
-  });
-});
-```
-
----
-
-## End-to-End Testing with Playwright
-
-### Playwright Configuration
-
-```typescript
-// playwright.config.ts
-import { defineConfig, devices } from '@playwright/test';
-
-export default defineConfig({
-  testDir: './e2e',
-  fullyParallel: true,
-  forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
-  reporter: 'html',
-  use: {
-    baseURL: 'http://localhost:3000',
-    trace: 'on-first-retry',
-    screenshot: 'only-on-failure',
-  },
-  projects: [
-    {
-      name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
-    },
-    {
-      name: 'firefox',
-      use: { ...devices['Desktop Firefox'] },
-    },
-    {
-      name: 'webkit',
-      use: { ...devices['Desktop Safari'] },
-    },
-    {
-      name: 'Mobile Chrome',
-      use: { ...devices['Pixel 5'] },
-    },
-  ],
-  webServer: {
-    command: 'npm run dev',
-    url: 'http://localhost:3000',
-    reuseExistingServer: !process.env.CI,
-  },
-});
-```
-
-### E2E Test Examples
-
-```typescript
-// e2e/auth.spec.ts
-import { test, expect } from '@playwright/test';
-
-test.describe('Authentication', () => {
-  test('redirects unauthenticated user to login', async ({ page }) => {
-    await page.goto('/dashboard');
-    await expect(page).toHaveURL(/.*sign-in/);
-  });
-
-  test('allows user to sign in', async ({ page }) => {
-    await page.goto('/sign-in');
-
-    await page.fill('[name="email"]', 'test@example.com');
-    await page.fill('[name="password"]', 'password123');
-    await page.click('button[type="submit"]');
-
-    await expect(page).toHaveURL('/dashboard');
-    await expect(page.locator('text=Welcome')).toBeVisible();
-  });
-
-  test('shows error for invalid credentials', async ({ page }) => {
-    await page.goto('/sign-in');
-
-    await page.fill('[name="email"]', 'wrong@example.com');
-    await page.fill('[name="password"]', 'wrongpassword');
-    await page.click('button[type="submit"]');
-
-    await expect(page.locator('text=Invalid credentials')).toBeVisible();
-  });
-});
-```
-
-### Page Object Model
-
-```typescript
-// e2e/pages/login.page.ts
-import { Page, Locator, expect } from '@playwright/test';
-
-export class LoginPage {
-  readonly page: Page;
-  readonly emailInput: Locator;
-  readonly passwordInput: Locator;
-  readonly submitButton: Locator;
-  readonly errorMessage: Locator;
-
-  constructor(page: Page) {
-    this.page = page;
-    this.emailInput = page.locator('[name="email"]');
-    this.passwordInput = page.locator('[name="password"]');
-    this.submitButton = page.locator('button[type="submit"]');
-    this.errorMessage = page.locator('[role="alert"]');
-  }
-
-  async goto() {
-    await this.page.goto('/sign-in');
-  }
-
-  async login(email: string, password: string) {
-    await this.emailInput.fill(email);
-    await this.passwordInput.fill(password);
-    await this.submitButton.click();
-  }
-
-  async expectError(message: string) {
-    await expect(this.errorMessage).toContainText(message);
-  }
-
-  async expectRedirectToDashboard() {
-    await expect(this.page).toHaveURL('/dashboard');
-  }
-}
-
-// Usage in test
-import { test } from '@playwright/test';
-import { LoginPage } from './pages/login.page';
-
-test('user can login', async ({ page }) => {
-  const loginPage = new LoginPage(page);
-  await loginPage.goto();
-  await loginPage.login('test@example.com', 'password123');
-  await loginPage.expectRedirectToDashboard();
-});
-```
-
----
-
-## Accessibility Testing
-
-### With React Testing Library
-
-```typescript
-// components/modal.test.tsx
-import { describe, it, expect } from 'vitest';
-import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import { Modal } from './modal';
-
-describe('Modal Accessibility', () => {
-  it('has correct ARIA attributes', () => {
-    render(<Modal isOpen title="Test Modal"><p>Content</p></Modal>);
-
-    const dialog = screen.getByRole('dialog');
-    expect(dialog).toHaveAttribute('aria-modal', 'true');
-    expect(dialog).toHaveAttribute('aria-labelledby');
-  });
-
-  it('traps focus within modal', async () => {
-    const user = userEvent.setup();
-    render(
-      <Modal isOpen title="Test Modal">
-        <button>First</button>
-        <button>Second</button>
-      </Modal>
-    );
-
-    const buttons = screen.getAllByRole('button');
-
-    // Focus should start on first focusable element
-    expect(buttons[0]).toHaveFocus();
-
-    // Tab to second button
-    await user.tab();
-    expect(buttons[1]).toHaveFocus();
-
-    // Tab again should wrap to first button (focus trap)
-    await user.tab();
-    expect(buttons[0]).toHaveFocus();
-  });
-
-  it('closes on Escape key', async () => {
-    const user = userEvent.setup();
-    const onClose = vi.fn();
-
-    render(
-      <Modal isOpen onClose={onClose} title="Test Modal">
-        <p>Content</p>
-      </Modal>
-    );
-
-    await user.keyboard('{Escape}');
-    expect(onClose).toHaveBeenCalled();
-  });
-});
-```
-
-### With Playwright
-
-```typescript
-// e2e/accessibility.spec.ts
-import { test, expect } from '@playwright/test';
-import AxeBuilder from '@axe-core/playwright';
-
-test.describe('Accessibility', () => {
-  test('homepage has no accessibility violations', async ({ page }) => {
-    await page.goto('/');
-
-    const accessibilityScanResults = await new AxeBuilder({ page }).analyze();
-
-    expect(accessibilityScanResults.violations).toEqual([]);
-  });
-
-  test('dashboard has no accessibility violations', async ({ page }) => {
-    // Assume authenticated
-    await page.goto('/dashboard');
-
-    const accessibilityScanResults = await new AxeBuilder({ page })
-      .include('#main-content')
-      .exclude('.third-party-widget')
-      .analyze();
-
-    expect(accessibilityScanResults.violations).toEqual([]);
-  });
-});
-```
-
----
-
-## Running Tests
-
-```bash
-# Unit and component tests
-npm test                    # Run all tests
-npm test -- --watch         # Watch mode
-npm test -- --coverage      # With coverage
-npm test -- user            # Run tests matching "user"
-
-# E2E tests
-npm run test:e2e           # Run Playwright tests
-npm run test:e2e -- --ui   # Interactive UI mode
-npm run test:e2e -- --debug # Debug mode
-```
-
----
-
-## Related Standards
-
-- [TypeScript Standards](./typescript.md)
-- [Frontend Tech Stack](./tech-stack.md)
-- [Backend Testing](../backend/testing.md)
-
----
-
-*Comprehensive testing ensures reliability and catches bugs before they reach production.*
-
----
-
-<!-- Source: standards/frontend/accessibility.md (v1.0.0) -->
-
-# Frontend Accessibility Standards
-
-**Version**: 1.0.0
-**Last Updated**: 2025-12-30
-**Status**: Active
-
-## Overview
-
-This document establishes accessibility standards for frontend development, ensuring applications are usable by people with disabilities. All components must meet WCAG 2.1 Level AA compliance.
-
-## Quick Reference
-
-| Requirement | Standard | Test Tool |
-|------------|----------|-----------|
-| Color contrast | 4.5:1 (normal), 3:1 (large) | axe, Lighthouse |
-| Keyboard navigation | All interactive elements | Manual + Playwright |
-| Screen reader support | Semantic HTML + ARIA | VoiceOver, NVDA |
-| Focus indicators | Visible focus state | Manual review |
-| Alt text | All meaningful images | axe, Lighthouse |
-
-## Semantic HTML
-
-### Use Native Elements
-
-Always prefer semantic HTML elements over ARIA roles:
-
-```tsx
-// Correct - semantic HTML
-<button onClick={handleClick}>Submit</button>
-<nav aria-label="Main navigation">
-  <ul>
-    <li><a href="/home">Home</a></li>
-  </ul>
-</nav>
-
-// Incorrect - div with role
-<div role="button" onClick={handleClick}>Submit</div>
-<div role="navigation">
-  <div><span onClick={goHome}>Home</span></div>
-</div>
-```
-
-### Heading Hierarchy
-
-Maintain proper heading structure:
-
-```tsx
-// Correct - logical hierarchy
-<h1>Page Title</h1>
-<section>
-  <h2>Section Title</h2>
-  <h3>Subsection Title</h3>
-</section>
-
-// Incorrect - skipping levels
-<h1>Page Title</h1>
-<h3>Subsection Title</h3>  // Skipped h2
-```
-
-### Landmark Regions
-
-Use landmark elements for page structure:
-
-```tsx
-<header role="banner">
-  <nav aria-label="Primary">...</nav>
-</header>
-<main role="main">
-  <article>...</article>
-  <aside role="complementary">...</aside>
-</main>
-<footer role="contentinfo">...</footer>
-```
-
-## ARIA Guidelines
-
-### ARIA Roles
-
-Use ARIA roles only when semantic HTML is insufficient:
-
-```tsx
-// Custom components that need ARIA
-<div
-  role="tablist"
-  aria-label="Settings tabs"
->
-  <button
-    role="tab"
-    aria-selected={activeTab === 'general'}
-    aria-controls="general-panel"
-    id="general-tab"
-  >
-    General
-  </button>
-</div>
-
-<div
-  role="tabpanel"
-  id="general-panel"
-  aria-labelledby="general-tab"
-  hidden={activeTab !== 'general'}
->
-  Panel content
-</div>
-```
-
-### ARIA States and Properties
-
-```tsx
-// Loading states
-<button aria-busy={isLoading} disabled={isLoading}>
-  {isLoading ? 'Loading...' : 'Submit'}
-</button>
-
-// Expanded/collapsed
-<button
-  aria-expanded={isOpen}
-  aria-controls="menu-content"
->
-  Menu
-</button>
-<div id="menu-content" hidden={!isOpen}>
-  Menu items
-</div>
-
-// Error states
-<input
-  aria-invalid={!!error}
-  aria-describedby={error ? 'email-error' : undefined}
-/>
-{error && <span id="email-error" role="alert">{error}</span>}
-```
-
-### Live Regions
-
-Announce dynamic content changes to screen readers:
-
-```tsx
-// Polite announcements (waits for user to finish)
-<div aria-live="polite" aria-atomic="true">
-  {notification}
-</div>
-
-// Assertive announcements (interrupts)
-<div aria-live="assertive" role="alert">
-  {errorMessage}
-</div>
-
-// Status messages
-<div role="status" aria-live="polite">
-  {items.length} items found
-</div>
-```
-
-## Keyboard Navigation
-
-### Focus Management
-
-```tsx
-// Focusable elements need visible focus
-const focusStyles = "focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2";
-
-<button className={focusStyles}>
-  Click me
-</button>
-
-// Skip to main content link
-<a
-  href="#main-content"
-  className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:p-4 focus:bg-white"
->
-  Skip to main content
-</a>
-
-<main id="main-content" tabIndex={-1}>
-  ...
-</main>
-```
-
-### Focus Trapping in Modals
-
-```tsx
-import { useEffect, useRef } from 'react';
-
-interface ModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  children: React.ReactNode;
-}
-
-export function Modal({ isOpen, onClose, children }: ModalProps): React.ReactElement | null {
-  const modalRef = useRef<HTMLDivElement>(null);
-  const previousFocus = useRef<HTMLElement | null>(null);
-
-  useEffect(() => {
-    if (isOpen) {
-      // Store current focus
-      previousFocus.current = document.activeElement as HTMLElement;
-
-      // Focus first focusable element
-      const focusable = modalRef.current?.querySelectorAll<HTMLElement>(
-        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-      );
-      focusable?.[0]?.focus();
-    } else {
-      // Restore focus when closed
-      previousFocus.current?.focus();
-    }
-  }, [isOpen]);
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent): void => {
-      if (!isOpen) return;
-
-      if (e.key === 'Escape') {
-        onClose();
-        return;
-      }
-
-      if (e.key === 'Tab') {
-        const focusable = modalRef.current?.querySelectorAll<HTMLElement>(
-          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-        );
-        if (!focusable?.length) return;
-
-        const first = focusable[0];
-        const last = focusable[focusable.length - 1];
-
-        if (e.shiftKey && document.activeElement === first) {
-          e.preventDefault();
-          last.focus();
-        } else if (!e.shiftKey && document.activeElement === last) {
-          e.preventDefault();
-          first.focus();
-        }
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
-
-  if (!isOpen) return null;
-
-  return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="modal-title"
-      ref={modalRef}
-    >
-      {children}
-    </div>
-  );
-}
-```
-
-### Keyboard Shortcuts
-
-```tsx
-import { useEffect } from 'react';
-
-interface UseKeyboardShortcutOptions {
-  key: string;
-  ctrl?: boolean;
-  shift?: boolean;
-  alt?: boolean;
-  callback: () => void;
-}
-
-export function useKeyboardShortcut({
-  key,
-  ctrl = false,
-  shift = false,
-  alt = false,
-  callback,
-}: UseKeyboardShortcutOptions): void {
-  useEffect(() => {
-    const handler = (e: KeyboardEvent): void => {
-      if (
-        e.key.toLowerCase() === key.toLowerCase() &&
-        e.ctrlKey === ctrl &&
-        e.shiftKey === shift &&
-        e.altKey === alt
-      ) {
-        e.preventDefault();
-        callback();
-      }
-    };
-
-    document.addEventListener('keydown', handler);
-    return () => document.removeEventListener('keydown', handler);
-  }, [key, ctrl, shift, alt, callback]);
-}
-
-// Usage
-function SearchComponent(): React.ReactElement {
-  useKeyboardShortcut({
-    key: 'k',
-    ctrl: true,
-    callback: () => openSearch(),
-  });
-
-  return <div>...</div>;
-}
-```
-
-## Color and Contrast
-
-### Contrast Requirements
-
-| Text Size | Minimum Ratio | Example |
-|-----------|--------------|---------|
-| Normal text (<18px) | 4.5:1 | `text-gray-700` on white |
-| Large text (>=18px or >=14px bold) | 3:1 | `text-gray-600` on white |
-| UI components | 3:1 | Button borders, form inputs |
-| Non-text content | 3:1 | Icons, charts |
-
-### Color Utilities
-
-```tsx
-// Accessible color combinations in Tailwind
-const accessibleColors = {
-  // Text on white background
-  bodyText: 'text-gray-900',        // 12.6:1
-  mutedText: 'text-gray-600',       // 5.7:1
-  errorText: 'text-red-700',        // 5.1:1
-  successText: 'text-green-700',    // 5.1:1
-
-  // Button colors
-  primaryButton: 'bg-blue-600 text-white',   // 5.6:1
-  dangerButton: 'bg-red-600 text-white',     // 4.5:1
-
-  // Focus rings
-  focusRing: 'ring-blue-500',       // Visible focus
-};
-
-// Never rely on color alone
-<div>
-  <span className="text-red-600">*</span>
-  <label>Email (required)</label>
-</div>
-
-// Include icons or text for status
-<div className="flex items-center gap-2">
-  <CheckCircleIcon className="text-green-600" aria-hidden="true" />
-  <span className="text-green-700">Success</span>
-</div>
-```
-
-### Dark Mode Considerations
-
-```tsx
-// Ensure contrast in both modes
-<p className="text-gray-900 dark:text-gray-100">
-  High contrast text
-</p>
-
-// Test both color schemes
-const colorSchemes = ['light', 'dark'] as const;
-colorSchemes.forEach((scheme) => {
-  // Test contrast ratios
-});
-```
-
-## Forms and Inputs
-
-### Accessible Form Pattern
-
-```tsx
-import { useId } from 'react';
-
-interface FormFieldProps {
-  label: string;
-  error?: string;
-  required?: boolean;
-  hint?: string;
-  children: (props: {
-    id: string;
-    'aria-describedby'?: string;
-    'aria-invalid'?: boolean;
-    'aria-required'?: boolean;
-  }) => React.ReactNode;
-}
-
-export function FormField({
-  label,
-  error,
-  required,
-  hint,
-  children,
-}: FormFieldProps): React.ReactElement {
-  const id = useId();
-  const hintId = hint ? `${id}-hint` : undefined;
-  const errorId = error ? `${id}-error` : undefined;
-  const describedBy = [hintId, errorId].filter(Boolean).join(' ') || undefined;
-
-  return (
-    <div>
-      <label htmlFor={id} className="block text-sm font-medium">
-        {label}
-        {required && <span aria-hidden="true"> *</span>}
-        {required && <span className="sr-only"> (required)</span>}
-      </label>
-
-      {hint && (
-        <p id={hintId} className="text-sm text-gray-500">
-          {hint}
-        </p>
-      )}
-
-      {children({
-        id,
-        'aria-describedby': describedBy,
-        'aria-invalid': !!error,
-        'aria-required': required,
-      })}
-
-      {error && (
-        <p id={errorId} role="alert" className="text-sm text-red-600">
-          {error}
-        </p>
-      )}
-    </div>
-  );
-}
-
-// Usage
-<FormField
-  label="Email"
-  error={errors.email}
-  required
-  hint="We'll never share your email"
->
-  {(props) => (
-    <input
-      type="email"
-      {...props}
-      {...register('email')}
-      className="mt-1 block w-full rounded-md border-gray-300"
-    />
-  )}
-</FormField>
-```
-
-### Error Summary
-
-```tsx
-interface ErrorSummaryProps {
-  errors: Record<string, { message?: string }>;
-}
-
-export function ErrorSummary({ errors }: ErrorSummaryProps): React.ReactElement | null {
-  const errorList = Object.entries(errors);
-
-  if (errorList.length === 0) return null;
-
-  return (
-    <div
-      role="alert"
-      aria-labelledby="error-summary-title"
-      className="p-4 bg-red-50 border border-red-200 rounded-md"
-    >
-      <h2 id="error-summary-title" className="text-red-800 font-medium">
-        There were {errorList.length} errors with your submission
-      </h2>
-      <ul className="mt-2 list-disc list-inside text-red-700">
-        {errorList.map(([field, error]) => (
-          <li key={field}>
-            <a href={`#${field}`} className="underline">
-              {error.message}
-            </a>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-```
-
-## Images and Media
-
-### Alt Text Guidelines
-
-```tsx
-// Informative images - describe the content
-<img
-  src="/chart.png"
-  alt="Bar chart showing 45% increase in sales from Q1 to Q2 2024"
-/>
-
-// Decorative images - empty alt
-<img src="/decorative-line.png" alt="" role="presentation" />
-
-// Functional images (icons in buttons)
-<button aria-label="Close dialog">
-  <XIcon aria-hidden="true" />
-</button>
-
-// Complex images with extended description
-<figure>
-  <img
-    src="/complex-diagram.png"
-    alt="System architecture diagram"
-    aria-describedby="diagram-description"
-  />
-  <figcaption id="diagram-description">
-    The diagram shows three main components: the frontend Next.js app
-    connects to a FastAPI backend, which communicates with a PostgreSQL
-    database...
-  </figcaption>
-</figure>
-```
-
-### Video and Audio
-
-```tsx
-// Video with captions
-<video controls>
-  <source src="/video.mp4" type="video/mp4" />
-  <track
-    kind="captions"
-    src="/captions.vtt"
-    srcLang="en"
-    label="English"
-    default
-  />
-  Your browser does not support the video tag.
-</video>
-
-// Audio with transcript link
-<div>
-  <audio controls aria-describedby="audio-transcript">
-    <source src="/podcast.mp3" type="audio/mpeg" />
-  </audio>
-  <a id="audio-transcript" href="/transcript.html">
-    Read transcript
-  </a>
-</div>
-```
-
-## Loading States
-
-### Accessible Loading Indicators
-
-```tsx
-// Loading spinner
-<div role="status" aria-live="polite">
-  <svg className="animate-spin" aria-hidden="true">...</svg>
-  <span className="sr-only">Loading...</span>
-</div>
-
-// Skeleton loading
-<div aria-busy="true" aria-label="Loading content">
-  <div className="animate-pulse bg-gray-200 h-4 rounded" />
-</div>
-
-// Progress bar
-<div
-  role="progressbar"
-  aria-valuenow={75}
-  aria-valuemin={0}
-  aria-valuemax={100}
-  aria-label="Upload progress"
->
-  <div style={{ width: '75%' }} />
-</div>
-```
-
-## Tables
-
-### Accessible Data Tables
-
-```tsx
-<table>
-  <caption>Monthly Sales Report for Q4 2024</caption>
-  <thead>
-    <tr>
-      <th scope="col">Month</th>
-      <th scope="col">Revenue</th>
-      <th scope="col">Growth</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <th scope="row">October</th>
-      <td>$45,000</td>
-      <td>+12%</td>
-    </tr>
-    <tr>
-      <th scope="row">November</th>
-      <td>$52,000</td>
-      <td>+15%</td>
-    </tr>
-  </tbody>
-</table>
-```
-
-### Sortable Tables
-
-```tsx
-interface SortableHeaderProps {
-  label: string;
-  sortDirection: 'ascending' | 'descending' | 'none';
-  onSort: () => void;
-}
-
-function SortableHeader({ label, sortDirection, onSort }: SortableHeaderProps): React.ReactElement {
-  return (
-    <th scope="col">
-      <button
-        onClick={onSort}
-        aria-sort={sortDirection}
-        className="flex items-center gap-1"
-      >
-        {label}
-        {sortDirection === 'ascending' && <ChevronUpIcon aria-hidden="true" />}
-        {sortDirection === 'descending' && <ChevronDownIcon aria-hidden="true" />}
-      </button>
-    </th>
-  );
-}
-```
-
-## Testing
-
-### Automated Testing with axe
-
-```tsx
-import { render } from '@testing-library/react';
-import { axe, toHaveNoViolations } from 'jest-axe';
-
-expect.extend(toHaveNoViolations);
-
-describe('Component Accessibility', () => {
-  it('should have no accessibility violations', async () => {
-    const { container } = render(<MyComponent />);
-    const results = await axe(container);
-    expect(results).toHaveNoViolations();
-  });
-});
-```
-
-### Playwright Accessibility Testing
-
-```typescript
-import { test, expect } from '@playwright/test';
-import AxeBuilder from '@axe-core/playwright';
-
-test.describe('Accessibility', () => {
-  test('homepage should pass axe audit', async ({ page }) => {
-    await page.goto('/');
-
-    const accessibilityScanResults = await new AxeBuilder({ page })
-      .withTags(['wcag2a', 'wcag2aa', 'wcag21aa'])
-      .analyze();
-
-    expect(accessibilityScanResults.violations).toEqual([]);
-  });
-
-  test('should be keyboard navigable', async ({ page }) => {
-    await page.goto('/');
-
-    // Tab through interactive elements
-    await page.keyboard.press('Tab');
-    const firstFocused = await page.evaluate(() => document.activeElement?.tagName);
-    expect(['A', 'BUTTON', 'INPUT']).toContain(firstFocused);
-
-    // Check visible focus indicator
-    const focusedElement = page.locator(':focus');
-    await expect(focusedElement).toBeVisible();
-  });
-});
-```
-
-### Manual Testing Checklist
-
-```markdown
-## Keyboard Navigation
-- [ ] All interactive elements reachable via Tab
-- [ ] Logical tab order
-- [ ] Skip to main content link works
-- [ ] Focus visible on all elements
-- [ ] No keyboard traps
-- [ ] Escape closes modals/dropdowns
-- [ ] Arrow keys work in menus/tabs
-
-## Screen Reader
-- [ ] Page has unique, descriptive title
-- [ ] Headings in logical order
-- [ ] Images have appropriate alt text
-- [ ] Form labels announced correctly
-- [ ] Error messages announced
-- [ ] Dynamic content changes announced
-
-## Visual
-- [ ] Color contrast meets requirements
-- [ ] Information not conveyed by color alone
-- [ ] Text resizable to 200% without loss
-- [ ] No horizontal scroll at 320px width
-- [ ] Focus indicators visible
-```
-
-## Component Patterns
-
-### Accessible Button Variants
-
-```tsx
-// Standard button
-<button type="button" onClick={handleClick}>
-  Click me
-</button>
-
-// Icon-only button
-<button type="button" aria-label="Delete item" onClick={handleDelete}>
-  <TrashIcon aria-hidden="true" />
-</button>
-
-// Loading button
-<button type="submit" disabled={isLoading} aria-busy={isLoading}>
-  {isLoading ? (
-    <>
-      <Spinner aria-hidden="true" />
-      <span className="sr-only">Submitting...</span>
-    </>
-  ) : (
-    'Submit'
-  )}
-</button>
-
-// Toggle button
-<button
-  type="button"
-  aria-pressed={isPressed}
-  onClick={() => setIsPressed(!isPressed)}
->
-  {isPressed ? 'On' : 'Off'}
-</button>
-```
-
-### Accessible Dropdown Menu
-
-```tsx
-import { useState, useRef, useEffect } from 'react';
-
-export function Dropdown(): React.ReactElement {
-  const [isOpen, setIsOpen] = useState(false);
-  const [activeIndex, setActiveIndex] = useState(-1);
-  const menuRef = useRef<HTMLUListElement>(null);
-  const buttonRef = useRef<HTMLButtonElement>(null);
-
-  const items = ['Edit', 'Duplicate', 'Delete'];
-
-  const handleKeyDown = (e: React.KeyboardEvent): void => {
-    switch (e.key) {
-      case 'ArrowDown':
-        e.preventDefault();
-        setActiveIndex((prev) => Math.min(prev + 1, items.length - 1));
-        break;
-      case 'ArrowUp':
-        e.preventDefault();
-        setActiveIndex((prev) => Math.max(prev - 1, 0));
-        break;
-      case 'Enter':
-      case ' ':
-        if (activeIndex >= 0) {
-          e.preventDefault();
-          handleSelect(items[activeIndex]);
-        }
-        break;
-      case 'Escape':
-        setIsOpen(false);
-        buttonRef.current?.focus();
-        break;
-    }
-  };
-
-  return (
-    <div>
-      <button
-        ref={buttonRef}
-        aria-haspopup="true"
-        aria-expanded={isOpen}
-        onClick={() => setIsOpen(!isOpen)}
-      >
-        Actions
-      </button>
-
-      {isOpen && (
-        <ul
-          ref={menuRef}
-          role="menu"
-          aria-label="Actions"
-          onKeyDown={handleKeyDown}
-        >
-          {items.map((item, index) => (
-            <li
-              key={item}
-              role="menuitem"
-              tabIndex={index === activeIndex ? 0 : -1}
-              className={index === activeIndex ? 'bg-blue-100' : ''}
-              onClick={() => handleSelect(item)}
-            >
-              {item}
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  );
-}
-```
-
-## Shadcn/ui Accessibility
-
-Shadcn/ui components are built on Radix UI primitives which handle accessibility. Ensure proper usage:
-
-```tsx
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-
-// Dialog - automatically handles focus trap and ARIA
-<Dialog>
-  <DialogTrigger asChild>
-    <Button>Open Dialog</Button>
-  </DialogTrigger>
-  <DialogContent>
-    <DialogHeader>
-      <DialogTitle>Edit Profile</DialogTitle>
-    </DialogHeader>
-    {/* Content */}
-  </DialogContent>
-</Dialog>
-
-// Always provide DialogTitle (even if visually hidden)
-<DialogHeader>
-  <DialogTitle className="sr-only">Menu</DialogTitle>
-</DialogHeader>
-```
-
-## References
-
-- [WCAG 2.1 Guidelines](https://www.w3.org/WAI/WCAG21/quickref/)
-- [MDN Accessibility](https://developer.mozilla.org/en-US/docs/Web/Accessibility)
-- [Radix UI Primitives](https://www.radix-ui.com/docs/primitives)
-- [axe-core Rules](https://dequeuniversity.com/rules/axe/)
-
----
-
-*Accessibility is not optional - it's a requirement for inclusive software.*
-
----
-
-<!-- Source: standards/frontend/api-client.md (v1.0.0) -->
-
-# Frontend API Client Standard
-
-**Version**: 1.0.0
-**Last Updated**: 2026-03-25
-**Status**: Active
-
-## Overview
-
-The frontend API client must handle the backend's RFC 9457 Problem Details responses, 204 No Content responses, and provide typed parameter interfaces. These patterns are implemented once in the fetch wrapper and shared types, not per-component.
-
-## ProblemDetail Interface & ApiError Class
-
-The backend returns [RFC 9457 Problem Details](https://www.rfc-editor.org/rfc/rfc9457) on all errors. The frontend models this as a `ProblemDetail` interface and wraps it in an `ApiError` class:
-
-```typescript
-/** RFC 9457 Problem Details shape returned by all backend APIs. */
-export interface ProblemDetail {
-  type: string;
-  title: string;
-  status: number;
-  detail: string;
-  instance?: string;
-  request_id?: string | null;
-  timestamp?: string;
-  errors?: Array<{ field: string; message: string; value: unknown }>;
-}
-
-export class ApiError extends Error {
-  readonly status: number;
-  readonly type: string;
-  readonly title: string;
-  readonly requestId: string | null;
-  readonly instance: string | null;
-  readonly problem: ProblemDetail;
-
-  constructor(status: number, problem: ProblemDetail) {
-    super(problem.detail);
-    this.name = "ApiError";
-    this.status = status;
-    this.type = problem.type;
-    this.title = problem.title;
-    this.requestId = problem.request_id ?? null;
-    this.instance = problem.instance ?? null;
-    this.problem = problem;
-  }
-
-  /** Field-level validation errors (present on 422 responses). */
-  get fieldErrors(): Array<{ field: string; message: string; value: unknown }> {
-    return this.problem.errors ?? [];
-  }
-}
-
-export function isApiError(err: unknown): err is ApiError {
-  return err instanceof ApiError;
-}
-```
-
-### Usage in components
-
-```typescript
-try {
-  await createCompany(data);
-} catch (err) {
-  if (isApiError(err)) {
-    if (err.type === "/problems/conflict") {
-      // Handle duplicate
-    }
-    for (const fieldError of err.fieldErrors) {
-      form.setError(fieldError.field, { message: fieldError.message });
-    }
-  }
-}
-```
-
-**Discriminator**: Use `err.type` (URI slug) for programmatic error handling, not `err.status` alone.
-
-## apiFetch Error Handling
-
-The central fetch wrapper must:
-
-1. **Parse Problem Details**: On non-ok responses, parse the RFC 9457 body and throw `ApiError`
-2. **Handle 204**: Return `undefined as T` before calling `response.json()`
-3. **Fallback**: Create synthetic `ProblemDetail` with `type: "about:blank"` for non-JSON bodies
-
-```typescript
-async function apiFetch<T>(url: string, options?: RequestInit): Promise<T> {
-  const response = await fetch(url, options);
-
-  // 204 No Content — return before JSON parse
-  if (response.status === 204) {
-    return undefined as T;
-  }
-
-  if (!response.ok) {
-    let problem: ProblemDetail;
-    try {
-      const body = await response.json();
-      // Detect RFC 9457 shape: all 4 required fields present
-      if (
-        body.type &&
-        body.title &&
-        typeof body.status === "number" &&
-        body.detail
-      ) {
-        problem = body as ProblemDetail;
-      } else {
-        // Fallback for non-compliant backends
-        problem = {
-          type: "about:blank",
-          title: response.statusText,
-          status: response.status,
-          detail: body.detail ?? body.message ?? response.statusText,
-          request_id: body.request_id ?? null,
-          timestamp: new Date().toISOString(),
-        };
-      }
-    } catch {
-      problem = {
-        type: "about:blank",
-        title: response.statusText,
-        status: response.status,
-        detail: response.statusText,
-        request_id: null,
-        timestamp: new Date().toISOString(),
-      };
-    }
-    throw new ApiError(response.status, problem);
-  }
-
-  return response.json();
-}
-```
-
-## DELETE Operations
-
-All delete functions return `Promise<void>` and use `await` (not `return`):
-
-```typescript
-// GOOD
-export async function deleteCompany(id: string): Promise<void> {
-  await apiFetch<void>(`/companies/${id}`, { method: "DELETE" });
-}
-
-// BAD — leaks undefined through Promise chain
-export async function deleteCompany(id: string): Promise<void> {
-  return apiFetch<void>(`/companies/${id}`, { method: "DELETE" });
-}
-```
-
-## Typed Parameters
-
-### BaseFilterParams
-
-```typescript
-export interface BaseFilterParams {
-  search?: string | null;
-  date_from?: string | null;
-  date_to?: string | null;
-}
-```
-
-### ListParams
-
-```typescript
-export interface PaginationParams {
-  limit?: number;
-  cursor?: string | null;
-  sort_by?: string;
-  sort_order?: "asc" | "desc";
-  include_total?: boolean;
-}
-
-export interface ListParams extends PaginationParams, BaseFilterParams {}
-```
-
-### Entity-specific params
-
-Entity list params extend `ListParams` and add entity-specific filters:
-
-```typescript
-export interface DealListParams extends ListParams {
-  company_id?: string;
-  stage_id?: string | null;
-  owner_id?: string | null;
-  archived?: boolean;
-}
-```
-
-**Rule**: Never redeclare `search`, `limit`, `cursor`, etc. in entity params — inherit from `ListParams`.
-
-## Query String Building
-
-```typescript
-function buildQueryString(params: Record<string, unknown>): string {
-  return Object.entries(params)
-    .filter(([, v]) => v != null && v !== "")
-    .map(
-      ([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`,
-    )
-    .join("&");
-}
-```
-
-## Error Handling Utilities
-
-### `handleApiError` — Toast-based error display
-
-```typescript
-export function handleApiError(err: unknown, fallbackMessage?: string): void {
-  if (isApiError(err)) {
-    if (err.requestId) {
-      console.error(`[${err.requestId}] ${err.type}: ${err.message}`);
-    }
-    toast.error(err.message);
-    return;
-  }
-  if (err instanceof Error) {
-    toast.error(err.message);
-    return;
-  }
-  toast.error(fallbackMessage ?? "An unexpected error occurred.");
-}
-```
-
-### `handleApiFormError` — Form field mapping
-
-```typescript
-export function handleApiFormError<T extends FieldValues>(
-  err: unknown,
-  form: UseFormReturn<T>,
-  fallbackMessage?: string,
-): void {
-  if (isApiError(err)) {
-    if (err.requestId) {
-      console.error(`[${err.requestId}] ${err.type}: ${err.message}`);
-    }
-    if (err.fieldErrors.length > 0) {
-      for (const { field, message } of err.fieldErrors) {
-        form.setError(field as Path<T>, { message });
-      }
-      return;
-    }
-    toast.error(err.message);
-    return;
-  }
-  handleApiError(err, fallbackMessage);
-}
-```
-
-## Rules
-
-1. **ApiError for all errors**: Never catch raw `Response` objects in components — use `isApiError()`.
-2. **Discriminate on `type`**: Use `err.type` (URI slug) for programmatic error handling, never `err.status` alone.
-3. **204 before JSON**: The fetch wrapper handles 204 centrally — no per-endpoint 204 checks.
-4. **Delete returns void**: All delete functions are `Promise<void>` with `await` (not `return`).
-5. **Extend ListParams**: Entity filter interfaces inherit from `ListParams`, never redeclare shared fields.
-6. **Encode everything**: All query parameter values pass through `encodeURIComponent`.
-7. **Fallback for non-compliant bodies**: Use `about:blank` as the type when the response isn't valid Problem Details.
-8. **Check all 4 required fields**: RFC 9457 narrowing guard checks `type`, `title`, `status`, and `detail` to confirm a valid Problem Details response.
-
----
-
-## Related Standards
-
-- [Error Response Contract](../architecture/error-contract.md)
-- [Frontend Error Handling](./error-handling.md)
-- [TypeScript Standards](./typescript.md)
-
----
-
-<!-- Compilation Metadata
-  domain: frontend-standards
-  domain_version: 2.0.0
-  compiled_at: 2026-03-25 13:07
-  source: evolv-coder-standards
-  files_compiled: 9/9
--->

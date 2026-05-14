@@ -5,6 +5,7 @@ Feature backlog populated by `/start-project` and managed via `/eck:select-featu
 | Key                          | Feature                      | Description                                                                                                | Size | Priority | Status  |
 | ---------------------------- | ---------------------------- | ---------------------------------------------------------------------------------------------------------- | ---- | -------- | ------- |
 | WA-2                         | Weather Lookup               | City search returning current conditions (temperature, description, humidity) via GET /api/weather/:city   | M    | P1       | Done    |
+| WA-3                         | Weather Lookup — Full-Stack  | Full-stack validation of WA-2: FRD, specs, QA plan, ADR-003 (path-param canonical style), 6 ACs verified   | M    | P1       | Done    |
 | current-weather-conditions   | Current Weather Conditions   | Display real-time current conditions for a searched city, surfacing all available weather data fields      | M    | P1       | Backlog |
 | 5-day-forecast               | 5-Day Forecast               | Show a 5-day daily forecast for the searched location with high/low temps and condition summaries          | M    | P2       | Backlog |
 | unit-toggle                  | Unit Toggle                  | Switch between Celsius and Fahrenheit display; persist preference in localStorage                          | S    | P2       | Backlog |

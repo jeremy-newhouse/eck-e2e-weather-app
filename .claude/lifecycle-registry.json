@@ -270,8 +270,8 @@
     },
     "WA-2": {
       "created_at": "2026-05-14T18:23:44.935Z",
-      "updated_at": "2026-05-14T19:14:05.631Z",
-      "branch": "feat/WA-2-weather-lookup",
+      "updated_at": "2026-05-14T19:30:35.734Z",
+      "branch": "dev",
       "issue_number": 8,
       "first_started_at": "2026-05-14T18:26:50.999Z",
       "archived_at": null,
@@ -320,6 +320,74 @@
           "forced_at": null,
           "forced_reason": null,
           "started_by_session": "44ee6a9f"
+        },
+        "deploy": {
+          "status": "done",
+          "started_at": "2026-05-14T19:24:58.328Z",
+          "completed_at": "2026-05-14T19:29:21.303Z",
+          "gate_verdict": "PASS",
+          "gate_verdict_at": "2026-05-14T19:29:21.302Z",
+          "gate_artifact": "docs/WA-2-weather-lookup/DEPLOY-REVIEW.md",
+          "forced_at": null,
+          "forced_reason": null,
+          "started_by_session": "ea9d7b31"
+        }
+      },
+      "plan_mode_at": null,
+      "completed_at": "2026-05-14T19:30:35.734Z"
+    },
+    "WA-3": {
+      "created_at": "2026-05-14T21:16:51.361Z",
+      "updated_at": "2026-05-14T21:50:45.935Z",
+      "branch": "feat/WA-3-weather-lookup",
+      "issue_number": 10,
+      "first_started_at": "2026-05-14T21:18:42.949Z",
+      "archived_at": null,
+      "priority": null,
+      "steps": {
+        "spec": {
+          "status": "active",
+          "started_at": "2026-05-14T21:18:42.949Z",
+          "completed_at": null,
+          "gate_verdict": null,
+          "gate_verdict_at": null,
+          "gate_artifact": null,
+          "forced_at": null,
+          "forced_reason": null,
+          "started_by_session": "a93ff435"
+        },
+        "design": {
+          "status": "done",
+          "started_at": "2026-05-14T21:30:57.074Z",
+          "completed_at": "2026-05-14T21:49:30.360Z",
+          "gate_verdict": "PASS",
+          "gate_verdict_at": "2026-05-14T21:49:30.360Z",
+          "gate_artifact": "docs/WA-3-weather-lookup/DESIGN-REVIEW.md",
+          "forced_at": "2026-05-14T21:49:35.904Z",
+          "forced_reason": "All design artifacts complete and validated; spec step completed as part of design phase for WA-3",
+          "started_by_session": "f9e8095b"
+        },
+        "develop": {
+          "status": "active",
+          "started_at": "2026-05-14T21:50:45.935Z",
+          "completed_at": null,
+          "gate_verdict": null,
+          "gate_verdict_at": null,
+          "gate_artifact": null,
+          "forced_at": null,
+          "forced_reason": null,
+          "started_by_session": "15c2a8d0"
+        },
+        "validate": {
+          "status": "pending",
+          "started_at": null,
+          "completed_at": null,
+          "gate_verdict": null,
+          "gate_verdict_at": null,
+          "gate_artifact": null,
+          "forced_at": null,
+          "forced_reason": null,
+          "started_by_session": null
         },
         "deploy": {
           "status": "pending",
