@@ -58,10 +58,13 @@ Pre-computed task tracker and project values. Referenced by skills and agents.
 
 ## Application Paths
 
-| Constant      | Value   | Description                          |
-| ------------- | ------- | ------------------------------------ |
-| FRONTEND_PATH | public/ | Frontend source root (if applicable) |
-| BACKEND_PATH  |         | Backend source root (if applicable)  |
+| Constant        | Value          | Description                             |
+| --------------- | -------------- | --------------------------------------- |
+| FRONTEND_PATH   | public/        | Frontend source root (if applicable)    |
+| BACKEND_PATH    | .              | Backend source root (if applicable)     |
+| BACKEND_RUN_CMD | node server.js | Command to start the backend server     |
+| BACKEND_PORT    | 3000           | Backend server port                     |
+| FRONTEND_PORT   | 3000           | Frontend served on same port (monolith) |
 
 ---
 
@@ -112,11 +115,13 @@ Pre-computed task tracker and project values. Referenced by skills and agents.
 
 ## Project Configuration
 
-| Constant             | Value    | Description                                              |
-| -------------------- | -------- | -------------------------------------------------------- |
-| PROJECT_TYPE         | 3        | Project type level (1-5) — source of truth               |
-| DEV_RIGOR            | standard | Auto-derived from project type (do not set directly)     |
-| CONFLUENCE_SPACE_KEY |          | Confluence space key (n/a when CONFLUENCE_ENABLED=false) |
+| Constant             | Value                 | Description                                              |
+| -------------------- | --------------------- | -------------------------------------------------------- |
+| PROJECT_TYPE         | 3                     | Project type level (1-5) — source of truth               |
+| DEV_RIGOR            | standard              | Auto-derived from project type (do not set directly)     |
+| CONFLUENCE_SPACE_KEY |                       | Confluence space key (n/a when CONFLUENCE_ENABLED=false) |
+| AUTH_MODEL           | none                  | Authentication model (none/api-key/jwt/oauth2)           |
+| SECRET_MANAGEMENT    | environment-variables | Secret storage approach                                  |
 
 Type mapping: 1-2=lite, 3=standard, 4-5=strict
 Override per-session with: --rigor lite|standard|strict

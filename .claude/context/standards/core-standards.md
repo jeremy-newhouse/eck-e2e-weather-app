@@ -1,1463 +1,498 @@
-# Core Standards
+# Core / Architecture Standards
+<!-- Compiled: 2026-05-14T21:13:13Z from evolv-coder-standards -->
 
-> Core standards applied by all agents: architecture, security, data flow, API versioning, ADR format
-
-**Compiled**: 2026-03-25 13:07
-**Source**: evolv-coder-standards
-**Domain Version**: 2.0.0
 
 ---
+<!-- Source: /home/tester/.claude/evolv-coder-standards/standards/architecture/README.md -->
 
-## Contents
+# Architecture Standards
 
-- [Data Flow](#data-flow)
-- [Security](#security)
-- [Authentication](#authentication)
-- [Caching](#caching)
-- [Error Contract](#error-contract)
-- [Observability](#observability)
-- [Testing Strategy](#testing-strategy)
-- [Api Versioning](#api-versioning)
-- [Adr Template](#adr-template)
-- [Readme](#readme)
-
----
-
-<!-- Source: standards/architecture/data-flow.md (v1.0.0) -->
-
-# Data Flow Architecture
-
-**Version**: 1.0.0
-**Last Updated**: 2026-01-04
+**Version**: 1.1.0
+**Last Updated**: 2026-01-03
 **Status**: Active
 
 ## Overview
 
-This document defines the complete data flow from user interaction through frontend, server actions, backend API, to database operations and back.
+This directory contains system architecture patterns, cross-cutting concerns, and Architecture Decision Records (ADRs) that span multiple layers of the application stack.
 
-**Error handling**: All layers must follow the [Error Response Contract](./error-contract.md).
+## Architecture Decision Records (ADRs)
 
-## Core Principle: SSR with Server Actions
+The `adr/` subdirectory contains Architecture Decision Records - documents that capture important architectural decisions made during the project.
 
-**CRITICAL**: All data operations MUST go through server actions. No direct database access from client components.
+### 📁 [adr/](./adr/)
+
+Architecture Decision Records:
+
+- [README.md](./adr/README.md) - ADR framework overview and index
+- [adr-template.md](./adr/adr-template.md) - Template for new ADRs
+- [ADR-000-template-example.md](./adr/ADR-000-template-example.md) - Example ADR
+
+**When to Create an ADR**:
+
+- Choosing between frameworks, libraries, or tools
+- Making significant architectural changes
+- Decisions that are hard to reverse
+- Trade-offs that need documentation for future reference
+
+**ADR Lifecycle**: Proposed → Accepted → Deprecated → Superseded
+
+See [ADR Framework](./adr/README.md) for detailed guidance.
+
+---
+
+## Standards in This Section
+
+### 📄 [data-flow.md](./data-flow.md)
+
+Frontend → Backend → Database flow:
+
+- SSR with Server Actions pattern (critical architecture)
+- Request lifecycle and data flow
+- Server actions implementation
+- API communication and caching
+- Authentication flow with Clerk
+
+### 📄 [security.md](./security.md)
+
+Security architecture and implementation:
+
+- Authentication patterns (Clerk, JWT)
+- Authorization (RBAC implementation)
+- Input validation (Zod, Pydantic)
+- XSS prevention, CSRF protection
+- Secrets management, encryption
+- OWASP Top 10 compliance
+
+### 📄 [authentication.md](./authentication.md)
+
+Clerk integration and auth patterns:
+
+- Frontend middleware configuration
+- Server action authentication
+- Backend JWT validation
+- User synchronization via webhooks
+- API key authentication
+- Multi-tenant patterns
+
+### 📄 [caching.md](./caching.md)
+
+Caching strategies and implementation:
+
+- Next.js caching (Router Cache, Data Cache)
+- Redis caching patterns
+- Cache invalidation strategies
+- Rate limiting with Redis
+- Distributed locking
+
+### 📄 [observability.md](./observability.md)
+
+Observability (logs and traces):
+
+- Structured logging patterns
+- Log levels and correlation IDs
+- Health check endpoints
+- OpenTelemetry integration
+
+### 📄 [error-contract.md](./error-contract.md)
+
+RFC 9457 Problem Details error response contract (v2):
+
+- RFC 9457 canonical shape and required fields
+- Problem type URIs and mapping table
+- Validation error details
+- Migration from v1.0.0 custom envelope
+
+### 📄 [api-versioning.md](./api-versioning.md)
+
+API versioning standard:
+
+- URL path versioning pattern
+- Breaking vs. non-breaking change classification
+- Deprecation policy (6-month minimum)
+- Schema-first workflow with OpenAPI
+
+### 📄 [testing-strategy.md](./testing-strategy.md)
+
+Cross-layer testing strategy:
+
+- Test pyramid (unit, integration, E2E)
+- Coverage requirements
+- Contract testing patterns
+- Test data management
+- CI/CD integration
+- Performance testing
+
+## System Architecture
 
 ```
-User → Client Component → Server Action → FastAPI → Database
-     ←                  ←                ←          ←
+┌─────────────────────────────────────────────────────────┐
+│                     User Browser                        │
+└─────────────────────────────────────────────────────────┘
+                            │
+                            ▼
+┌─────────────────────────────────────────────────────────┐
+│                   Next.js Frontend                      │
+│  ┌─────────────────────────────────────────────────┐   │
+│  │            Server Components (SSR)              │   │
+│  └─────────────────────────────────────────────────┘   │
+│  ┌─────────────────────────────────────────────────┐   │
+│  │              Server Actions                     │   │
+│  └─────────────────────────────────────────────────┘   │
+│  ┌─────────────────────────────────────────────────┐   │
+│  │            Client Components                    │   │
+│  └─────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────┘
+                            │
+                    Server Actions
+                            │
+                            ▼
+┌─────────────────────────────────────────────────────────┐
+│                   FastAPI Backend                       │
+│  ┌─────────────────────────────────────────────────┐   │
+│  │              API Endpoints                      │   │
+│  └─────────────────────────────────────────────────┘   │
+│  ┌─────────────────────────────────────────────────┐   │
+│  │            Business Logic                       │   │
+│  └─────────────────────────────────────────────────┘   │
+│  ┌─────────────────────────────────────────────────┐   │
+│  │              Data Access                        │   │
+│  └─────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────┘
+                            │
+                            ▼
+┌─────────────────────────────────────────────────────────┐
+│                    PostgreSQL                           │
+└─────────────────────────────────────────────────────────┘
 ```
 
-## Complete Request Lifecycle
+## Data Flow Pattern
 
-### 1. User Interaction Layer
+### 1. User Interaction
 
 ```typescript
-// components/UserForm.tsx (Client Component)
-'use client';
+// User clicks button in Client Component
+<button onClick={() => handleSubmit(data)}>Submit</button>
+```
 
-import { createUser } from '@/app/actions/users';
-import { useState } from 'react';
+### 2. Server Action Called
 
-export function UserForm() {
-  const [loading, setLoading] = useState(false);
+```typescript
+// Server action handles the request
+async function handleSubmit(data: FormData) {
+  "use server";
 
-  async function handleSubmit(formData: FormData) {
-    setLoading(true);
-
-    // Call server action (not API directly!)
-    const result = await createUser(formData);
-
-    if (result.success) {
-      // Handle success
-    } else {
-      // Handle error
-    }
-
-    setLoading(false);
-  }
-
-  return (
-    <form action={handleSubmit}>
-      {/* Form fields */}
-    </form>
-  );
+  const result = await createUser(data);
+  revalidatePath("/users");
+  return result;
 }
 ```
 
-### 2. Server Action Layer
+### 3. Backend API Called
 
 ```typescript
-// app/actions/users.ts
-'use server';
-
-import { auth } from '@clerk/nextjs';
-import { revalidatePath } from 'next/cache';
-import { z } from 'zod';
-
-const userSchema = z.object({
-  name: z.string().min(2),
-  email: z.string().email(),
+// Server action calls FastAPI
+const response = await fetch(`${API_URL}/users`, {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${token}`,
+  },
+  body: JSON.stringify(data),
 });
-
-export async function createUser(formData: FormData) {
-  // 1. Authentication
-  const { userId } = auth();
-  if (!userId) {
-    return { success: false, error: 'Unauthorized' };
-  }
-
-  // 2. Validation
-  const validation = userSchema.safeParse({
-    name: formData.get('name'),
-    email: formData.get('email'),
-  });
-
-  if (!validation.success) {
-    return {
-      success: false,
-      errors: validation.error.errors
-    };
-  }
-
-  // 3. Call Backend API
-  try {
-    const response = await fetch(`${process.env.API_URL}/users`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${await getToken()}`,
-      },
-      body: JSON.stringify(validation.data),
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      return { success: false, error: error.detail };
-    }
-
-    const user = await response.json();
-
-    // 4. Revalidate Cache
-    revalidatePath('/users');
-    revalidatePath(`/users/${user.id}`);
-
-    return { success: true, data: user };
-  } catch (error) {
-    console.error('Create user error:', error);
-    return { success: false, error: 'Network error' };
-  }
-}
 ```
 
-### 3. Backend API Layer
+### 4. Database Operation
 
 ```python
-# app/api/routers/users.py
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.ext.asyncio import AsyncSession
-from app.api.deps import get_db, get_current_user
-from app.schemas.user import UserCreate, UserResponse
-from app.crud.user import user_crud
+# FastAPI handles database operation
+async def create_user(user: UserCreate, db: AsyncSession):
+    db_user = User(**user.dict())
+    db.add(db_user)
+    await db.commit()
+    await db.refresh(db_user)
+    return db_user
+```
 
-router = APIRouter(prefix="/users", tags=["users"])
+### 5. Response Flow
 
-@router.post("/", response_model=UserResponse, status_code=201)
-async def create_user(
-    user_in: UserCreate,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    # 1. Check permissions
-    if not current_user.can_create_users:
-        raise HTTPException(status_code=403, detail="Insufficient permissions")
+```
+Database → FastAPI → Server Action → Client Component → UI Update
+```
 
-    # 2. Check if email exists
-    existing = await user_crud.get_by_email(db, email=user_in.email)
-    if existing:
-        raise HTTPException(status_code=400, detail="Email already registered")
+## Authentication Flow
 
-    # 3. Create user
-    user = await user_crud.create(db, obj_in=user_in)
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant C as Client
+    participant CL as Clerk
+    participant SA as Server Action
+    participant API as FastAPI
+    participant DB as Database
 
-    # 4. Send welcome email (background task)
-    background_tasks.add_task(send_welcome_email, user.email)
+    U->>C: Login Request
+    C->>CL: Authenticate
+    CL-->>C: JWT Token
+    C->>SA: Request with Token
+    SA->>SA: Validate Token
+    SA->>API: API Request + Token
+    API->>API: Verify Token
+    API->>DB: Query Data
+    DB-->>API: Return Data
+    API-->>SA: Response
+    SA-->>C: Update UI
+```
+
+## Caching Strategy
+
+### Frontend Caching
+
+```typescript
+// Next.js caching
+fetch(url, {
+  next: {
+    revalidate: 3600, // Revalidate every hour
+    tags: ["users"], // Cache tags for invalidation
+  },
+});
+
+// Revalidate on mutation
+revalidatePath("/users");
+revalidateTag("users");
+```
+
+### Backend Caching
+
+```python
+from functools import lru_cache
+import redis
+
+redis_client = redis.Redis()
+
+@lru_cache(maxsize=128)
+async def get_user(user_id: int):
+    # Check Redis first
+    cached = await redis_client.get(f"user:{user_id}")
+    if cached:
+        return json.loads(cached)
+
+    # Fetch from database
+    user = await db.get_user(user_id)
+
+    # Cache result
+    await redis_client.setex(
+        f"user:{user_id}",
+        3600,
+        json.dumps(user)
+    )
 
     return user
 ```
 
-### 4. Database Layer
+## Error Handling Flow
+
+### Frontend Error Boundary
+
+```typescript
+// app/error.tsx
+'use client';
+
+export default function Error({
+  error,
+  reset,
+}: {
+  error: Error;
+  reset: () => void;
+}) {
+  return (
+    <div>
+      <h2>Something went wrong!</h2>
+      <button onClick={() => reset()}>Try again</button>
+    </div>
+  );
+}
+```
+
+### Backend Error Handler
 
 ```python
-# app/crud/user.py
-from typing import Optional
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-from app.models.user import User
-from app.schemas.user import UserCreate, UserUpdate
+from fastapi import HTTPException
+from fastapi.responses import JSONResponse
 
-class CRUDUser:
-    async def create(
-        self,
-        db: AsyncSession,
-        *,
-        obj_in: UserCreate
-    ) -> User:
-        # 1. Create model instance
-        db_obj = User(
-            email=obj_in.email,
-            name=obj_in.name,
-            hashed_password=get_password_hash(obj_in.password)
-        )
-
-        # 2. Add to session
-        db.add(db_obj)
-
-        # 3. Commit transaction
-        await db.commit()
-
-        # 4. Refresh to get generated fields
-        await db.refresh(db_obj)
-
-        return db_obj
-
-    async def get_by_email(
-        self,
-        db: AsyncSession,
-        *,
-        email: str
-    ) -> Optional[User]:
-        result = await db.execute(
-            select(User).where(User.email == email)
-        )
-        return result.scalar_one_or_none()
-
-user_crud = CRUDUser()
-```
-
-## State Management Flow
-
-### Frontend State (Zustand)
-
-```typescript
-// stores/userStore.ts
-import { create } from 'zustand';
-import { getUsers } from '@/app/actions/users';
-
-interface UserStore {
-  users: User[];
-  loading: boolean;
-  error: string | null;
-  fetchUsers: () => Promise<void>;
-  addUser: (user: User) => void;
-}
-
-export const useUserStore = create<UserStore>((set) => ({
-  users: [],
-  loading: false,
-  error: null,
-
-  fetchUsers: async () => {
-    set({ loading: true, error: null });
-
-    // Call server action
-    const result = await getUsers();
-
-    if (result.success) {
-      set({ users: result.data, loading: false });
-    } else {
-      set({ error: result.error, loading: false });
-    }
-  },
-
-  addUser: (user) => set((state) => ({
-    users: [...state.users, user]
-  })),
-}));
-```
-
-### Server State (TanStack Query)
-
-```typescript
-// hooks/useUsers.ts
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getUsers, createUser } from '@/app/actions/users';
-
-export function useUsers() {
-  return useQuery({
-    queryKey: ['users'],
-    queryFn: async () => {
-      const result = await getUsers();
-      if (!result.success) throw new Error(result.error);
-      return result.data;
-    },
-  });
-}
-
-export function useCreateUser() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: createUser,
-    onSuccess: () => {
-      // Invalidate and refetch
-      queryClient.invalidateQueries({ queryKey: ['users'] });
-    },
-  });
-}
-```
-
-## Real-time Updates (Optional)
-
-### WebSocket Connection
-
-```typescript
-// lib/websocket.ts
-import { useEffect } from 'react';
-
-export function useWebSocket(url: string, onMessage: (data: any) => void) {
-  useEffect(() => {
-    const ws = new WebSocket(url);
-
-    ws.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      onMessage(data);
-    };
-
-    return () => ws.close();
-  }, [url, onMessage]);
-}
-
-// Usage in component
-function UserList() {
-  const queryClient = useQueryClient();
-
-  useWebSocket('/ws/users', (data) => {
-    if (data.type === 'user_created') {
-      queryClient.invalidateQueries({ queryKey: ['users'] });
-    }
-  });
-
-  // Rest of component
-}
-```
-
-### Backend WebSocket
-
-```python
-# app/api/websocket.py
-from fastapi import WebSocket
-from typing import List
-
-class ConnectionManager:
-    def __init__(self):
-        self.active_connections: List[WebSocket] = []
-
-    async def connect(self, websocket: WebSocket):
-        await websocket.accept()
-        self.active_connections.append(websocket)
-
-    async def broadcast(self, message: dict):
-        for connection in self.active_connections:
-            await connection.send_json(message)
-
-manager = ConnectionManager()
-
-@app.websocket("/ws/users")
-async def websocket_endpoint(websocket: WebSocket):
-    await manager.connect(websocket)
-    try:
-        while True:
-            await websocket.receive_text()
-    except WebSocketDisconnect:
-        manager.disconnect(websocket)
-```
-
-## File Upload Flow
-
-### Frontend
-
-```typescript
-// Server action for file upload
-export async function uploadFile(formData: FormData) {
-  'use server';
-
-  const file = formData.get('file') as File;
-
-  // Convert to base64 or use FormData
-  const backendFormData = new FormData();
-  backendFormData.append('file', file);
-
-  const response = await fetch(`${API_URL}/upload`, {
-    method: 'POST',
-    body: backendFormData,
-    headers: {
-      'Authorization': `Bearer ${await getToken()}`,
-    },
-  });
-
-  if (!response.ok) {
-    return { success: false, error: 'Upload failed' };
-  }
-
-  const { url } = await response.json();
-  return { success: true, data: { url } };
-}
-```
-
-### Backend
-
-```python
-from fastapi import UploadFile, File
-import aiofiles
-
-@router.post("/upload")
-async def upload_file(
-    file: UploadFile = File(...),
-    current_user: User = Depends(get_current_user)
-):
-    # Save to disk or S3
-    file_path = f"uploads/{current_user.id}/{file.filename}"
-
-    async with aiofiles.open(file_path, 'wb') as f:
-        content = await file.read()
-        await f.write(content)
-
-    return {"url": f"/static/{file_path}"}
-```
-
-## Batch Operations Flow
-
-### Frontend
-
-```typescript
-export async function deleteUsers(userIds: number[]) {
-  'use server';
-
-  const response = await fetch(`${API_URL}/users/batch-delete`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${await getToken()}`,
-    },
-    body: JSON.stringify({ ids: userIds }),
-  });
-
-  if (response.ok) {
-    revalidatePath('/users');
-    return { success: true };
-  }
-
-  return { success: false, error: 'Batch delete failed' };
-}
-```
-
-### Backend
-
-```python
-@router.post("/batch-delete")
-async def batch_delete_users(
-    user_ids: List[int],
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    # Use bulk delete
-    await db.execute(
-        delete(User).where(User.id.in_(user_ids))
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request, exc):
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"error": exc.detail}
     )
-    await db.commit()
 
-    return {"deleted": len(user_ids)}
+@app.exception_handler(Exception)
+async def general_exception_handler(request, exc):
+    logger.error(f"Unhandled exception: {exc}")
+    return JSONResponse(
+        status_code=500,
+        content={"error": "Internal server error"}
+    )
 ```
 
-## Error Recovery Flow
+## Performance Considerations
 
-### Retry Logic
+### Frontend Optimization
 
-```typescript
-async function retryServerAction<T>(
-  action: () => Promise<T>,
-  maxRetries: number = 3
-): Promise<T> {
-  let lastError;
-
-  for (let i = 0; i < maxRetries; i++) {
-    try {
-      return await action();
-    } catch (error) {
-      lastError = error;
-
-      // Exponential backoff
-      await new Promise(resolve =>
-        setTimeout(resolve, Math.pow(2, i) * 1000)
-      );
-    }
-  }
-
-  throw lastError;
-}
-
-// Usage
-const result = await retryServerAction(() => createUser(data));
-```
-
-### Optimistic Updates with Rollback
-
-```typescript
-const mutation = useMutation({
-  mutationFn: updateUser,
-  onMutate: async (newUser) => {
-    // Cancel outgoing refetches
-    await queryClient.cancelQueries({ queryKey: ['users'] });
-
-    // Snapshot previous value
-    const previousUsers = queryClient.getQueryData(['users']);
-
-    // Optimistically update
-    queryClient.setQueryData(['users'], (old) => {
-      return old.map(u => u.id === newUser.id ? newUser : u);
-    });
-
-    // Return context with snapshot
-    return { previousUsers };
-  },
-  onError: (err, newUser, context) => {
-    // Rollback on error
-    queryClient.setQueryData(['users'], context.previousUsers);
-  },
-  onSettled: () => {
-    // Always refetch after error or success
-    queryClient.invalidateQueries({ queryKey: ['users'] });
-  },
-});
-```
-
-## Performance Optimization
-
-### Parallel Data Fetching
-
-```typescript
-// app/users/page.tsx
-export default async function UsersPage() {
-  // Parallel fetch
-  const [users, roles, permissions] = await Promise.all([
-    fetchUsers(),
-    fetchRoles(),
-    fetchPermissions(),
-  ]);
-
-  return (
-    <div>
-      <UserList users={users} roles={roles} permissions={permissions} />
-    </div>
-  );
-}
-```
-
-### Streaming with Suspense
-
-```typescript
-// app/dashboard/page.tsx
-export default function DashboardPage() {
-  return (
-    <div>
-      <Suspense fallback={<StatsSkeleton />}>
-        <StatsCards />
-      </Suspense>
-
-      <Suspense fallback={<ChartSkeleton />}>
-        <RevenueChart />
-      </Suspense>
-
-      <Suspense fallback={<TableSkeleton />}>
-        <RecentOrders />
-      </Suspense>
-    </div>
-  );
-}
-```
-
-## Best Practices Summary
-
-### ✅ DO
-- Always use server actions for data mutations
-- Implement proper error handling at every layer
-- Use TypeScript for type safety
-- Revalidate cache after mutations
-- Implement optimistic updates for better UX
+- Use Server Components by default
+- Implement code splitting
+- Optimize images with next/image
 - Use Suspense for loading states
-- Batch operations when possible
+- Implement proper caching
 
-### ❌ DON'T
-- Call backend API directly from client components
-- Access database from frontend
-- Skip validation at any layer
-- Ignore error cases
-- Use synchronous operations for I/O
-- Forget to invalidate cache
-- Mix concerns between layers
+### Backend Optimization
 
-## Related Patterns
+- Use async/await throughout
+- Implement connection pooling
+- Add database indexes
+- Use pagination for lists
+- Cache frequent queries
 
-For implementation approaches and code examples:
+### Database Optimization
 
-- [Data Flow Patterns](../../patterns/architecture/data-flow-patterns.md) - Request lifecycle, state management, real-time, batch operations
-- [Architecture Examples](../../examples/architecture/) - Filled implementations
+- Proper indexing strategy
+- Query optimization
+- Connection pooling
+- Partitioning for large tables
+- Regular maintenance
+
+## Security Layers
+
+### Frontend Security
+
+- Content Security Policy
+- XSS prevention
+- CSRF protection
+- Input sanitization
+
+### Backend Security
+
+- JWT validation
+- Rate limiting
+- Input validation
+- SQL injection prevention
+- API key management
+
+### Database Security
+
+- Connection encryption
+- Access control
+- Audit logging
+- Backup encryption
 
 ---
 
-*This data flow architecture ensures security, performance, and maintainability across the entire application stack.*
+_This architecture ensures scalability, security, and maintainability across all layers of the application._
 
 ---
+<!-- Source: /home/tester/.claude/evolv-coder-standards/standards/architecture/api-versioning.md -->
 
-<!-- Source: standards/architecture/security.md (v1.0.0) -->
-
-# Security Architecture Standard
+# API Versioning Standard
 
 **Version**: 1.0.0
-**Last Updated**: 2025-12-30
+**Last Updated**: 2026-03-25
 **Status**: Active
 
-## Purpose
+## Overview
 
-This standard defines security architecture patterns and best practices for full-stack applications using Next.js, FastAPI, and PostgreSQL.
+The API uses URL path versioning. Breaking changes require a new version prefix. Non-breaking changes go into the current version. A schema-first workflow using OpenAPI snapshot testing enforces contract discipline.
 
-## Scope
+## URL Versioning Pattern
 
-- Authentication and authorization architecture
-- Input validation and sanitization
-- Data protection and encryption
-- API security
-- OWASP compliance
-- Secrets management
-- Audit logging
-
----
-
-## Security Architecture Overview
-
-```mermaid
-flowchart TB
-    subgraph Client["Client Layer"]
-        Browser[Browser]
-        CSP[Content Security Policy]
-        XSS[XSS Prevention]
-    end
-
-    subgraph Frontend["Frontend Layer - Next.js"]
-        Clerk[Clerk Auth]
-        ServerActions[Server Actions]
-        Validation[Zod Validation]
-    end
-
-    subgraph Backend["Backend Layer - FastAPI"]
-        JWT[JWT Validation]
-        RateLimit[Rate Limiting]
-        InputVal[Pydantic Validation]
-        RBAC[Role-Based Access]
-    end
-
-    subgraph Data["Data Layer"]
-        Encryption[Encryption at Rest]
-        TLS[TLS in Transit]
-        Audit[Audit Logs]
-        DB[(PostgreSQL)]
-    end
-
-    Browser --> CSP
-    CSP --> Clerk
-    Clerk --> ServerActions
-    ServerActions --> Validation
-    Validation --> JWT
-    JWT --> RateLimit
-    RateLimit --> InputVal
-    InputVal --> RBAC
-    RBAC --> Encryption
-    Encryption --> DB
-    DB --> Audit
+```
+/api/v1/companies
+/api/v1/deals
+/api/v2/companies     (future breaking change)
 ```
 
----
+- Version is in the URL path, not a header or query parameter
+- All routers mount under the versioned prefix
+- Multiple versions can coexist during deprecation periods
 
-## Authentication Architecture
+## Breaking vs. Non-Breaking Changes
 
-### Clerk Integration
+### Breaking (requires new version)
 
-```typescript
-// Frontend: middleware.ts
-import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
+- Removing an endpoint or response field
+- Changing a field's type
+- Renaming a path parameter
+- Adding a required field to a request body
+- Changing an HTTP status code for an existing outcome
+- Changing a problem `type` URI
 
-const isPublicRoute = createRouteMatcher([
-  '/',
-  '/sign-in(.*)',
-  '/sign-up(.*)',
-  '/api/webhooks(.*)',
-]);
+### Non-breaking (current version)
 
-export default clerkMiddleware((auth, req) => {
-  if (!isPublicRoute(req)) {
-    auth().protect();
-  }
-});
+- New endpoints
+- New optional fields in request/response bodies
+- New optional query parameters
+- New problem types that didn't previously exist
 
-export const config = {
-  matcher: ['/((?!.*\\..*|_next).*)', '/', '/(api|trpc)(.*)'],
-};
-```
+**When in doubt, treat it as breaking.**
 
-### Server Action Authentication
+## Deprecation Policy
 
-```typescript
-// app/actions/protected.ts
-'use server';
+**Minimum period**: 6 months from new version release.
 
-import { auth, currentUser } from '@clerk/nextjs/server';
+During deprecation:
 
-export async function protectedAction(data: FormData): Promise<ActionResult> {
-  // Get and verify authentication
-  const { userId } = auth();
+1. Old version continues functioning unchanged
+2. Deprecated endpoints return headers:
+   ```
+   Deprecation: true
+   Sunset: 2027-09-22
+   ```
+3. Deprecation announced in release notes
+4. After sunset date: `410 Gone`
 
-  if (!userId) {
-    return { success: false, error: 'Unauthorized' };
-  }
+## Schema-First Workflow
 
-  // Get full user object if needed
-  const user = await currentUser();
+1. Modify the API contract (endpoint, schema, response model)
+2. Implement the change in code
+3. Run `make openapi-export` to regenerate `openapi.json`
+4. Commit both implementation and updated spec together
+5. CI validates spec matches runtime — build fails on drift
 
-  // Proceed with authenticated action
-  const response = await fetch(`${API_URL}/resource`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${await auth().getToken()}`,
-    },
-    body: JSON.stringify(data),
-  });
+See [OpenAPI Contract Enforcement](../backend/openapi-contract.md) for implementation details.
 
-  return response.json();
-}
-```
+## Migration Guidance
 
-### Backend JWT Validation
+For each version bump:
 
-```python
-# app/core/security.py
-from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from jose import jwt, JWTError
-from pydantic import BaseModel
+1. Create a migration guide documenting every breaking change
+2. Update `openapi.json`
+3. Update FE API client base paths
+4. Remove old version mounts only after sunset date
 
-from app.core.config import settings
+## Route Deduplication Rules
 
-security = HTTPBearer()
+- **One canonical URL per resource**: No duplicate route hierarchies
+- **Sub-resources use scoped auth**: Use dependency-based access checks instead of manual assertions
+- **Verify FE uses canonical paths** before removing duplicates
 
+## Quick Reference
 
-class TokenPayload(BaseModel):
-    """JWT token payload."""
-    sub: str
-    exp: int
-    iat: int
-    azp: str | None = None
-
-
-async def verify_token(
-    credentials: HTTPAuthorizationCredentials = Depends(security)
-) -> TokenPayload:
-    """Verify and decode JWT token from Clerk."""
-    token = credentials.credentials
-
-    try:
-        # Verify token with Clerk's public key
-        payload = jwt.decode(
-            token,
-            settings.CLERK_PEM_PUBLIC_KEY,
-            algorithms=["RS256"],
-            audience=settings.CLERK_FRONTEND_API,
-        )
-        return TokenPayload(**payload)
-    except JWTError as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid authentication token",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-
-async def get_current_user(
-    token: TokenPayload = Depends(verify_token)
-) -> str:
-    """Get current user ID from token."""
-    return token.sub
-```
-
----
-
-## Authorization Patterns
-
-### Role-Based Access Control (RBAC)
-
-```python
-# app/core/permissions.py
-from enum import Enum
-from functools import wraps
-from typing import Callable
-
-from fastapi import HTTPException, status
-
-
-class Permission(str, Enum):
-    """Application permissions."""
-    READ_USERS = "read:users"
-    WRITE_USERS = "write:users"
-    DELETE_USERS = "delete:users"
-    ADMIN = "admin"
-
-
-class Role(str, Enum):
-    """Application roles with permissions."""
-    USER = "user"
-    MODERATOR = "moderator"
-    ADMIN = "admin"
-
-
-ROLE_PERMISSIONS: dict[Role, set[Permission]] = {
-    Role.USER: {Permission.READ_USERS},
-    Role.MODERATOR: {Permission.READ_USERS, Permission.WRITE_USERS},
-    Role.ADMIN: {Permission.READ_USERS, Permission.WRITE_USERS, Permission.DELETE_USERS, Permission.ADMIN},
-}
-
-
-def require_permission(permission: Permission):
-    """Decorator to require specific permission."""
-    def decorator(func: Callable):
-        @wraps(func)
-        async def wrapper(*args, current_user_role: Role, **kwargs):
-            user_permissions = ROLE_PERMISSIONS.get(current_user_role, set())
-
-            if permission not in user_permissions:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail=f"Permission denied: {permission.value} required"
-                )
-
-            return await func(*args, **kwargs)
-        return wrapper
-    return decorator
-```
-
-### Resource-Level Authorization
-
-```python
-# app/api/routers/documents.py
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.api.deps import get_db, get_current_user
-from app.crud import document_crud
-from app.schemas.document import DocumentResponse
-
-router = APIRouter()
-
-
-@router.get("/{document_id}", response_model=DocumentResponse)
-async def get_document(
-    document_id: int,
-    db: AsyncSession = Depends(get_db),
-    current_user_id: str = Depends(get_current_user),
-):
-    """Get document with ownership check."""
-    document = await document_crud.get(db, id=document_id)
-
-    if not document:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Document not found"
-        )
-
-    # Resource-level authorization
-    if document.owner_id != current_user_id and not document.is_public:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not authorized to access this document"
-        )
-
-    return document
-```
-
----
-
-## Input Validation
-
-### Frontend Validation (Zod)
-
-```typescript
-// lib/validations/user.ts
-import { z } from 'zod';
-
-export const createUserSchema = z.object({
-  email: z
-    .string()
-    .email('Invalid email address')
-    .max(255, 'Email too long'),
-  password: z
-    .string()
-    .min(8, 'Password must be at least 8 characters')
-    .regex(
-      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])/,
-      'Password must include uppercase, lowercase, number, and special character'
-    ),
-  fullName: z
-    .string()
-    .min(1, 'Name is required')
-    .max(255, 'Name too long')
-    .regex(/^[a-zA-Z\s'-]+$/, 'Name contains invalid characters'),
-});
-
-export type CreateUserInput = z.infer<typeof createUserSchema>;
-```
-
-### Backend Validation (Pydantic)
-
-```python
-# app/schemas/user.py
-from pydantic import BaseModel, EmailStr, Field, field_validator
-import re
-
-
-class UserCreate(BaseModel):
-    """User creation schema with validation."""
-
-    email: EmailStr = Field(..., max_length=255)
-    password: str = Field(..., min_length=8, max_length=128)
-    full_name: str = Field(..., min_length=1, max_length=255)
-
-    @field_validator("password")
-    @classmethod
-    def validate_password_strength(cls, v: str) -> str:
-        """Validate password meets security requirements."""
-        if not re.search(r"[a-z]", v):
-            raise ValueError("Password must contain lowercase letter")
-        if not re.search(r"[A-Z]", v):
-            raise ValueError("Password must contain uppercase letter")
-        if not re.search(r"\d", v):
-            raise ValueError("Password must contain digit")
-        if not re.search(r"[@$!%*?&]", v):
-            raise ValueError("Password must contain special character")
-        return v
-
-    @field_validator("full_name")
-    @classmethod
-    def validate_name(cls, v: str) -> str:
-        """Validate name contains only allowed characters."""
-        if not re.match(r"^[a-zA-Z\s'-]+$", v):
-            raise ValueError("Name contains invalid characters")
-        return v.strip()
-```
-
-### SQL Injection Prevention
-
-```python
-# ALWAYS use parameterized queries - SQLAlchemy handles this
-
-# ✅ Safe - SQLAlchemy ORM
-user = await db.execute(
-    select(User).where(User.email == email)
-)
-
-# ✅ Safe - Parameterized raw SQL
-result = await db.execute(
-    text("SELECT * FROM users WHERE email = :email"),
-    {"email": email}
-)
-
-# ❌ NEVER do this - SQL injection vulnerability
-# result = await db.execute(f"SELECT * FROM users WHERE email = '{email}'")
-```
-
----
-
-## XSS Prevention
-
-### Content Security Policy
-
-```typescript
-// next.config.ts
-const securityHeaders = [
-  {
-    key: 'Content-Security-Policy',
-    value: [
-      "default-src 'self'",
-      "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://clerk.com",
-      "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data: https:",
-      "font-src 'self'",
-      "connect-src 'self' https://api.clerk.com wss:",
-      "frame-ancestors 'none'",
-      "form-action 'self'",
-    ].join('; '),
-  },
-  {
-    key: 'X-Content-Type-Options',
-    value: 'nosniff',
-  },
-  {
-    key: 'X-Frame-Options',
-    value: 'DENY',
-  },
-  {
-    key: 'X-XSS-Protection',
-    value: '1; mode=block',
-  },
-  {
-    key: 'Referrer-Policy',
-    value: 'strict-origin-when-cross-origin',
-  },
-];
-
-export default {
-  async headers() {
-    return [
-      {
-        source: '/(.*)',
-        headers: securityHeaders,
-      },
-    ];
-  },
-};
-```
-
-### Output Encoding
-
-```typescript
-// React automatically escapes content, but be careful with:
-
-// ❌ Dangerous - renders raw HTML
-<div dangerouslySetInnerHTML={{ __html: userContent }} />
-
-// ✅ Safe - use a sanitizer if HTML is required
-import DOMPurify from 'dompurify';
-
-<div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(userContent) }} />
-
-// ✅ Best - avoid raw HTML entirely
-<div>{userContent}</div>
-```
-
----
-
-## CSRF Protection
-
-### Server Actions (Built-in Protection)
-
-Next.js server actions include built-in CSRF protection via origin checking.
-
-```typescript
-// Server actions are automatically protected
-'use server';
-
-export async function updateProfile(formData: FormData) {
-  // CSRF token validation is automatic
-  // Origin header is verified by Next.js
-}
-```
-
-### API Routes (Manual Protection)
-
-```typescript
-// app/api/webhook/route.ts
-import { headers } from 'next/headers';
-import crypto from 'crypto';
-
-export async function POST(request: Request) {
-  const headersList = headers();
-  const signature = headersList.get('x-webhook-signature');
-
-  if (!signature) {
-    return Response.json({ error: 'Missing signature' }, { status: 401 });
-  }
-
-  const body = await request.text();
-  const expectedSignature = crypto
-    .createHmac('sha256', process.env.WEBHOOK_SECRET!)
-    .update(body)
-    .digest('hex');
-
-  if (!crypto.timingSafeEqual(
-    Buffer.from(signature),
-    Buffer.from(expectedSignature)
-  )) {
-    return Response.json({ error: 'Invalid signature' }, { status: 401 });
-  }
-
-  // Process webhook
-}
-```
-
----
-
-## Rate Limiting
-
-### FastAPI Rate Limiting
-
-```python
-# app/core/rate_limit.py
-from fastapi import Request, HTTPException, status
-from slowapi import Limiter
-from slowapi.util import get_remote_address
-
-limiter = Limiter(key_func=get_remote_address)
-
-
-def get_rate_limit_key(request: Request) -> str:
-    """Get rate limit key from user or IP."""
-    # Use user ID if authenticated, otherwise IP
-    user_id = getattr(request.state, "user_id", None)
-    if user_id:
-        return f"user:{user_id}"
-    return get_remote_address(request)
-
-
-# Apply to routes
-@router.post("/login")
-@limiter.limit("5/minute")
-async def login(request: Request, credentials: LoginCredentials):
-    """Login with rate limiting."""
-    pass
-
-
-@router.get("/search")
-@limiter.limit("100/minute")
-async def search(request: Request, q: str):
-    """Search with rate limiting."""
-    pass
-```
-
-### Redis-Based Rate Limiting
-
-```python
-# app/core/rate_limit.py
-import redis.asyncio as redis
-from fastapi import HTTPException, status
-from datetime import timedelta
-
-
-class RateLimiter:
-    """Redis-based rate limiter."""
-
-    def __init__(self, redis_client: redis.Redis):
-        self.redis = redis_client
-
-    async def check_rate_limit(
-        self,
-        key: str,
-        limit: int,
-        window: timedelta
-    ) -> bool:
-        """Check if request is within rate limit."""
-        current = await self.redis.incr(key)
-
-        if current == 1:
-            await self.redis.expire(key, int(window.total_seconds()))
-
-        if current > limit:
-            raise HTTPException(
-                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail="Rate limit exceeded",
-                headers={"Retry-After": str(int(window.total_seconds()))}
-            )
-
-        return True
-```
-
----
-
-## Secrets Management
-
-### Environment Variables
-
-```bash
-# .env.local (never commit)
-DATABASE_URL=postgresql+asyncpg://user:pass@localhost/db
-CLERK_SECRET_KEY=sk_live_xxx
-REDIS_URL=redis://localhost:6379
-ENCRYPTION_KEY=base64-encoded-32-byte-key
-
-# .env.example (commit this)
-DATABASE_URL=postgresql+asyncpg://user:pass@localhost/db
-CLERK_SECRET_KEY=sk_test_xxx
-REDIS_URL=redis://localhost:6379
-ENCRYPTION_KEY=generate-with-openssl
-```
-
-### Settings Configuration
-
-```python
-# app/core/config.py
-from pydantic_settings import BaseSettings
-from pydantic import SecretStr, field_validator
-
-
-class Settings(BaseSettings):
-    """Application settings with secret handling."""
-
-    # Database
-    DATABASE_URL: SecretStr
-
-    # Authentication
-    CLERK_SECRET_KEY: SecretStr
-    CLERK_PEM_PUBLIC_KEY: str
-
-    # Encryption
-    ENCRYPTION_KEY: SecretStr
-
-    # Redis
-    REDIS_URL: SecretStr
-
-    @field_validator("ENCRYPTION_KEY")
-    @classmethod
-    def validate_encryption_key(cls, v: SecretStr) -> SecretStr:
-        """Validate encryption key length."""
-        key_bytes = v.get_secret_value()
-        if len(key_bytes) < 32:
-            raise ValueError("Encryption key must be at least 32 bytes")
-        return v
-
-    class Config:
-        env_file = ".env"
-        case_sensitive = True
-
-
-settings = Settings()
-```
-
-### Using Secrets
-
-```python
-# Always use .get_secret_value() to access secrets
-database_url = settings.DATABASE_URL.get_secret_value()
-
-# Secrets are not logged or exposed in errors
-print(settings.DATABASE_URL)  # Outputs: SecretStr('**********')
-```
-
----
-
-## Data Encryption
-
-### Encryption at Rest
-
-```python
-# app/core/encryption.py
-from cryptography.fernet import Fernet
-from base64 import b64encode, b64decode
-
-from app.core.config import settings
-
-
-class FieldEncryption:
-    """Encrypt/decrypt sensitive database fields."""
-
-    def __init__(self):
-        key = settings.ENCRYPTION_KEY.get_secret_value()
-        self.fernet = Fernet(key.encode() if isinstance(key, str) else key)
-
-    def encrypt(self, value: str) -> str:
-        """Encrypt a string value."""
-        encrypted = self.fernet.encrypt(value.encode())
-        return b64encode(encrypted).decode()
-
-    def decrypt(self, encrypted_value: str) -> str:
-        """Decrypt an encrypted value."""
-        decoded = b64decode(encrypted_value.encode())
-        return self.fernet.decrypt(decoded).decode()
-
-
-encryption = FieldEncryption()
-
-
-# Usage in model
-class User(BaseModel):
-    """User with encrypted SSN."""
-
-    _ssn_encrypted: str = Column("ssn", String(255))
-
-    @property
-    def ssn(self) -> str:
-        """Decrypt SSN on access."""
-        return encryption.decrypt(self._ssn_encrypted)
-
-    @ssn.setter
-    def ssn(self, value: str):
-        """Encrypt SSN on set."""
-        self._ssn_encrypted = encryption.encrypt(value)
-```
-
-### Password Hashing
-
-```python
-# app/core/security.py
-from passlib.context import CryptContext
-
-pwd_context = CryptContext(
-    schemes=["argon2"],  # Use Argon2 (winner of Password Hashing Competition)
-    deprecated="auto"
-)
-
-
-def hash_password(password: str) -> str:
-    """Hash a password."""
-    return pwd_context.hash(password)
-
-
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verify a password against hash."""
-    return pwd_context.verify(plain_password, hashed_password)
-```
-
----
-
-## Audit Logging
-
-### Audit Log Model
-
-```python
-# app/models/audit.py
-from sqlalchemy import Column, String, Integer, DateTime, Text, JSON
-from sqlalchemy.sql import func
-
-from app.db.base import Base
-
-
-class AuditLog(Base):
-    """Audit log for security events."""
-
-    __tablename__ = "audit_logs"
-
-    id = Column(Integer, primary_key=True)
-    timestamp = Column(DateTime(timezone=True), server_default=func.now(), index=True)
-
-    # Actor
-    user_id = Column(String(255), nullable=True, index=True)
-    ip_address = Column(String(45), nullable=True)
-    user_agent = Column(String(500), nullable=True)
-
-    # Action
-    action = Column(String(100), nullable=False, index=True)
-    resource_type = Column(String(100), nullable=True, index=True)
-    resource_id = Column(String(255), nullable=True)
-
-    # Details
-    details = Column(JSON, nullable=True)
-    status = Column(String(50), nullable=False)  # success, failure, error
-    error_message = Column(Text, nullable=True)
-```
-
-### Audit Logger
-
-```python
-# app/core/audit.py
-from fastapi import Request
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.models.audit import AuditLog
-
-
-class AuditLogger:
-    """Log security-relevant events."""
-
-    @staticmethod
-    async def log(
-        db: AsyncSession,
-        action: str,
-        status: str,
-        user_id: str | None = None,
-        request: Request | None = None,
-        resource_type: str | None = None,
-        resource_id: str | None = None,
-        details: dict | None = None,
-        error_message: str | None = None,
-    ):
-        """Create audit log entry."""
-        log_entry = AuditLog(
-            user_id=user_id,
-            ip_address=request.client.host if request else None,
-            user_agent=request.headers.get("user-agent") if request else None,
-            action=action,
-            resource_type=resource_type,
-            resource_id=resource_id,
-            details=details,
-            status=status,
-            error_message=error_message,
-        )
-        db.add(log_entry)
-        await db.commit()
-
-
-# Usage
-await AuditLogger.log(
-    db=db,
-    action="user.login",
-    status="success",
-    user_id=user.id,
-    request=request,
-    details={"method": "password"}
-)
-```
-
----
-
-## OWASP Top 10 Compliance
-
-| Risk | Mitigation |
-|------|------------|
-| **A01: Broken Access Control** | RBAC, resource-level checks, server-side validation |
-| **A02: Cryptographic Failures** | TLS, encryption at rest, secure password hashing |
-| **A03: Injection** | Parameterized queries, ORM, input validation |
-| **A04: Insecure Design** | Threat modeling, secure defaults, defense in depth |
-| **A05: Security Misconfiguration** | CSP, secure headers, environment isolation |
-| **A06: Vulnerable Components** | Dependency scanning, regular updates |
-| **A07: Auth Failures** | Clerk integration, JWT validation, rate limiting |
-| **A08: Data Integrity Failures** | Input validation, code signing, integrity checks |
-| **A09: Logging Failures** | Audit logging, monitoring, alerting |
-| **A10: SSRF** | URL validation, allowlists, network segmentation |
-
----
-
-## Security Checklist
-
-### Development
-- [ ] All secrets in environment variables
-- [ ] Input validation on all endpoints
-- [ ] SQL injection prevention (parameterized queries)
-- [ ] XSS prevention (output encoding, CSP)
-- [ ] CSRF protection enabled
-- [ ] Authentication on all protected routes
-- [ ] Authorization checks at resource level
-
-### Deployment
-- [ ] TLS/HTTPS enforced
-- [ ] Security headers configured
-- [ ] Rate limiting enabled
-- [ ] Audit logging active
-- [ ] Secrets rotated regularly
-- [ ] Dependencies updated
-- [ ] Security scanning in CI/CD
+| Scenario                       | Action                                         |
+| ------------------------------ | ---------------------------------------------- |
+| New optional endpoint or field | Add to current version, update spec            |
+| Breaking change                | New version prefix, deprecation headers on old |
+| Removing an endpoint           | Wait for 6-month deprecation period            |
+| Forgot `make openapi-export`   | CI fails — run it, commit                      |
+| Not sure if breaking           | Treat as breaking                              |
 
 ---
 
 ## Related Standards
 
-- [Authentication Architecture](./authentication.md)
-- [Backend Tech Stack](../backend/tech-stack.md)
-- [Frontend Tech Stack](../frontend/tech-stack.md)
-- [Database Schema Design](../database/schema-design.md)
+- [OpenAPI Contract Enforcement](../backend/openapi-contract.md)
+- [Error Response Contract](./error-contract.md)
 
 ---
-
-*Security is not a feature, it's a foundation. Build it into every layer of your application.*
-
----
-
-<!-- Source: standards/architecture/authentication.md (v1.0.0) -->
-
+<!-- Source: /home/tester/.claude/evolv-coder-standards/standards/architecture/authentication.md -->
 # Authentication Architecture Standard
 
 **Version**: 1.0.0
@@ -2253,9 +1288,7 @@ CLERK_PEM_PUBLIC_KEY="-----BEGIN PUBLIC KEY-----\n...\n-----END PUBLIC KEY-----"
 *Proper authentication architecture ensures secure, seamless user experiences across your entire application stack.*
 
 ---
-
-<!-- Source: standards/architecture/caching.md (v1.0.0) -->
-
+<!-- Source: /home/tester/.claude/evolv-coder-standards/standards/architecture/caching.md -->
 # Caching Architecture Standard
 
 **Version**: 1.0.0
@@ -3169,8 +2202,590 @@ async def cache_stats():
 *Effective caching improves performance and reduces database load, but requires careful planning for cache invalidation and consistency.*
 
 ---
+<!-- Source: /home/tester/.claude/evolv-coder-standards/standards/architecture/data-flow.md -->
+# Data Flow Architecture
 
-<!-- Source: standards/architecture/error-contract.md (v2.0.0) -->
+**Version**: 1.0.0
+**Last Updated**: 2026-01-04
+**Status**: Active
+
+## Overview
+
+This document defines the complete data flow from user interaction through frontend, server actions, backend API, to database operations and back.
+
+**Error handling**: All layers must follow the [Error Response Contract](./error-contract.md).
+
+## Core Principle: SSR with Server Actions
+
+**CRITICAL**: All data operations MUST go through server actions. No direct database access from client components.
+
+```
+User → Client Component → Server Action → FastAPI → Database
+     ←                  ←                ←          ←
+```
+
+## Complete Request Lifecycle
+
+### 1. User Interaction Layer
+
+```typescript
+// components/UserForm.tsx (Client Component)
+'use client';
+
+import { createUser } from '@/app/actions/users';
+import { useState } from 'react';
+
+export function UserForm() {
+  const [loading, setLoading] = useState(false);
+
+  async function handleSubmit(formData: FormData) {
+    setLoading(true);
+
+    // Call server action (not API directly!)
+    const result = await createUser(formData);
+
+    if (result.success) {
+      // Handle success
+    } else {
+      // Handle error
+    }
+
+    setLoading(false);
+  }
+
+  return (
+    <form action={handleSubmit}>
+      {/* Form fields */}
+    </form>
+  );
+}
+```
+
+### 2. Server Action Layer
+
+```typescript
+// app/actions/users.ts
+'use server';
+
+import { auth } from '@clerk/nextjs';
+import { revalidatePath } from 'next/cache';
+import { z } from 'zod';
+
+const userSchema = z.object({
+  name: z.string().min(2),
+  email: z.string().email(),
+});
+
+export async function createUser(formData: FormData) {
+  // 1. Authentication
+  const { userId } = auth();
+  if (!userId) {
+    return { success: false, error: 'Unauthorized' };
+  }
+
+  // 2. Validation
+  const validation = userSchema.safeParse({
+    name: formData.get('name'),
+    email: formData.get('email'),
+  });
+
+  if (!validation.success) {
+    return {
+      success: false,
+      errors: validation.error.errors
+    };
+  }
+
+  // 3. Call Backend API
+  try {
+    const response = await fetch(`${process.env.API_URL}/users`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${await getToken()}`,
+      },
+      body: JSON.stringify(validation.data),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      return { success: false, error: error.detail };
+    }
+
+    const user = await response.json();
+
+    // 4. Revalidate Cache
+    revalidatePath('/users');
+    revalidatePath(`/users/${user.id}`);
+
+    return { success: true, data: user };
+  } catch (error) {
+    console.error('Create user error:', error);
+    return { success: false, error: 'Network error' };
+  }
+}
+```
+
+### 3. Backend API Layer
+
+```python
+# app/api/routers/users.py
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.api.deps import get_db, get_current_user
+from app.schemas.user import UserCreate, UserResponse
+from app.crud.user import user_crud
+
+router = APIRouter(prefix="/users", tags=["users"])
+
+@router.post("/", response_model=UserResponse, status_code=201)
+async def create_user(
+    user_in: UserCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    # 1. Check permissions
+    if not current_user.can_create_users:
+        raise HTTPException(status_code=403, detail="Insufficient permissions")
+
+    # 2. Check if email exists
+    existing = await user_crud.get_by_email(db, email=user_in.email)
+    if existing:
+        raise HTTPException(status_code=400, detail="Email already registered")
+
+    # 3. Create user
+    user = await user_crud.create(db, obj_in=user_in)
+
+    # 4. Send welcome email (background task)
+    background_tasks.add_task(send_welcome_email, user.email)
+
+    return user
+```
+
+### 4. Database Layer
+
+```python
+# app/crud/user.py
+from typing import Optional
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+from app.models.user import User
+from app.schemas.user import UserCreate, UserUpdate
+
+class CRUDUser:
+    async def create(
+        self,
+        db: AsyncSession,
+        *,
+        obj_in: UserCreate
+    ) -> User:
+        # 1. Create model instance
+        db_obj = User(
+            email=obj_in.email,
+            name=obj_in.name,
+            hashed_password=get_password_hash(obj_in.password)
+        )
+
+        # 2. Add to session
+        db.add(db_obj)
+
+        # 3. Commit transaction
+        await db.commit()
+
+        # 4. Refresh to get generated fields
+        await db.refresh(db_obj)
+
+        return db_obj
+
+    async def get_by_email(
+        self,
+        db: AsyncSession,
+        *,
+        email: str
+    ) -> Optional[User]:
+        result = await db.execute(
+            select(User).where(User.email == email)
+        )
+        return result.scalar_one_or_none()
+
+user_crud = CRUDUser()
+```
+
+## State Management Flow
+
+### Frontend State (Zustand)
+
+```typescript
+// stores/userStore.ts
+import { create } from 'zustand';
+import { getUsers } from '@/app/actions/users';
+
+interface UserStore {
+  users: User[];
+  loading: boolean;
+  error: string | null;
+  fetchUsers: () => Promise<void>;
+  addUser: (user: User) => void;
+}
+
+export const useUserStore = create<UserStore>((set) => ({
+  users: [],
+  loading: false,
+  error: null,
+
+  fetchUsers: async () => {
+    set({ loading: true, error: null });
+
+    // Call server action
+    const result = await getUsers();
+
+    if (result.success) {
+      set({ users: result.data, loading: false });
+    } else {
+      set({ error: result.error, loading: false });
+    }
+  },
+
+  addUser: (user) => set((state) => ({
+    users: [...state.users, user]
+  })),
+}));
+```
+
+### Server State (TanStack Query)
+
+```typescript
+// hooks/useUsers.ts
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { getUsers, createUser } from '@/app/actions/users';
+
+export function useUsers() {
+  return useQuery({
+    queryKey: ['users'],
+    queryFn: async () => {
+      const result = await getUsers();
+      if (!result.success) throw new Error(result.error);
+      return result.data;
+    },
+  });
+}
+
+export function useCreateUser() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: createUser,
+    onSuccess: () => {
+      // Invalidate and refetch
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+    },
+  });
+}
+```
+
+## Real-time Updates (Optional)
+
+### WebSocket Connection
+
+```typescript
+// lib/websocket.ts
+import { useEffect } from 'react';
+
+export function useWebSocket(url: string, onMessage: (data: any) => void) {
+  useEffect(() => {
+    const ws = new WebSocket(url);
+
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      onMessage(data);
+    };
+
+    return () => ws.close();
+  }, [url, onMessage]);
+}
+
+// Usage in component
+function UserList() {
+  const queryClient = useQueryClient();
+
+  useWebSocket('/ws/users', (data) => {
+    if (data.type === 'user_created') {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+    }
+  });
+
+  // Rest of component
+}
+```
+
+### Backend WebSocket
+
+```python
+# app/api/websocket.py
+from fastapi import WebSocket
+from typing import List
+
+class ConnectionManager:
+    def __init__(self):
+        self.active_connections: List[WebSocket] = []
+
+    async def connect(self, websocket: WebSocket):
+        await websocket.accept()
+        self.active_connections.append(websocket)
+
+    async def broadcast(self, message: dict):
+        for connection in self.active_connections:
+            await connection.send_json(message)
+
+manager = ConnectionManager()
+
+@app.websocket("/ws/users")
+async def websocket_endpoint(websocket: WebSocket):
+    await manager.connect(websocket)
+    try:
+        while True:
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        manager.disconnect(websocket)
+```
+
+## File Upload Flow
+
+### Frontend
+
+```typescript
+// Server action for file upload
+export async function uploadFile(formData: FormData) {
+  'use server';
+
+  const file = formData.get('file') as File;
+
+  // Convert to base64 or use FormData
+  const backendFormData = new FormData();
+  backendFormData.append('file', file);
+
+  const response = await fetch(`${API_URL}/upload`, {
+    method: 'POST',
+    body: backendFormData,
+    headers: {
+      'Authorization': `Bearer ${await getToken()}`,
+    },
+  });
+
+  if (!response.ok) {
+    return { success: false, error: 'Upload failed' };
+  }
+
+  const { url } = await response.json();
+  return { success: true, data: { url } };
+}
+```
+
+### Backend
+
+```python
+from fastapi import UploadFile, File
+import aiofiles
+
+@router.post("/upload")
+async def upload_file(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user)
+):
+    # Save to disk or S3
+    file_path = f"uploads/{current_user.id}/{file.filename}"
+
+    async with aiofiles.open(file_path, 'wb') as f:
+        content = await file.read()
+        await f.write(content)
+
+    return {"url": f"/static/{file_path}"}
+```
+
+## Batch Operations Flow
+
+### Frontend
+
+```typescript
+export async function deleteUsers(userIds: number[]) {
+  'use server';
+
+  const response = await fetch(`${API_URL}/users/batch-delete`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${await getToken()}`,
+    },
+    body: JSON.stringify({ ids: userIds }),
+  });
+
+  if (response.ok) {
+    revalidatePath('/users');
+    return { success: true };
+  }
+
+  return { success: false, error: 'Batch delete failed' };
+}
+```
+
+### Backend
+
+```python
+@router.post("/batch-delete")
+async def batch_delete_users(
+    user_ids: List[int],
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    # Use bulk delete
+    await db.execute(
+        delete(User).where(User.id.in_(user_ids))
+    )
+    await db.commit()
+
+    return {"deleted": len(user_ids)}
+```
+
+## Error Recovery Flow
+
+### Retry Logic
+
+```typescript
+async function retryServerAction<T>(
+  action: () => Promise<T>,
+  maxRetries: number = 3
+): Promise<T> {
+  let lastError;
+
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      return await action();
+    } catch (error) {
+      lastError = error;
+
+      // Exponential backoff
+      await new Promise(resolve =>
+        setTimeout(resolve, Math.pow(2, i) * 1000)
+      );
+    }
+  }
+
+  throw lastError;
+}
+
+// Usage
+const result = await retryServerAction(() => createUser(data));
+```
+
+### Optimistic Updates with Rollback
+
+```typescript
+const mutation = useMutation({
+  mutationFn: updateUser,
+  onMutate: async (newUser) => {
+    // Cancel outgoing refetches
+    await queryClient.cancelQueries({ queryKey: ['users'] });
+
+    // Snapshot previous value
+    const previousUsers = queryClient.getQueryData(['users']);
+
+    // Optimistically update
+    queryClient.setQueryData(['users'], (old) => {
+      return old.map(u => u.id === newUser.id ? newUser : u);
+    });
+
+    // Return context with snapshot
+    return { previousUsers };
+  },
+  onError: (err, newUser, context) => {
+    // Rollback on error
+    queryClient.setQueryData(['users'], context.previousUsers);
+  },
+  onSettled: () => {
+    // Always refetch after error or success
+    queryClient.invalidateQueries({ queryKey: ['users'] });
+  },
+});
+```
+
+## Performance Optimization
+
+### Parallel Data Fetching
+
+```typescript
+// app/users/page.tsx
+export default async function UsersPage() {
+  // Parallel fetch
+  const [users, roles, permissions] = await Promise.all([
+    fetchUsers(),
+    fetchRoles(),
+    fetchPermissions(),
+  ]);
+
+  return (
+    <div>
+      <UserList users={users} roles={roles} permissions={permissions} />
+    </div>
+  );
+}
+```
+
+### Streaming with Suspense
+
+```typescript
+// app/dashboard/page.tsx
+export default function DashboardPage() {
+  return (
+    <div>
+      <Suspense fallback={<StatsSkeleton />}>
+        <StatsCards />
+      </Suspense>
+
+      <Suspense fallback={<ChartSkeleton />}>
+        <RevenueChart />
+      </Suspense>
+
+      <Suspense fallback={<TableSkeleton />}>
+        <RecentOrders />
+      </Suspense>
+    </div>
+  );
+}
+```
+
+## Best Practices Summary
+
+### ✅ DO
+- Always use server actions for data mutations
+- Implement proper error handling at every layer
+- Use TypeScript for type safety
+- Revalidate cache after mutations
+- Implement optimistic updates for better UX
+- Use Suspense for loading states
+- Batch operations when possible
+
+### ❌ DON'T
+- Call backend API directly from client components
+- Access database from frontend
+- Skip validation at any layer
+- Ignore error cases
+- Use synchronous operations for I/O
+- Forget to invalidate cache
+- Mix concerns between layers
+
+## Related Patterns
+
+For implementation approaches and code examples:
+
+- [Data Flow Patterns](../../patterns/architecture/data-flow-patterns.md) - Request lifecycle, state management, real-time, batch operations
+- [Architecture Examples](../../examples/architecture/) - Filled implementations
+
+---
+
+*This data flow architecture ensures security, performance, and maintainability across the entire application stack.*
+
+---
+<!-- Source: /home/tester/.claude/evolv-coder-standards/standards/architecture/error-contract.md -->
 
 # Error Response Contract — RFC 9457 Problem Details
 
@@ -3374,9 +2989,7 @@ For projects using the v1.0.0 custom envelope (`{ "error": { "code": "...", ... 
 _RFC 9457 Problem Details provide a standardized, machine-readable error format across the stack._
 
 ---
-
-<!-- Source: standards/architecture/observability.md (v1.0.0) -->
-
+<!-- Source: /home/tester/.claude/evolv-coder-standards/standards/architecture/observability.md -->
 # Observability Standard
 
 **Version**: 1.0.0
@@ -4019,9 +3632,853 @@ If you've had 20 minutes of downtime this month:
 *Observability is the foundation for understanding and improving your system.*
 
 ---
+<!-- Source: /home/tester/.claude/evolv-coder-standards/standards/architecture/security.md -->
+# Security Architecture Standard
 
-<!-- Source: standards/architecture/testing-strategy.md (v1.0.0) -->
+**Version**: 1.0.0
+**Last Updated**: 2025-12-30
+**Status**: Active
 
+## Purpose
+
+This standard defines security architecture patterns and best practices for full-stack applications using Next.js, FastAPI, and PostgreSQL.
+
+## Scope
+
+- Authentication and authorization architecture
+- Input validation and sanitization
+- Data protection and encryption
+- API security
+- OWASP compliance
+- Secrets management
+- Audit logging
+
+---
+
+## Security Architecture Overview
+
+```mermaid
+flowchart TB
+    subgraph Client["Client Layer"]
+        Browser[Browser]
+        CSP[Content Security Policy]
+        XSS[XSS Prevention]
+    end
+
+    subgraph Frontend["Frontend Layer - Next.js"]
+        Clerk[Clerk Auth]
+        ServerActions[Server Actions]
+        Validation[Zod Validation]
+    end
+
+    subgraph Backend["Backend Layer - FastAPI"]
+        JWT[JWT Validation]
+        RateLimit[Rate Limiting]
+        InputVal[Pydantic Validation]
+        RBAC[Role-Based Access]
+    end
+
+    subgraph Data["Data Layer"]
+        Encryption[Encryption at Rest]
+        TLS[TLS in Transit]
+        Audit[Audit Logs]
+        DB[(PostgreSQL)]
+    end
+
+    Browser --> CSP
+    CSP --> Clerk
+    Clerk --> ServerActions
+    ServerActions --> Validation
+    Validation --> JWT
+    JWT --> RateLimit
+    RateLimit --> InputVal
+    InputVal --> RBAC
+    RBAC --> Encryption
+    Encryption --> DB
+    DB --> Audit
+```
+
+---
+
+## Authentication Architecture
+
+### Clerk Integration
+
+```typescript
+// Frontend: middleware.ts
+import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
+
+const isPublicRoute = createRouteMatcher([
+  '/',
+  '/sign-in(.*)',
+  '/sign-up(.*)',
+  '/api/webhooks(.*)',
+]);
+
+export default clerkMiddleware((auth, req) => {
+  if (!isPublicRoute(req)) {
+    auth().protect();
+  }
+});
+
+export const config = {
+  matcher: ['/((?!.*\\..*|_next).*)', '/', '/(api|trpc)(.*)'],
+};
+```
+
+### Server Action Authentication
+
+```typescript
+// app/actions/protected.ts
+'use server';
+
+import { auth, currentUser } from '@clerk/nextjs/server';
+
+export async function protectedAction(data: FormData): Promise<ActionResult> {
+  // Get and verify authentication
+  const { userId } = auth();
+
+  if (!userId) {
+    return { success: false, error: 'Unauthorized' };
+  }
+
+  // Get full user object if needed
+  const user = await currentUser();
+
+  // Proceed with authenticated action
+  const response = await fetch(`${API_URL}/resource`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${await auth().getToken()}`,
+    },
+    body: JSON.stringify(data),
+  });
+
+  return response.json();
+}
+```
+
+### Backend JWT Validation
+
+```python
+# app/core/security.py
+from fastapi import Depends, HTTPException, status
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from jose import jwt, JWTError
+from pydantic import BaseModel
+
+from app.core.config import settings
+
+security = HTTPBearer()
+
+
+class TokenPayload(BaseModel):
+    """JWT token payload."""
+    sub: str
+    exp: int
+    iat: int
+    azp: str | None = None
+
+
+async def verify_token(
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+) -> TokenPayload:
+    """Verify and decode JWT token from Clerk."""
+    token = credentials.credentials
+
+    try:
+        # Verify token with Clerk's public key
+        payload = jwt.decode(
+            token,
+            settings.CLERK_PEM_PUBLIC_KEY,
+            algorithms=["RS256"],
+            audience=settings.CLERK_FRONTEND_API,
+        )
+        return TokenPayload(**payload)
+    except JWTError as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authentication token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+
+async def get_current_user(
+    token: TokenPayload = Depends(verify_token)
+) -> str:
+    """Get current user ID from token."""
+    return token.sub
+```
+
+---
+
+## Authorization Patterns
+
+### Role-Based Access Control (RBAC)
+
+```python
+# app/core/permissions.py
+from enum import Enum
+from functools import wraps
+from typing import Callable
+
+from fastapi import HTTPException, status
+
+
+class Permission(str, Enum):
+    """Application permissions."""
+    READ_USERS = "read:users"
+    WRITE_USERS = "write:users"
+    DELETE_USERS = "delete:users"
+    ADMIN = "admin"
+
+
+class Role(str, Enum):
+    """Application roles with permissions."""
+    USER = "user"
+    MODERATOR = "moderator"
+    ADMIN = "admin"
+
+
+ROLE_PERMISSIONS: dict[Role, set[Permission]] = {
+    Role.USER: {Permission.READ_USERS},
+    Role.MODERATOR: {Permission.READ_USERS, Permission.WRITE_USERS},
+    Role.ADMIN: {Permission.READ_USERS, Permission.WRITE_USERS, Permission.DELETE_USERS, Permission.ADMIN},
+}
+
+
+def require_permission(permission: Permission):
+    """Decorator to require specific permission."""
+    def decorator(func: Callable):
+        @wraps(func)
+        async def wrapper(*args, current_user_role: Role, **kwargs):
+            user_permissions = ROLE_PERMISSIONS.get(current_user_role, set())
+
+            if permission not in user_permissions:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail=f"Permission denied: {permission.value} required"
+                )
+
+            return await func(*args, **kwargs)
+        return wrapper
+    return decorator
+```
+
+### Resource-Level Authorization
+
+```python
+# app/api/routers/documents.py
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.api.deps import get_db, get_current_user
+from app.crud import document_crud
+from app.schemas.document import DocumentResponse
+
+router = APIRouter()
+
+
+@router.get("/{document_id}", response_model=DocumentResponse)
+async def get_document(
+    document_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user_id: str = Depends(get_current_user),
+):
+    """Get document with ownership check."""
+    document = await document_crud.get(db, id=document_id)
+
+    if not document:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Document not found"
+        )
+
+    # Resource-level authorization
+    if document.owner_id != current_user_id and not document.is_public:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to access this document"
+        )
+
+    return document
+```
+
+---
+
+## Input Validation
+
+### Frontend Validation (Zod)
+
+```typescript
+// lib/validations/user.ts
+import { z } from 'zod';
+
+export const createUserSchema = z.object({
+  email: z
+    .string()
+    .email('Invalid email address')
+    .max(255, 'Email too long'),
+  password: z
+    .string()
+    .min(8, 'Password must be at least 8 characters')
+    .regex(
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])/,
+      'Password must include uppercase, lowercase, number, and special character'
+    ),
+  fullName: z
+    .string()
+    .min(1, 'Name is required')
+    .max(255, 'Name too long')
+    .regex(/^[a-zA-Z\s'-]+$/, 'Name contains invalid characters'),
+});
+
+export type CreateUserInput = z.infer<typeof createUserSchema>;
+```
+
+### Backend Validation (Pydantic)
+
+```python
+# app/schemas/user.py
+from pydantic import BaseModel, EmailStr, Field, field_validator
+import re
+
+
+class UserCreate(BaseModel):
+    """User creation schema with validation."""
+
+    email: EmailStr = Field(..., max_length=255)
+    password: str = Field(..., min_length=8, max_length=128)
+    full_name: str = Field(..., min_length=1, max_length=255)
+
+    @field_validator("password")
+    @classmethod
+    def validate_password_strength(cls, v: str) -> str:
+        """Validate password meets security requirements."""
+        if not re.search(r"[a-z]", v):
+            raise ValueError("Password must contain lowercase letter")
+        if not re.search(r"[A-Z]", v):
+            raise ValueError("Password must contain uppercase letter")
+        if not re.search(r"\d", v):
+            raise ValueError("Password must contain digit")
+        if not re.search(r"[@$!%*?&]", v):
+            raise ValueError("Password must contain special character")
+        return v
+
+    @field_validator("full_name")
+    @classmethod
+    def validate_name(cls, v: str) -> str:
+        """Validate name contains only allowed characters."""
+        if not re.match(r"^[a-zA-Z\s'-]+$", v):
+            raise ValueError("Name contains invalid characters")
+        return v.strip()
+```
+
+### SQL Injection Prevention
+
+```python
+# ALWAYS use parameterized queries - SQLAlchemy handles this
+
+# ✅ Safe - SQLAlchemy ORM
+user = await db.execute(
+    select(User).where(User.email == email)
+)
+
+# ✅ Safe - Parameterized raw SQL
+result = await db.execute(
+    text("SELECT * FROM users WHERE email = :email"),
+    {"email": email}
+)
+
+# ❌ NEVER do this - SQL injection vulnerability
+# result = await db.execute(f"SELECT * FROM users WHERE email = '{email}'")
+```
+
+---
+
+## XSS Prevention
+
+### Content Security Policy
+
+```typescript
+// next.config.ts
+const securityHeaders = [
+  {
+    key: 'Content-Security-Policy',
+    value: [
+      "default-src 'self'",
+      "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://clerk.com",
+      "style-src 'self' 'unsafe-inline'",
+      "img-src 'self' data: https:",
+      "font-src 'self'",
+      "connect-src 'self' https://api.clerk.com wss:",
+      "frame-ancestors 'none'",
+      "form-action 'self'",
+    ].join('; '),
+  },
+  {
+    key: 'X-Content-Type-Options',
+    value: 'nosniff',
+  },
+  {
+    key: 'X-Frame-Options',
+    value: 'DENY',
+  },
+  {
+    key: 'X-XSS-Protection',
+    value: '1; mode=block',
+  },
+  {
+    key: 'Referrer-Policy',
+    value: 'strict-origin-when-cross-origin',
+  },
+];
+
+export default {
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: securityHeaders,
+      },
+    ];
+  },
+};
+```
+
+### Output Encoding
+
+```typescript
+// React automatically escapes content, but be careful with:
+
+// ❌ Dangerous - renders raw HTML
+<div dangerouslySetInnerHTML={{ __html: userContent }} />
+
+// ✅ Safe - use a sanitizer if HTML is required
+import DOMPurify from 'dompurify';
+
+<div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(userContent) }} />
+
+// ✅ Best - avoid raw HTML entirely
+<div>{userContent}</div>
+```
+
+---
+
+## CSRF Protection
+
+### Server Actions (Built-in Protection)
+
+Next.js server actions include built-in CSRF protection via origin checking.
+
+```typescript
+// Server actions are automatically protected
+'use server';
+
+export async function updateProfile(formData: FormData) {
+  // CSRF token validation is automatic
+  // Origin header is verified by Next.js
+}
+```
+
+### API Routes (Manual Protection)
+
+```typescript
+// app/api/webhook/route.ts
+import { headers } from 'next/headers';
+import crypto from 'crypto';
+
+export async function POST(request: Request) {
+  const headersList = headers();
+  const signature = headersList.get('x-webhook-signature');
+
+  if (!signature) {
+    return Response.json({ error: 'Missing signature' }, { status: 401 });
+  }
+
+  const body = await request.text();
+  const expectedSignature = crypto
+    .createHmac('sha256', process.env.WEBHOOK_SECRET!)
+    .update(body)
+    .digest('hex');
+
+  if (!crypto.timingSafeEqual(
+    Buffer.from(signature),
+    Buffer.from(expectedSignature)
+  )) {
+    return Response.json({ error: 'Invalid signature' }, { status: 401 });
+  }
+
+  // Process webhook
+}
+```
+
+---
+
+## Rate Limiting
+
+### FastAPI Rate Limiting
+
+```python
+# app/core/rate_limit.py
+from fastapi import Request, HTTPException, status
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+
+limiter = Limiter(key_func=get_remote_address)
+
+
+def get_rate_limit_key(request: Request) -> str:
+    """Get rate limit key from user or IP."""
+    # Use user ID if authenticated, otherwise IP
+    user_id = getattr(request.state, "user_id", None)
+    if user_id:
+        return f"user:{user_id}"
+    return get_remote_address(request)
+
+
+# Apply to routes
+@router.post("/login")
+@limiter.limit("5/minute")
+async def login(request: Request, credentials: LoginCredentials):
+    """Login with rate limiting."""
+    pass
+
+
+@router.get("/search")
+@limiter.limit("100/minute")
+async def search(request: Request, q: str):
+    """Search with rate limiting."""
+    pass
+```
+
+### Redis-Based Rate Limiting
+
+```python
+# app/core/rate_limit.py
+import redis.asyncio as redis
+from fastapi import HTTPException, status
+from datetime import timedelta
+
+
+class RateLimiter:
+    """Redis-based rate limiter."""
+
+    def __init__(self, redis_client: redis.Redis):
+        self.redis = redis_client
+
+    async def check_rate_limit(
+        self,
+        key: str,
+        limit: int,
+        window: timedelta
+    ) -> bool:
+        """Check if request is within rate limit."""
+        current = await self.redis.incr(key)
+
+        if current == 1:
+            await self.redis.expire(key, int(window.total_seconds()))
+
+        if current > limit:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Rate limit exceeded",
+                headers={"Retry-After": str(int(window.total_seconds()))}
+            )
+
+        return True
+```
+
+---
+
+## Secrets Management
+
+### Environment Variables
+
+```bash
+# .env.local (never commit)
+DATABASE_URL=postgresql+asyncpg://user:pass@localhost/db
+CLERK_SECRET_KEY=sk_live_xxx
+REDIS_URL=redis://localhost:6379
+ENCRYPTION_KEY=base64-encoded-32-byte-key
+
+# .env.example (commit this)
+DATABASE_URL=postgresql+asyncpg://user:pass@localhost/db
+CLERK_SECRET_KEY=sk_test_xxx
+REDIS_URL=redis://localhost:6379
+ENCRYPTION_KEY=generate-with-openssl
+```
+
+### Settings Configuration
+
+```python
+# app/core/config.py
+from pydantic_settings import BaseSettings
+from pydantic import SecretStr, field_validator
+
+
+class Settings(BaseSettings):
+    """Application settings with secret handling."""
+
+    # Database
+    DATABASE_URL: SecretStr
+
+    # Authentication
+    CLERK_SECRET_KEY: SecretStr
+    CLERK_PEM_PUBLIC_KEY: str
+
+    # Encryption
+    ENCRYPTION_KEY: SecretStr
+
+    # Redis
+    REDIS_URL: SecretStr
+
+    @field_validator("ENCRYPTION_KEY")
+    @classmethod
+    def validate_encryption_key(cls, v: SecretStr) -> SecretStr:
+        """Validate encryption key length."""
+        key_bytes = v.get_secret_value()
+        if len(key_bytes) < 32:
+            raise ValueError("Encryption key must be at least 32 bytes")
+        return v
+
+    class Config:
+        env_file = ".env"
+        case_sensitive = True
+
+
+settings = Settings()
+```
+
+### Using Secrets
+
+```python
+# Always use .get_secret_value() to access secrets
+database_url = settings.DATABASE_URL.get_secret_value()
+
+# Secrets are not logged or exposed in errors
+print(settings.DATABASE_URL)  # Outputs: SecretStr('**********')
+```
+
+---
+
+## Data Encryption
+
+### Encryption at Rest
+
+```python
+# app/core/encryption.py
+from cryptography.fernet import Fernet
+from base64 import b64encode, b64decode
+
+from app.core.config import settings
+
+
+class FieldEncryption:
+    """Encrypt/decrypt sensitive database fields."""
+
+    def __init__(self):
+        key = settings.ENCRYPTION_KEY.get_secret_value()
+        self.fernet = Fernet(key.encode() if isinstance(key, str) else key)
+
+    def encrypt(self, value: str) -> str:
+        """Encrypt a string value."""
+        encrypted = self.fernet.encrypt(value.encode())
+        return b64encode(encrypted).decode()
+
+    def decrypt(self, encrypted_value: str) -> str:
+        """Decrypt an encrypted value."""
+        decoded = b64decode(encrypted_value.encode())
+        return self.fernet.decrypt(decoded).decode()
+
+
+encryption = FieldEncryption()
+
+
+# Usage in model
+class User(BaseModel):
+    """User with encrypted SSN."""
+
+    _ssn_encrypted: str = Column("ssn", String(255))
+
+    @property
+    def ssn(self) -> str:
+        """Decrypt SSN on access."""
+        return encryption.decrypt(self._ssn_encrypted)
+
+    @ssn.setter
+    def ssn(self, value: str):
+        """Encrypt SSN on set."""
+        self._ssn_encrypted = encryption.encrypt(value)
+```
+
+### Password Hashing
+
+```python
+# app/core/security.py
+from passlib.context import CryptContext
+
+pwd_context = CryptContext(
+    schemes=["argon2"],  # Use Argon2 (winner of Password Hashing Competition)
+    deprecated="auto"
+)
+
+
+def hash_password(password: str) -> str:
+    """Hash a password."""
+    return pwd_context.hash(password)
+
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """Verify a password against hash."""
+    return pwd_context.verify(plain_password, hashed_password)
+```
+
+---
+
+## Audit Logging
+
+### Audit Log Model
+
+```python
+# app/models/audit.py
+from sqlalchemy import Column, String, Integer, DateTime, Text, JSON
+from sqlalchemy.sql import func
+
+from app.db.base import Base
+
+
+class AuditLog(Base):
+    """Audit log for security events."""
+
+    __tablename__ = "audit_logs"
+
+    id = Column(Integer, primary_key=True)
+    timestamp = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+
+    # Actor
+    user_id = Column(String(255), nullable=True, index=True)
+    ip_address = Column(String(45), nullable=True)
+    user_agent = Column(String(500), nullable=True)
+
+    # Action
+    action = Column(String(100), nullable=False, index=True)
+    resource_type = Column(String(100), nullable=True, index=True)
+    resource_id = Column(String(255), nullable=True)
+
+    # Details
+    details = Column(JSON, nullable=True)
+    status = Column(String(50), nullable=False)  # success, failure, error
+    error_message = Column(Text, nullable=True)
+```
+
+### Audit Logger
+
+```python
+# app/core/audit.py
+from fastapi import Request
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models.audit import AuditLog
+
+
+class AuditLogger:
+    """Log security-relevant events."""
+
+    @staticmethod
+    async def log(
+        db: AsyncSession,
+        action: str,
+        status: str,
+        user_id: str | None = None,
+        request: Request | None = None,
+        resource_type: str | None = None,
+        resource_id: str | None = None,
+        details: dict | None = None,
+        error_message: str | None = None,
+    ):
+        """Create audit log entry."""
+        log_entry = AuditLog(
+            user_id=user_id,
+            ip_address=request.client.host if request else None,
+            user_agent=request.headers.get("user-agent") if request else None,
+            action=action,
+            resource_type=resource_type,
+            resource_id=resource_id,
+            details=details,
+            status=status,
+            error_message=error_message,
+        )
+        db.add(log_entry)
+        await db.commit()
+
+
+# Usage
+await AuditLogger.log(
+    db=db,
+    action="user.login",
+    status="success",
+    user_id=user.id,
+    request=request,
+    details={"method": "password"}
+)
+```
+
+---
+
+## OWASP Top 10 Compliance
+
+| Risk | Mitigation |
+|------|------------|
+| **A01: Broken Access Control** | RBAC, resource-level checks, server-side validation |
+| **A02: Cryptographic Failures** | TLS, encryption at rest, secure password hashing |
+| **A03: Injection** | Parameterized queries, ORM, input validation |
+| **A04: Insecure Design** | Threat modeling, secure defaults, defense in depth |
+| **A05: Security Misconfiguration** | CSP, secure headers, environment isolation |
+| **A06: Vulnerable Components** | Dependency scanning, regular updates |
+| **A07: Auth Failures** | Clerk integration, JWT validation, rate limiting |
+| **A08: Data Integrity Failures** | Input validation, code signing, integrity checks |
+| **A09: Logging Failures** | Audit logging, monitoring, alerting |
+| **A10: SSRF** | URL validation, allowlists, network segmentation |
+
+---
+
+## Security Checklist
+
+### Development
+- [ ] All secrets in environment variables
+- [ ] Input validation on all endpoints
+- [ ] SQL injection prevention (parameterized queries)
+- [ ] XSS prevention (output encoding, CSP)
+- [ ] CSRF protection enabled
+- [ ] Authentication on all protected routes
+- [ ] Authorization checks at resource level
+
+### Deployment
+- [ ] TLS/HTTPS enforced
+- [ ] Security headers configured
+- [ ] Rate limiting enabled
+- [ ] Audit logging active
+- [ ] Secrets rotated regularly
+- [ ] Dependencies updated
+- [ ] Security scanning in CI/CD
+
+---
+
+## Related Standards
+
+- [Authentication Architecture](./authentication.md)
+- [Backend Tech Stack](../backend/tech-stack.md)
+- [Frontend Tech Stack](../frontend/tech-stack.md)
+- [Database Schema Design](../database/schema-design.md)
+
+---
+
+*Security is not a feature, it's a foundation. Build it into every layer of your application.*
+
+---
+<!-- Source: /home/tester/.claude/evolv-coder-standards/standards/architecture/testing-strategy.md -->
 # Testing Strategy
 
 **Version**: 1.0.0
@@ -4693,442 +5150,3 @@ class TestAPIPerformance:
 ---
 
 *Testing is not about finding bugs, it's about building confidence in your code.*
-
----
-
-<!-- Source: standards/architecture/api-versioning.md (v1.0.0) -->
-
-# API Versioning Standard
-
-**Version**: 1.0.0
-**Last Updated**: 2026-03-25
-**Status**: Active
-
-## Overview
-
-The API uses URL path versioning. Breaking changes require a new version prefix. Non-breaking changes go into the current version. A schema-first workflow using OpenAPI snapshot testing enforces contract discipline.
-
-## URL Versioning Pattern
-
-```
-/api/v1/companies
-/api/v1/deals
-/api/v2/companies     (future breaking change)
-```
-
-- Version is in the URL path, not a header or query parameter
-- All routers mount under the versioned prefix
-- Multiple versions can coexist during deprecation periods
-
-## Breaking vs. Non-Breaking Changes
-
-### Breaking (requires new version)
-
-- Removing an endpoint or response field
-- Changing a field's type
-- Renaming a path parameter
-- Adding a required field to a request body
-- Changing an HTTP status code for an existing outcome
-- Changing a problem `type` URI
-
-### Non-breaking (current version)
-
-- New endpoints
-- New optional fields in request/response bodies
-- New optional query parameters
-- New problem types that didn't previously exist
-
-**When in doubt, treat it as breaking.**
-
-## Deprecation Policy
-
-**Minimum period**: 6 months from new version release.
-
-During deprecation:
-
-1. Old version continues functioning unchanged
-2. Deprecated endpoints return headers:
-   ```
-   Deprecation: true
-   Sunset: 2027-09-22
-   ```
-3. Deprecation announced in release notes
-4. After sunset date: `410 Gone`
-
-## Schema-First Workflow
-
-1. Modify the API contract (endpoint, schema, response model)
-2. Implement the change in code
-3. Run `make openapi-export` to regenerate `openapi.json`
-4. Commit both implementation and updated spec together
-5. CI validates spec matches runtime — build fails on drift
-
-See [OpenAPI Contract Enforcement](../backend/openapi-contract.md) for implementation details.
-
-## Migration Guidance
-
-For each version bump:
-
-1. Create a migration guide documenting every breaking change
-2. Update `openapi.json`
-3. Update FE API client base paths
-4. Remove old version mounts only after sunset date
-
-## Route Deduplication Rules
-
-- **One canonical URL per resource**: No duplicate route hierarchies
-- **Sub-resources use scoped auth**: Use dependency-based access checks instead of manual assertions
-- **Verify FE uses canonical paths** before removing duplicates
-
-## Quick Reference
-
-| Scenario                       | Action                                         |
-| ------------------------------ | ---------------------------------------------- |
-| New optional endpoint or field | Add to current version, update spec            |
-| Breaking change                | New version prefix, deprecation headers on old |
-| Removing an endpoint           | Wait for 6-month deprecation period            |
-| Forgot `make openapi-export`   | CI fails — run it, commit                      |
-| Not sure if breaking           | Treat as breaking                              |
-
----
-
-## Related Standards
-
-- [OpenAPI Contract Enforcement](../backend/openapi-contract.md)
-- [Error Response Contract](./error-contract.md)
-
----
-
-<!-- Source: standards/architecture/adr/adr-template.md (v1.0.0) -->
-
-# ADR-[NNN]: [Title]
-
-**Status**: Proposed | Accepted | Rejected | Deprecated | Superseded
-**Date**: YYYY-MM-DD
-**Deciders**: [List people involved in the decision]
-**Supersedes**: [ADR-XXX if this replaces a previous decision]
-**Superseded by**: [ADR-XXX if this has been replaced]
-
----
-
-## Context
-
-[Describe the situation, problem, or need that led to this decision. Include:
-- What is the current state?
-- What constraints exist?
-- What forces are at play?
-- Why is a decision needed now?]
-
----
-
-## Decision
-
-[State the decision clearly and directly. Use present tense.
-
-Example: "We will use PostgreSQL as the primary database for user data storage."]
-
----
-
-## Consequences
-
-### Positive
-
-- [Benefit 1]
-- [Benefit 2]
-- [Benefit 3]
-
-### Negative
-
-- [Drawback 1]
-- [Drawback 2]
-
-### Neutral
-
-- [Observation that is neither good nor bad]
-
----
-
-## Alternatives Considered
-
-### [Alternative 1 Name]
-
-**Description**: [Brief description of this alternative]
-
-**Pros**:
-- [Pro 1]
-- [Pro 2]
-
-**Cons**:
-- [Con 1]
-- [Con 2]
-
-**Why Rejected**: [Reason this option was not chosen]
-
-### [Alternative 2 Name]
-
-**Description**: [Brief description of this alternative]
-
-**Pros**:
-- [Pro 1]
-
-**Cons**:
-- [Con 1]
-- [Con 2]
-
-**Why Rejected**: [Reason this option was not chosen]
-
----
-
-## Related ADRs
-
-| ADR | Relationship |
-|-----|--------------|
-| [ADR-XXX](./ADR-XXX-title.md) | [How it relates: builds on, conflicts with, etc.] |
-
----
-
-## References
-
-- [Link to relevant documentation]
-- [Link to external resources]
-- [Link to RFCs or specifications]
-
----
-
-## Notes
-
-[Any additional context, implementation notes, or follow-up items]
-
----
-
-*Template from [Standards Documentation](../../README.md)*
-
----
-
-<!-- Source: standards/architecture/adr/README.md (v1.0.0) -->
-
-# Architecture Decision Records (ADRs)
-
-**Version**: 1.0.0
-**Last Updated**: 2026-01-03
-**Status**: Active
-
----
-
-## Purpose
-
-Architecture Decision Records (ADRs) capture significant architectural decisions made during a project's lifecycle. They provide context, rationale, and consequences for decisions that affect the system's structure, technology choices, or development patterns.
-
-ADRs serve as institutional memory, helping current and future team members understand why the system is built the way it is.
-
----
-
-## When to Create an ADR
-
-### Required
-
-- Choosing a technology, framework, or library
-- Defining architectural patterns (e.g., microservices vs monolith)
-- Establishing coding conventions that affect multiple teams
-- Making security or compliance decisions
-- Selecting infrastructure or deployment approaches
-- Changing previously documented decisions
-
-### Optional
-
-- Explaining non-obvious design choices
-- Documenting rejected alternatives for future reference
-- Recording decisions that may need revisiting
-
-### Not Needed
-
-- Implementation details that don't affect architecture
-- Bug fixes or minor enhancements
-- Decisions already covered by existing standards
-
----
-
-## ADR Lifecycle
-
-```mermaid
-stateDiagram-v2
-    [*] --> Proposed
-    Proposed --> Accepted: Approved
-    Proposed --> Rejected: Not approved
-    Accepted --> Deprecated: Outdated
-    Accepted --> Superseded: Replaced
-    Deprecated --> [*]
-    Superseded --> [*]
-    Rejected --> [*]
-```
-
-| Status | Meaning |
-|--------|---------|
-| **Proposed** | Under discussion, not yet approved |
-| **Accepted** | Approved and in effect |
-| **Rejected** | Considered but not approved |
-| **Deprecated** | No longer relevant but historically accurate |
-| **Superseded** | Replaced by a newer ADR |
-
----
-
-## Naming Convention
-
-```
-ADR-[NNN]-[kebab-case-title].md
-
-Where:
-- NNN = Sequential 3-digit number (001, 002, ...)
-- kebab-case-title = Brief description in kebab-case
-
-Examples:
-ADR-001-use-postgresql-for-primary-database.md
-ADR-002-adopt-server-actions-pattern.md
-ADR-003-authentication-with-clerk.md
-```
-
----
-
-## ADR Template
-
-Use the template: [adr-template.md](./adr-template.md)
-
-### Required Sections
-
-| Section | Purpose |
-|---------|---------|
-| **Title** | Clear, descriptive name for the decision |
-| **Status** | Current lifecycle status |
-| **Context** | Background, problem statement, constraints |
-| **Decision** | What we decided to do |
-| **Consequences** | Positive, negative, and neutral outcomes |
-
-### Optional Sections
-
-| Section | When to Include |
-|---------|-----------------|
-| **Alternatives Considered** | When multiple options were evaluated |
-| **Related ADRs** | When building on or superseding other ADRs |
-| **References** | External documentation, RFCs, articles |
-
----
-
-## Creating an ADR
-
-### Step 1: Assign Number
-
-Check the highest existing ADR number and increment:
-
-```bash
-ls -1 architecture/adr/ADR-*.md | tail -1
-# If ADR-005-xxx.md exists, next is ADR-006
-```
-
-### Step 2: Create File
-
-```bash
-cp architecture/adr/adr-template.md architecture/adr/ADR-006-your-decision.md
-```
-
-### Step 3: Fill Template
-
-- Write clear, concise content
-- Focus on "why" not just "what"
-- Document alternatives that were rejected
-- Be honest about trade-offs
-
-### Step 4: Review
-
-- Share with relevant stakeholders
-- Incorporate feedback
-- Update status to "Accepted" when approved
-
----
-
-## ADR Index
-
-Maintain an index of all ADRs for quick reference:
-
-| ADR | Title | Status | Date |
-|-----|-------|--------|------|
-| [ADR-000](./ADR-000-template-example.md) | Template Example | Example | 2026-01-03 |
-
-*Update this table when adding new ADRs.*
-
----
-
-## Best Practices
-
-### Writing ADRs
-
-- **Be concise**: 1-2 pages is ideal
-- **Focus on context**: Future readers need to understand the situation
-- **Document alternatives**: Explain why they were rejected
-- **Be honest about trade-offs**: No decision is perfect
-- **Use present tense**: "We decide to..." not "We decided to..."
-
-### Maintaining ADRs
-
-- **Don't delete ADRs**: Mark as Deprecated or Superseded instead
-- **Link related ADRs**: Create a trail of related decisions
-- **Update status promptly**: Keep lifecycle accurate
-- **Review periodically**: Flag outdated decisions
-
-### Anti-Patterns
-
-| Anti-Pattern | Problem | Solution |
-|--------------|---------|----------|
-| Too much detail | Hard to read, quickly outdated | Focus on decision, not implementation |
-| No alternatives | Looks like rubber-stamping | Always document at least one alternative |
-| Missing context | Future readers can't understand why | Explain the situation that led to the decision |
-| Never updating | Misleading historical record | Mark superseded/deprecated when appropriate |
-
----
-
-## Integration with Specifications
-
-ADRs should be referenced in specifications when relevant:
-
-```markdown
-## Related ADRs
-
-| ADR | Impact |
-|-----|--------|
-| [ADR-001](../architecture/adr/ADR-001-xxx.md) | Defines database choice |
-| [ADR-003](../architecture/adr/ADR-003-xxx.md) | Establishes auth pattern |
-```
-
----
-
-## Workflow Phase
-
-ADRs are created during **Phase 1.5** of the documentation workflow:
-
-```
-Discovery → BRD → PRD → Constitution → Architecture → ADRs → Specifications
-```
-
-They capture key decisions made during architecture definition that specifications must follow.
-
----
-
-## Related Documents
-
-- [ADR Template](./adr-template.md)
-- [ADR Example](./ADR-000-template-example.md)
-- [Architecture Overview](../README.md)
-- [CLAUDE.md](../../CLAUDE.md) - Workflow guidance
-
----
-
-*Part of the Standards Documentation Repository*
-
----
-
-<!-- Compilation Metadata
-  domain: core-standards
-  domain_version: 2.0.0
-  compiled_at: 2026-03-25 13:07
-  source: evolv-coder-standards
-  files_compiled: 10/10
--->

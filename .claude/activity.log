@@ -2,3 +2,6 @@
 {"ts":"2026-05-14T18:35:52.610Z","skill":"eck:spec","feature":"WA-2","outcome":"success","duration_sec":1778783752,"summary":"Full spec pipeline (research, scope, discovery, criteria, questions) complete. 10 ACs locked (AC-01-10). SPEC-REVIEW PASS.","step":"spec"}
 {"ts":"2026-05-14T19:00:04.033Z","skill":"eck:design","feature":"WA-2","outcome":"success","duration_sec":0,"summary":"Full design pipeline complete: 9 sub-skills, 13 artifacts, DESIGN-REVIEW gate PASS","step":"design"}
 {"ts":"2026-05-14T19:00:07.435Z","skill":"eck:design","feature":"WA-2","outcome":"success","duration_sec":0,"summary":"Full design pipeline complete: 9 sub-skills, 13 artifacts, DESIGN-REVIEW gate PASS","step":"design"}
+{"ts":"2026-05-14T19:30:35.721Z","skill":"eck:deploy","feature":"WA-2","outcome":"success","duration_sec":1256,"summary":"Deployed WA-2 v0.2.0: promoted dev→main, tagged v0.2.0, updated tracker issue #8","step":"deploy"}
+{"ts":"2026-05-14T21:17:46.112Z","skill":"create-feature","feature":"WA-3","outcome":"success","duration_sec":0,"summary":"Created WA-3","step":"activate"}
+{"ts":"2026-05-14T21:49:54.571Z","skill":"eck:design","feature":"WA-3","outcome":"success","duration_sec":0,"summary":"Full design pipeline complete: 9 sub-skills run, 8 artifacts written, PASS verdict","step":"design"}

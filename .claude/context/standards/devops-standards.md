@@ -1,389 +1,72 @@
 # Devops Standards
+<!-- Compiled: 2026-05-14T21:13:04Z from evolv-coder-standards -->
 
-> DevOps standards: CI/CD, environments, monitoring, Docker
-
-**Compiled**: 2026-03-25 13:07
-**Source**: evolv-coder-standards
-**Domain Version**: 1.0.0
 
 ---
+<!-- Source: /home/tester/.claude/evolv-coder-standards/standards/devops/README.md -->
+# DevOps Standards
 
-## Contents
-
-- [Git Workflow](#git-workflow)
-- [Quality Gates](#quality-gates)
-- [Ci Cd](#ci-cd)
-- [Monitoring Alerting](#monitoring-alerting)
-- [Development Workflow](#development-workflow)
-- [Docker](#docker)
-- [Environments](#environments)
-
----
-
-<!-- Source: standards/devops/git-workflow.md (v1.0.0) -->
-
-# Git Workflow Standard
-
-**Version**: 1.0.0
-**Last Updated**: 2026-01-04
+**Version**: 1.1.0
+**Last Updated**: 2025-12-30
 **Status**: Active
-
-## Recommended .gitignore for Standards Documentation
-
-If you're version controlling your Standards separately or as part of your Obsidian vault, add these to your `.gitignore`:
-
-```gitignore
-# Obsidian
-.obsidian/workspace*
-.obsidian/hotkeys.json
-.obsidian/core-plugins-migration.json
-
-# System files
-.DS_Store
-Thumbs.db
-
-# Temporary files
-*.tmp
-*.bak
-*~
-
-# Keep the Standards folder tracked
-!Standards/
-!Standards/**/*.md
-```
-
-## Git Workflow for Standards
-
-### Initial Setup
-```bash
-# Initialize git in your Obsidian vault (if not already done)
-cd /path/to/obsidian/vault
-git init
-
-# Add Standards to tracking
-git add Standards/
-git commit -m "feat: Add comprehensive standards documentation v1.0.0"
-
-# Create a tag for the initial version
-git tag -a v1.0.0 -m "Initial standards release"
-```
-
-### Making Changes to Standards
-```bash
-# 1. Create a feature branch
-git checkout -b update/standard-name
-
-# 2. Make your changes
-# Edit the relevant .md files
-
-# 3. Update CHANGELOG.md with your changes
-
-# 4. Commit with conventional commit message
-git add Standards/
-git commit -m "docs(standards): Update [specific standard] for [reason]"
-
-# 5. Push and create PR
-git push origin update/standard-name
-```
-
-### Conventional Commit Types for Standards
-- `docs:` Documentation changes
-- `feat:` New standard or major addition
-- `fix:` Correction to existing standard
-- `refactor:` Reorganization without changing meaning
-- `breaking:` Breaking change to standards
-
-### Version Tagging Strategy
-```bash
-# For patch releases (clarifications, typos)
-git tag -a v1.0.1 -m "Patch: Clarify server action requirements"
-
-# for minor releases (new standards added)
-git tag -a v1.1.0 -m "Minor: Add GraphQL standards"
-
-# For major releases (breaking changes)
-git tag -a v2.0.0 -m "Major: Restructure backend architecture"
-```
-
-## Integration with CI/CD
-
-### GitHub Actions Example
-```yaml
-# .github/workflows/standards-check.yml
-name: Standards Documentation Check
-
-on:
-  pull_request:
-    paths:
-      - 'Standards/**'
-
-jobs:
-  validate:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Check CHANGELOG updated
-        run: |
-          if ! git diff HEAD^ HEAD --name-only | grep -q "Standards/CHANGELOG.md"; then
-            echo "ERROR: CHANGELOG.md must be updated when changing standards"
-            exit 1
-          fi
-
-      - name: Validate Markdown
-        uses: DavidAnson/markdownlint-cli2-action@v11
-        with:
-          globs: 'Standards/**/*.md'
-```
-
-## Syncing Standards Across Projects
-
-### As a Git Submodule
-```bash
-# In your project repository
-git submodule add https://github.com/yourorg/standards.git standards
-git submodule update --init --recursive
-```
-
-### As an NPM Package (for Frontend)
-```json
-// package.json
-{
-  "devDependencies": {
-    "@yourorg/standards": "^1.0.0"
-  }
-}
-```
-
-### As a Python Package (for Backend)
-```toml
-# pyproject.toml with uv
-[tool.uv]
-dev-dependencies = [
-    "your-standards @ git+https://github.com/yourorg/standards.git@v1.0.0",
-]
-```
-
----
-
-*This configuration ensures your standards are properly versioned and can be consistently applied across all projects.*
-
----
-
-<!-- Source: standards/devops/quality-gates.md (v1.0.0) -->
-
-# Quality Gates Standard
-
-**Version**: 1.0.0
-**Last Updated**: 2026-01-03
-**Status**: Active
-
----
 
 ## Purpose
 
-This standard defines quality gates, Definition of Ready (DoR), Definition of Done (DoD), and operational traceability requirements for development workflows.
+This directory contains standards for development operations, deployment, and infrastructure management.
+
+## Standards in This Category
+
+- **[development-workflow.md](./development-workflow.md)** - Development process, code review, quick reference commands
+- **[quality-gates.md](./quality-gates.md)** - Quality gates, Definition of Ready/Done, operational traceability
+- **[git-workflow.md](./git-workflow.md)** - Git branching strategy, commit conventions, and version control practices
+- **[docker.md](./docker.md)** - Docker containerization standards, Dockerfiles, and docker-compose patterns
+- **[ci-cd.md](./ci-cd.md)** - GitHub Actions workflows, testing automation, deployment pipelines, environment promotion
+- **[environments.md](./environments.md)** - Environment variable management, secrets handling, and per-environment configuration
+- **[monitoring-alerting.md](./monitoring-alerting.md)** - Metrics collection, alerting strategies, dashboards, and incident response
+
+## Quick Reference
+
+### Development Workflow
+- 10-step workflow from branch to merge
+- Code review checklist
+- Quality gates (7 gates from local to production)
+- Definition of Done criteria
+
+### Git Workflow
+- Use conventional commits
+- Feature branches for all work
+- Squash merge to main
+- Semantic versioning for releases
+
+### Docker
+- Multi-stage builds for optimization
+- Non-root user in containers
+- Health checks in all services
+- Environment-specific compose files
+
+### CI/CD
+- Automated testing on all PRs
+- Automated deployment to staging
+- Manual approval for production
+- Rollback procedures documented
+
+### Testing Requirements
+- Testing pyramid: Unit (40%) → Component (25%) → Integration (25%) → E2E (10%)
+- 80% minimum coverage for new code
+- E2E tests for critical user journeys
+- All tests must pass before merge
+
+## Related Categories
+
+- [Backend Standards](../backend/README.md) - For application-level deployment
+- [Frontend Standards](../frontend/README.md) - For frontend build processes
+- [Architecture](../architecture/README.md) - For infrastructure design
 
 ---
-
-## Quality Gates
-
-### Gate 1: Local Development
-
-Before creating a PR:
-- [ ] Code compiles without errors
-- [ ] Linting passes with no warnings
-- [ ] Type checking passes
-- [ ] All existing tests pass
-- [ ] New tests added for new code
-- [ ] Coverage meets minimum threshold (80%)
-
-### Gate 2: Pull Request Creation
-
-PR must include:
-- [ ] Descriptive title with ID: `[<KEY>-N] Description`
-- [ ] Completed PR template
-- [ ] Commits follow conventional format
-- [ ] Branch up to date with develop
-- [ ] No merge conflicts
-
-### Gate 3: CI Pipeline (Automated)
-
-| Check | Tool | Requirement |
-|-------|------|-------------|
-| Frontend Lint | ESLint | 0 errors |
-| Frontend Types | TypeScript | 0 errors |
-| Frontend Tests | Vitest | 80%+ coverage |
-| Frontend Build | Next.js | Successful |
-| Backend Lint | Ruff | 0 errors |
-| Backend Types | mypy | 0 errors |
-| Backend Tests | pytest | 80%+ coverage |
-| Integration Tests | pytest | All passing |
-| E2E Tests | Playwright | Critical paths pass |
-| Security Scan | CodeQL/Trivy | No high/critical |
-
-### Gate 4: Code Review
-
-- [ ] At least 1 approval
-- [ ] All comments addressed
-- [ ] No unresolved threads
-- [ ] Architecture patterns followed
-
-### Gate 5: Pre-Merge
-
-- [ ] develop branch CI passing
-- [ ] No breaking changes (or documented)
-- [ ] Documentation updated
-- [ ] CHANGELOG updated (if user-facing)
-
-### Gate 6: Staging
-
-- [ ] E2E tests pass
-- [ ] Performance benchmarks met
-- [ ] Security audit complete
-- [ ] Database migrations tested
-
-### Gate 7: Production
-
-- [ ] Staging tested by QA
-- [ ] Rollback plan documented
-- [ ] Monitoring ready
-- [ ] Release notes prepared
+*Part of the Standards Documentation Repository*
 
 ---
-
-## Definition of Ready (DoR)
-
-A task is **READY** when:
-
-### Task-Level
-
-- [ ] User story and acceptance criteria complete
-- [ ] Scope defined (in/out of scope documented)
-- [ ] No blocking dependencies
-- [ ] Specification approved (Tier 1/2 features)
-- [ ] API contracts defined (if applicable)
-- [ ] Test scenarios drafted
-- [ ] Estimate assigned
-- [ ] Feature branch created
-
-### Specification-Level
-
-- [ ] Discovery complete (if applicable)
-- [ ] User stories in "As a... I want... So that..." format
-- [ ] Acceptance criteria in BDD format
-- [ ] Assumptions documented
-- [ ] ADRs referenced (if applicable)
-- [ ] QA reviewed test scenarios
-
-### DoR by Task Type
-
-| Type | Minimum DoR |
-|------|-------------|
-| Feature (Tier 1) | Full DoR + Approved spec + QA scenarios |
-| Feature (Tier 2) | Full DoR + Approved spec |
-| Feature (Tier 3) | Simplified DoR + Spec or ticket |
-| Bug fix | Reproduction steps + Expected behavior |
-| Tech debt | Clear scope + Acceptance criteria |
-
----
-
-## Definition of Done (DoD)
-
-A task is **DONE** when:
-
-### Code Complete
-- [ ] Implementation matches requirements
-- [ ] Follows coding standards
-- [ ] No TODO comments for this task
-- [ ] No debug code or console.log
-- [ ] No `any` types in TypeScript
-
-### Architecture Compliance
-- [ ] Follows SSR with Server Actions pattern
-- [ ] No direct API calls from client components
-- [ ] Proper server vs client components
-- [ ] Type safety enforced
-
-### Tested
-- [ ] Unit tests passing
-- [ ] Integration tests (if API changes)
-- [ ] Component tests (if UI changes)
-- [ ] E2E tests (if critical path)
-- [ ] 80%+ coverage on new code
-- [ ] Manual testing completed
-
-### Reviewed
-- [ ] PR approved
-- [ ] All comments addressed
-
-### Merged
-- [ ] Squash merged to develop
-- [ ] CI passes on develop
-- [ ] Feature branch deleted
-
-### Documented
-- [ ] Code has appropriate docs
-- [ ] API changes in OpenAPI spec
-- [ ] README updated if needed
-
----
-
-## Operational Traceability
-
-### PR Title Format
-
-```
-[ID] Description
-
-Where ID is:
-- {KEY}-N: Product feature
-- FR-XXX: Functional requirement
-- BUG-XXX: Bug fix
-- TECH-XXX: Technical improvement
-```
-
-### Commit Message Format
-
-```
-type(scope): description
-
-Refs: FR-XXX
-```
-
-### Test Naming
-
-**Python:**
-```python
-class TestUserAuth:
-    """Tests for FEAT-1"""
-    def test_login_succeeds(self):
-        """FR-001: User can log in"""
-```
-
-**TypeScript:**
-```typescript
-describe('UserAuth [FEAT-1]', () => {
-  it('[FR-001] logs in with valid credentials', () => {});
-});
-```
-
----
-
-## Related Standards
-
-- [Development Workflow](./development-workflow.md)
-- [CI/CD](./ci-cd.md)
-- [Testing Strategy](../architecture/testing-strategy.md)
-
----
-
-*Quality gates ensure consistent code quality across the development lifecycle.*
-
----
-
-<!-- Source: standards/devops/ci-cd.md (v1.0.0) -->
-
+<!-- Source: /home/tester/.claude/evolv-coder-standards/standards/devops/ci-cd.md -->
 # CI/CD Workflows Standard
 
 **Version**: 1.0.0
@@ -1301,9 +984,1802 @@ strategy:
 *Automated CI/CD pipelines ensure consistent, reliable deployments with proper testing and security checks.*
 
 ---
+<!-- Source: /home/tester/.claude/evolv-coder-standards/standards/devops/development-workflow.md -->
+# Development Workflow Standard
 
-<!-- Source: standards/devops/monitoring-alerting.md (v1.0.0) -->
+**Version**: 1.0.0
+**Last Updated**: 2026-01-03
+**Status**: Active
 
+---
+
+## Overview
+
+This document defines the core development workflow, code review checklist, and PR templates. For quality gates, DoR/DoD, and traceability, see [Quality Gates](./quality-gates.md).
+
+**Related Standards:**
+- [Quality Gates](./quality-gates.md) - DoR, DoD, traceability
+- [Git Workflow](./git-workflow.md) - Branching and commit conventions
+- [CI/CD](./ci-cd.md) - Automated pipelines
+- [Testing Strategy](../architecture/testing-strategy.md) - Testing hub
+
+---
+
+## Table of Contents
+
+1. [Branch Strategy](#1-branch-strategy)
+2. [Development Workflow](#2-development-workflow)
+3. [Code Review Checklist](#3-code-review-checklist)
+
+---
+
+## 1. Branch Strategy
+
+```
+main (protected - production)
+  └── develop (integration branch)
+        ├── feature/FE-001-user-dashboard
+        ├── feature/BE-001-user-api
+        ├── feature/DB-001-add-indexes
+        ├── bugfix/FE-015-form-validation
+        └── hotfix/BE-020-auth-bypass
+```
+
+### Branch Naming Convention
+
+| Type | Pattern | Example |
+|------|---------|---------|
+| Feature (Frontend) | `feature/FE-{ID}-short-description` | `feature/FE-001-user-dashboard` |
+| Feature (Backend) | `feature/BE-{ID}-short-description` | `feature/BE-001-user-api` |
+| Feature (Database) | `feature/DB-{ID}-short-description` | `feature/DB-001-add-indexes` |
+| Feature (DevOps) | `feature/DO-{ID}-short-description` | `feature/DO-001-docker-config` |
+| Bugfix | `bugfix/{PREFIX}-{ID}-short-description` | `bugfix/FE-015-form-validation` |
+| Hotfix | `hotfix/{PREFIX}-{ID}-short-description` | `hotfix/BE-020-auth-bypass` |
+| Release | `release/v{VERSION}` | `release/v1.2.0` |
+
+### Branch Protection Rules
+
+**main branch:**
+- Requires PR with at least 1 approval
+- All CI checks must pass
+- No direct pushes
+- Only merge from develop or hotfix branches
+- Signed commits required (recommended)
+
+**develop branch:**
+- Requires PR with at least 1 approval
+- All CI checks must pass
+- Squash merge required
+- Branch must be up to date before merge
+
+---
+
+## 2. Development Workflow
+
+### 10-Step Development Workflow
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ STEP 1: CREATE FEATURE BRANCH                                   │
+│                                                                 │
+│ Commands:                                                       │
+│   git checkout develop                                          │
+│   git pull origin develop                                       │
+│   git checkout -b feature/FE-001-user-dashboard                 │
+│                                                                 │
+│ Verify:                                                         │
+│   - Branch is based on latest develop                           │
+│   - Branch name follows convention                              │
+├─────────────────────────────────────────────────────────────────┤
+│ STEP 2: IMPLEMENT FEATURE                                       │
+│                                                                 │
+│ Guidelines:                                                     │
+│   - Follow layer-specific standards (frontend/, backend/)       │
+│   - Use templates from templates/ directory                     │
+│   - Commit frequently with conventional commit messages         │
+│   - Add inline documentation for complex logic                  │
+│                                                                 │
+│ Data Flow (Critical):                                           │
+│   User → Client Component → Server Action → FastAPI → PostgreSQL│
+├─────────────────────────────────────────────────────────────────┤
+│ STEP 3: WRITE TESTS (Test-Driven when possible)                 │
+│                                                                 │
+│ Requirements:                                                   │
+│   - Unit tests for all new functions/methods                    │
+│   - Integration tests for API endpoints                         │
+│   - Component tests for React components                        │
+│   - Server action tests with mocked API                         │
+│   - Aim for 80%+ coverage on new code                           │
+│                                                                 │
+│ Templates:                                                      │
+│   - templates/test-api-endpoint.py                              │
+│   - templates/test-server-action.ts                             │
+│   - templates/test-react-component.tsx                          │
+│   - templates/test-e2e.ts                                       │
+├─────────────────────────────────────────────────────────────────┤
+│ STEP 4: RUN LOCAL QUALITY CHECKS                                │
+│                                                                 │
+│ Frontend:                                                       │
+│   npm run lint                    # ESLint                      │
+│   npm run type-check              # TypeScript                  │
+│   npm run build                   # Verify build                │
+│                                                                 │
+│ Backend:                                                        │
+│   uv run ruff check app/          # Linting                     │
+│   uv run ruff format --check app/ # Formatting                  │
+│   uv run mypy app/                # Type checking               │
+├─────────────────────────────────────────────────────────────────┤
+│ STEP 5: RUN TESTS LOCALLY                                       │
+│                                                                 │
+│ Frontend:                                                       │
+│   npm run test                    # Unit + component tests      │
+│   npm run test:coverage           # With coverage report        │
+│                                                                 │
+│ Backend:                                                        │
+│   uv run pytest                   # All tests                   │
+│   uv run pytest --cov=app --cov-fail-under=80  # With coverage  │
+│                                                                 │
+│ E2E (if applicable):                                            │
+│   npm run test:e2e                # Playwright tests            │
+├─────────────────────────────────────────────────────────────────┤
+│ STEP 6: UPDATE DOCUMENTATION                                    │
+│                                                                 │
+│ If applicable:                                                  │
+│   - Update API documentation (OpenAPI)                          │
+│   - Update README if new setup required                         │
+│   - Update CHANGELOG.md for user-facing changes                 │
+│   - Add JSDoc/docstrings for public APIs                        │
+├─────────────────────────────────────────────────────────────────┤
+│ STEP 7: CREATE PULL REQUEST                                     │
+│                                                                 │
+│ PR Title Format:                                                │
+│   [FE-001] Add user dashboard component                         │
+│                                                                 │
+│ PR Description (use template below)                             │
+├─────────────────────────────────────────────────────────────────┤
+│ STEP 8: AUTOMATED CI CHECKS                                     │
+│                                                                 │
+│ Must Pass:                                                      │
+│   ✓ Linting (0 errors, 0 warnings)                              │
+│   ✓ Type checking (TypeScript & mypy)                           │
+│   ✓ Unit tests (80%+ coverage)                                  │
+│   ✓ Integration tests                                           │
+│   ✓ Build succeeds                                              │
+│   ✓ Security scan (CodeQL, Trivy)                               │
+│   ✓ E2E tests (critical paths)                                  │
+├─────────────────────────────────────────────────────────────────┤
+│ STEP 9: CODE REVIEW                                             │
+│                                                                 │
+│ Requirements:                                                   │
+│   - At least 1 approval from team member                        │
+│   - All review comments addressed                               │
+│   - No unresolved threads                                       │
+│   - Reviewer verifies code review checklist                     │
+├─────────────────────────────────────────────────────────────────┤
+│ STEP 10: MERGE TO DEVELOP                                       │
+│                                                                 │
+│ Actions:                                                        │
+│   - Squash and merge                                            │
+│   - Use descriptive merge commit message                        │
+│   - Delete feature branch after merge                           │
+│   - Verify CI passes on develop branch                          │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Pull Request Template
+
+```markdown
+## Summary
+Brief description of changes (2-3 sentences)
+
+## Type of Change
+- [ ] Feature (new functionality)
+- [ ] Bug fix (non-breaking fix)
+- [ ] Breaking change (fix or feature that would break existing functionality)
+- [ ] Documentation update
+- [ ] Refactoring (no functional changes)
+
+## Changes Made
+- Change 1
+- Change 2
+- Change 3
+
+## Testing
+- [ ] Unit tests added/updated
+- [ ] Integration tests added/updated
+- [ ] E2E tests added/updated (if applicable)
+- [ ] Manual testing completed
+
+### Test Commands Run
+```bash
+# Commands used to test
+```
+
+## Screenshots (if applicable)
+Add screenshots for UI changes
+
+## Checklist
+- [ ] Code follows project style guidelines
+- [ ] Self-review completed
+- [ ] Comments added for complex logic
+- [ ] Documentation updated
+- [ ] No new warnings generated
+- [ ] All tests pass locally
+- [ ] CHANGELOG updated (if user-facing)
+
+## Related Issues
+Closes #XXX
+```
+
+---
+
+## 3. Code Review Checklist
+
+Reviewers must verify all items before approving:
+
+### Functionality
+- [ ] Code accomplishes the stated task requirements
+- [ ] Edge cases are properly handled
+- [ ] Error handling is appropriate and user-friendly
+- [ ] No obvious bugs or logic errors
+- [ ] Follows the SSR with Server Actions pattern
+
+### Architecture
+- [ ] Follows data flow: Client → Server Action → FastAPI → PostgreSQL
+- [ ] No direct API calls from client components
+- [ ] Server components used where possible
+- [ ] Proper separation of concerns
+
+### Code Quality
+- [ ] Follows project coding standards (TypeScript/Python)
+- [ ] No code duplication (DRY principle)
+- [ ] Functions/methods are focused (Single Responsibility)
+- [ ] Naming is clear, consistent, and descriptive
+- [ ] No hardcoded values (use config/env vars)
+- [ ] No debug code or console.log statements
+- [ ] No `any` types in TypeScript
+
+### Type Safety
+- [ ] TypeScript: Explicit return types on functions
+- [ ] TypeScript: Discriminated unions for state management
+- [ ] Python: Type hints on all functions
+- [ ] Pydantic models for API request/response
+- [ ] Zod schemas for frontend validation
+
+### Security
+- [ ] No secrets or credentials in code
+- [ ] Authentication checked in server actions
+- [ ] Authorization verified before operations
+- [ ] Input validation present (Zod/Pydantic)
+- [ ] SQL injection prevented (SQLAlchemy ORM)
+- [ ] XSS prevention in frontend
+- [ ] CSRF protection for mutations
+- [ ] Audit logging for sensitive operations
+
+### Testing
+- [ ] Unit tests cover new functionality
+- [ ] Tests are meaningful (not just for coverage)
+- [ ] Integration tests for API changes
+- [ ] Component tests for UI changes
+- [ ] Tests are deterministic (no flakiness)
+- [ ] Edge cases have test coverage
+
+### Performance
+- [ ] No N+1 queries (use eager loading)
+- [ ] Appropriate caching implemented
+- [ ] Large lists paginated
+- [ ] Images optimized (next/image)
+- [ ] No unnecessary re-renders
+
+### Documentation
+- [ ] Public functions have docstrings/JSDoc
+- [ ] Complex logic has explanatory comments
+- [ ] README updated if needed
+- [ ] API documentation updated (OpenAPI)
+
+---
+
+## Quick Reference Commands
+
+### Daily Development
+
+```bash
+# Start of day
+git checkout develop
+git pull origin develop
+
+# Create feature branch
+git checkout -b feature/FE-001-description
+
+# During development
+git add -A
+git commit -m "feat(scope): description"
+
+# Before PR
+npm run lint && npm run test         # Frontend
+uv run ruff check . && uv run pytest # Backend
+```
+
+### Conventional Commits
+
+| Type | Description | Example |
+|------|-------------|---------|
+| `feat` | New feature | `feat(auth): add OAuth login` |
+| `fix` | Bug fix | `fix(forms): validation error display` |
+| `docs` | Documentation | `docs(api): update OpenAPI spec` |
+| `style` | Formatting | `style: fix indentation` |
+| `refactor` | Code refactoring | `refactor(users): extract service` |
+| `test` | Adding tests | `test(api): add user endpoint tests` |
+| `chore` | Maintenance | `chore: update dependencies` |
+
+---
+
+## Related Standards
+
+- [Quality Gates](./quality-gates.md) - DoR, DoD, traceability, quality gates
+- [Git Workflow](./git-workflow.md) - Branching and commit conventions
+- [CI/CD](./ci-cd.md) - Pipelines, environment promotion, deployments
+- [Monitoring & Alerting](./monitoring-alerting.md) - Incident response
+- [Testing Strategy](../architecture/testing-strategy.md) - Testing hub
+- [Troubleshooting](../guides/troubleshooting.md) - Common issues
+
+---
+
+*Part of the Standards Documentation Repository*
+
+---
+<!-- Source: /home/tester/.claude/evolv-coder-standards/standards/devops/docker.md -->
+# Docker Standard
+
+**Version**: 1.0.0
+**Last Updated**: 2025-12-30
+**Status**: Active
+
+## Purpose
+
+This standard defines Docker patterns and best practices for containerizing Next.js and FastAPI applications.
+
+## Scope
+
+- Dockerfile best practices
+- Multi-stage builds
+- docker-compose configuration
+- Development vs production images
+- Health checks and security
+
+---
+
+## Directory Structure
+
+```
+project/
+├── docker/
+│   ├── frontend/
+│   │   ├── Dockerfile
+│   │   └── Dockerfile.dev
+│   └── backend/
+│       ├── Dockerfile
+│       └── Dockerfile.dev
+├── docker-compose.yml
+├── docker-compose.dev.yml
+├── docker-compose.prod.yml
+└── .dockerignore
+```
+
+---
+
+## Frontend Dockerfile (Next.js)
+
+### Production Build
+
+```dockerfile
+# docker/frontend/Dockerfile
+# Stage 1: Dependencies
+FROM node:22-alpine AS deps
+WORKDIR /app
+
+# Install dependencies based on lock file
+COPY package.json package-lock.json* ./
+RUN npm ci --only=production
+
+# Stage 2: Build
+FROM node:22-alpine AS builder
+WORKDIR /app
+
+COPY package.json package-lock.json* ./
+RUN npm ci
+
+COPY . .
+
+# Build arguments for environment
+ARG NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+
+# Disable telemetry during build
+ENV NEXT_TELEMETRY_DISABLED=1
+
+RUN npm run build
+
+# Stage 3: Production runner
+FROM node:22-alpine AS runner
+WORKDIR /app
+
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+
+# Create non-root user
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 nextjs
+
+# Copy built assets
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
+
+# Set ownership
+RUN chown -R nextjs:nodejs /app
+
+USER nextjs
+
+EXPOSE 3000
+ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1
+
+CMD ["node", "server.js"]
+```
+
+### Development Build
+
+```dockerfile
+# docker/frontend/Dockerfile.dev
+FROM node:22-alpine
+
+WORKDIR /app
+
+# Install dependencies
+COPY package.json package-lock.json* ./
+RUN npm install
+
+# Copy source
+COPY . .
+
+EXPOSE 3000
+
+CMD ["npm", "run", "dev"]
+```
+
+### next.config.ts for Standalone
+
+```typescript
+// next.config.ts
+import type { NextConfig } from 'next';
+
+const nextConfig: NextConfig = {
+  output: 'standalone',
+  // ... other config
+};
+
+export default nextConfig;
+```
+
+---
+
+## Backend Dockerfile (FastAPI)
+
+### Production Build
+
+```dockerfile
+# docker/backend/Dockerfile
+# Stage 1: Build
+FROM python:3.12-slim AS builder
+
+WORKDIR /app
+
+# Install uv
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
+
+# Copy dependency files
+COPY pyproject.toml uv.lock ./
+
+# Install dependencies
+RUN uv sync --frozen --no-dev
+
+# Stage 2: Runtime
+FROM python:3.12-slim AS runtime
+
+WORKDIR /app
+
+# Create non-root user
+RUN groupadd --gid 1000 appgroup && \
+    useradd --uid 1000 --gid appgroup --shell /bin/bash appuser
+
+# Copy virtual environment from builder
+COPY --from=builder /app/.venv /app/.venv
+
+# Copy application code
+COPY --chown=appuser:appgroup ./app ./app
+COPY --chown=appuser:appgroup ./alembic ./alembic
+COPY --chown=appuser:appgroup ./alembic.ini ./
+
+# Set environment
+ENV PATH="/app/.venv/bin:$PATH"
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+
+USER appuser
+
+EXPOSE 8000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+  CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" || exit 1
+
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+```
+
+### Development Build
+
+```dockerfile
+# docker/backend/Dockerfile.dev
+FROM python:3.12-slim
+
+WORKDIR /app
+
+# Install uv
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
+
+# Copy dependency files
+COPY pyproject.toml uv.lock ./
+
+# Install all dependencies including dev
+RUN uv sync --frozen
+
+# Set environment
+ENV PATH="/app/.venv/bin:$PATH"
+ENV PYTHONUNBUFFERED=1
+
+EXPOSE 8000
+
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+```
+
+---
+
+## Docker Compose
+
+### Development Configuration
+
+```yaml
+# docker-compose.dev.yml
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/frontend/Dockerfile.dev
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./src:/app/src
+      - ./public:/app/public
+      - /app/node_modules
+      - /app/.next
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+    depends_on:
+      - backend
+
+  backend:
+    build:
+      context: .
+      dockerfile: docker/backend/Dockerfile.dev
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./app:/app/app
+      - ./alembic:/app/alembic
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@db:5432/app_dev
+      - REDIS_URL=redis://redis:6379/0
+      - ENVIRONMENT=development
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  db:
+    image: postgres:16-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: app_dev
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+volumes:
+  postgres_data:
+  redis_data:
+```
+
+### Production Configuration
+
+```yaml
+# docker-compose.prod.yml
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/frontend/Dockerfile
+      args:
+        - NEXT_PUBLIC_API_URL=${API_URL}
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+
+  backend:
+    build:
+      context: .
+      dockerfile: docker/backend/Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+      - ENVIRONMENT=production
+      - CLERK_SECRET_KEY=${CLERK_SECRET_KEY}
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 1G
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - frontend
+      - backend
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+```
+
+### Base Configuration
+
+```yaml
+# docker-compose.yml
+# Shared configuration - extend with dev or prod
+version: '3.8'
+
+x-common-env: &common-env
+  TZ: UTC
+
+services:
+  frontend:
+    environment:
+      <<: *common-env
+
+  backend:
+    environment:
+      <<: *common-env
+```
+
+---
+
+## .dockerignore
+
+```dockerignore
+# .dockerignore
+
+# Dependencies
+node_modules
+.venv
+__pycache__
+*.pyc
+
+# Build outputs
+.next
+dist
+build
+*.egg-info
+
+# Development
+.git
+.gitignore
+.env*
+!.env.example
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+
+# Testing
+coverage
+.pytest_cache
+.coverage
+htmlcov
+
+# Docker
+Dockerfile*
+docker-compose*
+.docker
+
+# Documentation
+*.md
+docs
+
+# Misc
+.DS_Store
+Thumbs.db
+*.log
+```
+
+---
+
+## Health Check Endpoints
+
+### Next.js Health Check
+
+```typescript
+// app/api/health/route.ts
+import { NextResponse } from 'next/server';
+
+export async function GET() {
+  return NextResponse.json({
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+  });
+}
+```
+
+### FastAPI Health Check
+
+```python
+# app/api/routers/health.py
+from fastapi import APIRouter, Depends
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import text
+
+from app.api.deps import get_db
+from app.core.cache import cache
+
+router = APIRouter()
+
+
+@router.get("/health")
+async def health_check():
+    """Basic health check."""
+    return {"status": "healthy"}
+
+
+@router.get("/health/ready")
+async def readiness_check(db: AsyncSession = Depends(get_db)):
+    """Readiness check with dependency verification."""
+    checks = {
+        "database": False,
+        "redis": False,
+    }
+
+    # Check database
+    try:
+        await db.execute(text("SELECT 1"))
+        checks["database"] = True
+    except Exception:
+        pass
+
+    # Check Redis
+    try:
+        await cache.redis.ping()
+        checks["redis"] = True
+    except Exception:
+        pass
+
+    status = "healthy" if all(checks.values()) else "unhealthy"
+    status_code = 200 if status == "healthy" else 503
+
+    return JSONResponse(
+        status_code=status_code,
+        content={
+            "status": status,
+            "checks": checks,
+        },
+    )
+```
+
+---
+
+## Security Best Practices
+
+### Non-Root User
+
+```dockerfile
+# Always create and use non-root user
+RUN addgroup --system --gid 1001 appgroup
+RUN adduser --system --uid 1001 appuser
+USER appuser
+```
+
+### Read-Only Filesystem
+
+```yaml
+# docker-compose.yml
+services:
+  backend:
+    read_only: true
+    tmpfs:
+      - /tmp
+    volumes:
+      - type: tmpfs
+        target: /app/tmp
+```
+
+### Security Scanning
+
+```bash
+# Scan image for vulnerabilities
+docker scout cves myimage:latest
+
+# Use Trivy
+trivy image myimage:latest
+```
+
+### Secrets Management
+
+```yaml
+# docker-compose.yml
+services:
+  backend:
+    secrets:
+      - db_password
+      - api_key
+
+secrets:
+  db_password:
+    file: ./secrets/db_password.txt
+  api_key:
+    external: true
+```
+
+---
+
+## Development Workflow
+
+### Building Images
+
+```bash
+# Build development images
+docker compose -f docker-compose.dev.yml build
+
+# Build production images
+docker compose -f docker-compose.prod.yml build
+
+# Build with no cache
+docker compose build --no-cache
+```
+
+### Running Containers
+
+```bash
+# Start development environment
+docker compose -f docker-compose.dev.yml up
+
+# Start in detached mode
+docker compose -f docker-compose.dev.yml up -d
+
+# View logs
+docker compose logs -f backend
+
+# Stop containers
+docker compose down
+
+# Stop and remove volumes
+docker compose down -v
+```
+
+### Executing Commands
+
+```bash
+# Run migrations
+docker compose exec backend alembic upgrade head
+
+# Open shell
+docker compose exec backend bash
+
+# Run tests
+docker compose exec backend pytest
+
+# Install new package
+docker compose exec backend uv add package-name
+```
+
+---
+
+## Multi-Architecture Builds
+
+```bash
+# Build for multiple platforms
+docker buildx build \
+  --platform linux/amd64,linux/arm64 \
+  -t myapp/backend:latest \
+  --push \
+  -f docker/backend/Dockerfile .
+```
+
+---
+
+## Related Standards
+
+- [CI/CD Workflows](./ci-cd.md)
+- [Environment Management](./environments.md)
+- [Backend Tech Stack](../backend/tech-stack.md)
+- [Frontend Tech Stack](../frontend/tech-stack.md)
+
+---
+
+*Proper containerization ensures consistent, reproducible deployments across all environments.*
+
+---
+<!-- Source: /home/tester/.claude/evolv-coder-standards/standards/devops/environments.md -->
+# Environment Management Standard
+
+**Version**: 1.0.0
+**Last Updated**: 2025-12-30
+**Status**: Active
+
+## Purpose
+
+This standard defines patterns for managing environment variables, secrets, and configuration across development, staging, and production environments.
+
+## Scope
+
+- Environment variable organization
+- Secrets handling
+- Configuration per environment
+- Local development setup
+- CI/CD integration
+
+---
+
+## Environment Hierarchy
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                      Production                              │
+│  Most restricted, real user data, full security             │
+└─────────────────────────────────────────────────────────────┘
+                              ▲
+┌─────────────────────────────────────────────────────────────┐
+│                       Staging                                │
+│  Production-like, test data, security enabled               │
+└─────────────────────────────────────────────────────────────┘
+                              ▲
+┌─────────────────────────────────────────────────────────────┐
+│                      Development                             │
+│  Local development, mock services, relaxed security         │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Environment Files Structure
+
+### Frontend (Next.js)
+
+```
+frontend/
+├── .env                    # Shared defaults (committed)
+├── .env.local              # Local overrides (not committed)
+├── .env.development        # Development defaults
+├── .env.production         # Production defaults
+└── .env.example            # Template with all variables
+```
+
+### Backend (FastAPI)
+
+```
+backend/
+├── .env                    # Local development (not committed)
+├── .env.example            # Template with all variables
+└── app/
+    └── core/
+        └── config.py       # Settings class with validation
+```
+
+---
+
+## Environment Variable Naming
+
+### Conventions
+
+| Convention | Example | Use Case |
+|------------|---------|----------|
+| `NEXT_PUBLIC_*` | `NEXT_PUBLIC_API_URL` | Frontend public variables |
+| `DATABASE_*` | `DATABASE_URL` | Database configuration |
+| `REDIS_*` | `REDIS_URL` | Redis configuration |
+| `*_SECRET_KEY` | `CLERK_SECRET_KEY` | Secret keys |
+| `*_API_KEY` | `STRIPE_API_KEY` | API keys |
+| `*_URL` | `API_URL` | Service URLs |
+
+### Categories
+
+```bash
+# Application
+APP_NAME=myapp
+APP_ENV=development|staging|production
+DEBUG=true|false
+
+# Server
+HOST=0.0.0.0
+PORT=8000
+
+# Database
+DATABASE_URL=postgresql+asyncpg://user:pass@host:5432/db
+DATABASE_POOL_SIZE=20
+DATABASE_MAX_OVERFLOW=10
+
+# Cache
+REDIS_URL=redis://localhost:6379/0
+CACHE_TTL=3600
+
+# Authentication
+CLERK_SECRET_KEY=sk_xxx
+CLERK_PUBLISHABLE_KEY=pk_xxx
+JWT_SECRET_KEY=xxx
+JWT_ALGORITHM=HS256
+
+# External Services
+STRIPE_SECRET_KEY=sk_xxx
+STRIPE_WEBHOOK_SECRET=whsec_xxx
+SENTRY_DSN=https://xxx@sentry.io/xxx
+
+# Feature Flags
+FEATURE_NEW_DASHBOARD=true
+FEATURE_BETA_API=false
+```
+
+---
+
+## Frontend Environment Variables
+
+### .env.example
+
+```bash
+# .env.example - Copy to .env.local and fill in values
+
+# ======================
+# PUBLIC VARIABLES
+# These are exposed to the browser
+# ======================
+
+# API Configuration
+NEXT_PUBLIC_API_URL=http://localhost:8000
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+
+# Authentication (Clerk)
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_xxx
+
+# Feature Flags
+NEXT_PUBLIC_ENABLE_ANALYTICS=false
+
+# ======================
+# SERVER-ONLY VARIABLES
+# These are only available in server components/actions
+# ======================
+
+# Authentication
+CLERK_SECRET_KEY=sk_test_xxx
+CLERK_WEBHOOK_SECRET=whsec_xxx
+
+# Internal API
+BACKEND_URL=http://localhost:8000
+INTERNAL_API_KEY=xxx
+
+# ======================
+# BUILD-TIME VARIABLES
+# ======================
+ANALYZE=false
+```
+
+### Environment Validation
+
+```typescript
+// lib/env.ts
+import { z } from 'zod';
+
+const envSchema = z.object({
+  // Public (available in browser)
+  NEXT_PUBLIC_API_URL: z.string().url(),
+  NEXT_PUBLIC_APP_URL: z.string().url(),
+  NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: z.string().startsWith('pk_'),
+
+  // Server-only
+  CLERK_SECRET_KEY: z.string().startsWith('sk_'),
+  BACKEND_URL: z.string().url(),
+
+  // Optional
+  SENTRY_DSN: z.string().url().optional(),
+});
+
+// Validate at build time
+export const env = envSchema.parse({
+  NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
+  NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
+  NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
+  CLERK_SECRET_KEY: process.env.CLERK_SECRET_KEY,
+  BACKEND_URL: process.env.BACKEND_URL,
+  SENTRY_DSN: process.env.SENTRY_DSN,
+});
+
+// Type-safe access
+export type Env = z.infer<typeof envSchema>;
+```
+
+### Usage
+
+```typescript
+// In server components/actions
+import { env } from '@/lib/env';
+
+const response = await fetch(`${env.BACKEND_URL}/api/users`);
+
+// In client components (only NEXT_PUBLIC_* available)
+const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+```
+
+---
+
+## Backend Environment Variables
+
+### .env.example
+
+```bash
+# .env.example - Copy to .env and fill in values
+
+# ======================
+# APPLICATION
+# ======================
+APP_NAME=myapp
+ENVIRONMENT=development  # development | staging | production
+DEBUG=true
+LOG_LEVEL=DEBUG  # DEBUG | INFO | WARNING | ERROR
+
+# ======================
+# SERVER
+# ======================
+HOST=0.0.0.0
+PORT=8000
+WORKERS=4
+RELOAD=true  # Only for development
+
+# ======================
+# DATABASE
+# ======================
+DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/myapp_dev
+DATABASE_POOL_SIZE=20
+DATABASE_MAX_OVERFLOW=10
+DATABASE_ECHO=false  # Log SQL queries
+
+# ======================
+# REDIS
+# ======================
+REDIS_URL=redis://localhost:6379/0
+
+# ======================
+# AUTHENTICATION
+# ======================
+CLERK_SECRET_KEY=sk_test_xxx
+CLERK_FRONTEND_API=clerk.xxx.com
+CLERK_PEM_PUBLIC_KEY=""
+
+# ======================
+# SECURITY
+# ======================
+CORS_ORIGINS=["http://localhost:3000"]
+SECRET_KEY=your-secret-key-here
+ALLOWED_HOSTS=["localhost", "127.0.0.1"]
+
+# ======================
+# EXTERNAL SERVICES
+# ======================
+SENTRY_DSN=
+STRIPE_SECRET_KEY=sk_test_xxx
+STRIPE_WEBHOOK_SECRET=whsec_xxx
+
+# ======================
+# FEATURE FLAGS
+# ======================
+FEATURE_NEW_API=false
+```
+
+### Settings Class
+
+```python
+# app/core/config.py
+from functools import lru_cache
+from typing import Literal
+
+from pydantic import (
+    AnyHttpUrl,
+    Field,
+    PostgresDsn,
+    RedisDsn,
+    SecretStr,
+    field_validator,
+)
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class Settings(BaseSettings):
+    """Application settings with validation."""
+
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=True,
+        extra="ignore",
+    )
+
+    # Application
+    APP_NAME: str = "myapp"
+    ENVIRONMENT: Literal["development", "staging", "production"] = "development"
+    DEBUG: bool = False
+    LOG_LEVEL: str = "INFO"
+
+    # Server
+    HOST: str = "0.0.0.0"
+    PORT: int = 8000
+    WORKERS: int = 4
+    RELOAD: bool = False
+
+    # Database
+    DATABASE_URL: PostgresDsn
+    DATABASE_POOL_SIZE: int = 20
+    DATABASE_MAX_OVERFLOW: int = 10
+    DATABASE_ECHO: bool = False
+
+    # Redis
+    REDIS_URL: RedisDsn
+
+    # Authentication
+    CLERK_SECRET_KEY: SecretStr
+    CLERK_FRONTEND_API: str
+    CLERK_PEM_PUBLIC_KEY: str = ""
+
+    # Security
+    CORS_ORIGINS: list[AnyHttpUrl] = []
+    SECRET_KEY: SecretStr
+    ALLOWED_HOSTS: list[str] = ["localhost"]
+
+    # External Services
+    SENTRY_DSN: str | None = None
+    STRIPE_SECRET_KEY: SecretStr | None = None
+    STRIPE_WEBHOOK_SECRET: SecretStr | None = None
+
+    # Feature Flags
+    FEATURE_NEW_API: bool = False
+
+    @field_validator("CORS_ORIGINS", mode="before")
+    @classmethod
+    def parse_cors_origins(cls, v):
+        if isinstance(v, str):
+            import json
+            return json.loads(v)
+        return v
+
+    @property
+    def is_development(self) -> bool:
+        return self.ENVIRONMENT == "development"
+
+    @property
+    def is_production(self) -> bool:
+        return self.ENVIRONMENT == "production"
+
+
+@lru_cache
+def get_settings() -> Settings:
+    """Get cached settings instance."""
+    return Settings()
+
+
+settings = get_settings()
+```
+
+---
+
+## Per-Environment Configuration
+
+### Development
+
+```bash
+# .env (development)
+ENVIRONMENT=development
+DEBUG=true
+LOG_LEVEL=DEBUG
+RELOAD=true
+
+DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/myapp_dev
+REDIS_URL=redis://localhost:6379/0
+
+CORS_ORIGINS=["http://localhost:3000"]
+
+# Use test keys for external services
+CLERK_SECRET_KEY=sk_test_xxx
+STRIPE_SECRET_KEY=sk_test_xxx
+```
+
+### Staging
+
+```bash
+# Environment variables (set in CI/CD or server)
+ENVIRONMENT=staging
+DEBUG=false
+LOG_LEVEL=INFO
+RELOAD=false
+
+DATABASE_URL=postgresql+asyncpg://user:pass@staging-db:5432/myapp_staging
+REDIS_URL=redis://staging-redis:6379/0
+
+CORS_ORIGINS=["https://staging.example.com"]
+
+# Use test keys but with staging config
+CLERK_SECRET_KEY=sk_test_xxx
+STRIPE_SECRET_KEY=sk_test_xxx
+SENTRY_DSN=https://xxx@sentry.io/staging
+```
+
+### Production
+
+```bash
+# Environment variables (set via secrets manager)
+ENVIRONMENT=production
+DEBUG=false
+LOG_LEVEL=WARNING
+RELOAD=false
+
+DATABASE_URL=postgresql+asyncpg://user:pass@prod-db:5432/myapp
+REDIS_URL=redis://prod-redis:6379/0
+
+CORS_ORIGINS=["https://example.com", "https://www.example.com"]
+
+# Live keys
+CLERK_SECRET_KEY=sk_live_xxx
+STRIPE_SECRET_KEY=sk_live_xxx
+SENTRY_DSN=https://xxx@sentry.io/production
+```
+
+---
+
+## Secrets Management
+
+### Local Development
+
+```bash
+# Use .env files (gitignored)
+cp .env.example .env
+# Edit .env with your local values
+```
+
+### CI/CD (GitHub Actions)
+
+```yaml
+# Use GitHub secrets and variables
+env:
+  DATABASE_URL: ${{ secrets.DATABASE_URL }}
+  CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
+
+# Use environments for different stages
+jobs:
+  deploy:
+    environment: production
+    steps:
+      - name: Deploy
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+```
+
+### Production (Cloud Providers)
+
+#### AWS Secrets Manager
+
+```python
+# app/core/secrets.py
+import boto3
+import json
+from functools import lru_cache
+
+
+@lru_cache
+def get_secret(secret_name: str) -> dict:
+    """Fetch secret from AWS Secrets Manager."""
+    client = boto3.client("secretsmanager")
+    response = client.get_secret_value(SecretId=secret_name)
+    return json.loads(response["SecretString"])
+
+
+# Usage in settings
+if settings.ENVIRONMENT == "production":
+    secrets = get_secret("myapp/production")
+    DATABASE_URL = secrets["database_url"]
+```
+
+#### Docker Secrets
+
+```yaml
+# docker-compose.yml
+services:
+  backend:
+    secrets:
+      - db_password
+      - clerk_secret
+
+secrets:
+  db_password:
+    file: ./secrets/db_password.txt
+  clerk_secret:
+    external: true
+```
+
+```python
+# Read Docker secret
+def read_secret(name: str) -> str:
+    """Read Docker secret."""
+    secret_path = f"/run/secrets/{name}"
+    try:
+        with open(secret_path) as f:
+            return f.read().strip()
+    except FileNotFoundError:
+        return None
+```
+
+---
+
+## Feature Flags
+
+### Configuration
+
+```python
+# app/core/features.py
+from app.core.config import settings
+
+
+class FeatureFlags:
+    """Feature flag management."""
+
+    @property
+    def new_api(self) -> bool:
+        return settings.FEATURE_NEW_API
+
+    @property
+    def beta_features(self) -> bool:
+        # Only in non-production
+        return not settings.is_production
+
+    def is_enabled(self, flag: str) -> bool:
+        """Check if a feature flag is enabled."""
+        return getattr(self, flag, False)
+
+
+features = FeatureFlags()
+```
+
+### Usage
+
+```python
+# In routes
+@router.get("/new-endpoint")
+async def new_endpoint():
+    if not features.new_api:
+        raise HTTPException(status_code=404)
+    return {"message": "New API"}
+
+
+# In templates
+if features.is_enabled("dark_mode"):
+    # Enable dark mode
+```
+
+---
+
+## Environment Checklist
+
+### Development Setup
+
+- [ ] Copy `.env.example` to `.env`
+- [ ] Fill in local database credentials
+- [ ] Set up local Redis instance
+- [ ] Configure authentication test keys
+- [ ] Set `DEBUG=true`
+
+### Staging Deployment
+
+- [ ] All secrets in CI/CD secrets store
+- [ ] Test API keys configured
+- [ ] Sentry DSN set
+- [ ] CORS origins updated
+- [ ] Health check endpoints working
+
+### Production Deployment
+
+- [ ] All secrets in secure secrets manager
+- [ ] Production API keys configured
+- [ ] `DEBUG=false`
+- [ ] Appropriate log level
+- [ ] CORS origins restricted
+- [ ] Rate limiting enabled
+- [ ] Monitoring configured
+
+---
+
+## Security Best Practices
+
+### Never Commit Secrets
+
+```gitignore
+# .gitignore
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+secrets/
+```
+
+### Rotate Secrets Regularly
+
+```bash
+# Create rotation schedule
+# - API keys: Quarterly
+# - Database passwords: Monthly
+# - JWT secrets: Bi-annually
+```
+
+### Audit Secret Access
+
+```python
+# Log when secrets are accessed
+import logging
+
+logger = logging.getLogger(__name__)
+
+def get_secret(name: str) -> str:
+    logger.info(f"Secret accessed: {name}")
+    # ... fetch secret
+```
+
+---
+
+## Related Standards
+
+- [Docker Standards](./docker.md)
+- [CI/CD Workflows](./ci-cd.md)
+- [Security Architecture](../architecture/security.md)
+
+---
+
+*Proper environment management ensures secure, consistent configuration across all deployment stages.*
+
+---
+<!-- Source: /home/tester/.claude/evolv-coder-standards/standards/devops/git-workflow.md -->
+# Git Workflow Standard
+
+**Version**: 1.0.0
+**Last Updated**: 2026-01-04
+**Status**: Active
+
+## Recommended .gitignore for Standards Documentation
+
+If you're version controlling your Standards separately or as part of your Obsidian vault, add these to your `.gitignore`:
+
+```gitignore
+# Obsidian
+.obsidian/workspace*
+.obsidian/hotkeys.json
+.obsidian/core-plugins-migration.json
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.bak
+*~
+
+# Keep the Standards folder tracked
+!Standards/
+!Standards/**/*.md
+```
+
+## Git Workflow for Standards
+
+### Initial Setup
+```bash
+# Initialize git in your Obsidian vault (if not already done)
+cd /path/to/obsidian/vault
+git init
+
+# Add Standards to tracking
+git add Standards/
+git commit -m "feat: Add comprehensive standards documentation v1.0.0"
+
+# Create a tag for the initial version
+git tag -a v1.0.0 -m "Initial standards release"
+```
+
+### Making Changes to Standards
+```bash
+# 1. Create a feature branch
+git checkout -b update/standard-name
+
+# 2. Make your changes
+# Edit the relevant .md files
+
+# 3. Update CHANGELOG.md with your changes
+
+# 4. Commit with conventional commit message
+git add Standards/
+git commit -m "docs(standards): Update [specific standard] for [reason]"
+
+# 5. Push and create PR
+git push origin update/standard-name
+```
+
+### Conventional Commit Types for Standards
+- `docs:` Documentation changes
+- `feat:` New standard or major addition
+- `fix:` Correction to existing standard
+- `refactor:` Reorganization without changing meaning
+- `breaking:` Breaking change to standards
+
+### Version Tagging Strategy
+```bash
+# For patch releases (clarifications, typos)
+git tag -a v1.0.1 -m "Patch: Clarify server action requirements"
+
+# for minor releases (new standards added)
+git tag -a v1.1.0 -m "Minor: Add GraphQL standards"
+
+# For major releases (breaking changes)
+git tag -a v2.0.0 -m "Major: Restructure backend architecture"
+```
+
+## Integration with CI/CD
+
+### GitHub Actions Example
+```yaml
+# .github/workflows/standards-check.yml
+name: Standards Documentation Check
+
+on:
+  pull_request:
+    paths:
+      - 'Standards/**'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Check CHANGELOG updated
+        run: |
+          if ! git diff HEAD^ HEAD --name-only | grep -q "Standards/CHANGELOG.md"; then
+            echo "ERROR: CHANGELOG.md must be updated when changing standards"
+            exit 1
+          fi
+
+      - name: Validate Markdown
+        uses: DavidAnson/markdownlint-cli2-action@v11
+        with:
+          globs: 'Standards/**/*.md'
+```
+
+## Syncing Standards Across Projects
+
+### As a Git Submodule
+```bash
+# In your project repository
+git submodule add https://github.com/yourorg/standards.git standards
+git submodule update --init --recursive
+```
+
+### As an NPM Package (for Frontend)
+```json
+// package.json
+{
+  "devDependencies": {
+    "@yourorg/standards": "^1.0.0"
+  }
+}
+```
+
+### As a Python Package (for Backend)
+```toml
+# pyproject.toml with uv
+[tool.uv]
+dev-dependencies = [
+    "your-standards @ git+https://github.com/yourorg/standards.git@v1.0.0",
+]
+```
+
+---
+
+*This configuration ensures your standards are properly versioned and can be consistently applied across all projects.*
+
+---
+<!-- Source: /home/tester/.claude/evolv-coder-standards/standards/devops/monitoring-alerting.md -->
 # Monitoring and Alerting Standards
 
 **Version**: 1.0.0
@@ -2129,10 +3605,8 @@ db_conn               # Unclear abbreviation
 *For observability standards (logging, tracing), see [architecture/observability.md](../architecture/observability.md).*
 
 ---
-
-<!-- Source: standards/devops/development-workflow.md (v1.0.0) -->
-
-# Development Workflow Standard
+<!-- Source: /home/tester/.claude/evolv-coder-standards/standards/devops/quality-gates.md -->
+# Quality Gates Standard
 
 **Version**: 1.0.0
 **Last Updated**: 2026-01-03
@@ -2140,1653 +3614,202 @@ db_conn               # Unclear abbreviation
 
 ---
 
-## Overview
+## Purpose
 
-This document defines the core development workflow, code review checklist, and PR templates. For quality gates, DoR/DoD, and traceability, see [Quality Gates](./quality-gates.md).
-
-**Related Standards:**
-- [Quality Gates](./quality-gates.md) - DoR, DoD, traceability
-- [Git Workflow](./git-workflow.md) - Branching and commit conventions
-- [CI/CD](./ci-cd.md) - Automated pipelines
-- [Testing Strategy](../architecture/testing-strategy.md) - Testing hub
+This standard defines quality gates, Definition of Ready (DoR), Definition of Done (DoD), and operational traceability requirements for development workflows.
 
 ---
 
-## Table of Contents
+## Quality Gates
 
-1. [Branch Strategy](#1-branch-strategy)
-2. [Development Workflow](#2-development-workflow)
-3. [Code Review Checklist](#3-code-review-checklist)
+### Gate 1: Local Development
 
----
+Before creating a PR:
+- [ ] Code compiles without errors
+- [ ] Linting passes with no warnings
+- [ ] Type checking passes
+- [ ] All existing tests pass
+- [ ] New tests added for new code
+- [ ] Coverage meets minimum threshold (80%)
 
-## 1. Branch Strategy
+### Gate 2: Pull Request Creation
 
-```
-main (protected - production)
-  └── develop (integration branch)
-        ├── feature/FE-001-user-dashboard
-        ├── feature/BE-001-user-api
-        ├── feature/DB-001-add-indexes
-        ├── bugfix/FE-015-form-validation
-        └── hotfix/BE-020-auth-bypass
-```
+PR must include:
+- [ ] Descriptive title with ID: `[FEAT-XXX] Description`
+- [ ] Completed PR template
+- [ ] Commits follow conventional format
+- [ ] Branch up to date with develop
+- [ ] No merge conflicts
 
-### Branch Naming Convention
+### Gate 3: CI Pipeline (Automated)
 
-| Type | Pattern | Example |
-|------|---------|---------|
-| Feature (Frontend) | `feature/FE-<ID>-short-description` | `feature/FE-001-user-dashboard` |
-| Feature (Backend) | `feature/BE-<ID>-short-description` | `feature/BE-001-user-api` |
-| Feature (Database) | `feature/DB-<ID>-short-description` | `feature/DB-001-add-indexes` |
-| Feature (DevOps) | `feature/DO-<ID>-short-description` | `feature/DO-001-docker-config` |
-| Bugfix | `bugfix/<PREFIX>-<ID>-short-description` | `bugfix/FE-015-form-validation` |
-| Hotfix | `hotfix/<PREFIX>-<ID>-short-description` | `hotfix/BE-020-auth-bypass` |
-| Release | `release/v<VERSION>` | `release/v1.2.0` |
+| Check | Tool | Requirement |
+|-------|------|-------------|
+| Frontend Lint | ESLint | 0 errors |
+| Frontend Types | TypeScript | 0 errors |
+| Frontend Tests | Vitest | 80%+ coverage |
+| Frontend Build | Next.js | Successful |
+| Backend Lint | Ruff | 0 errors |
+| Backend Types | mypy | 0 errors |
+| Backend Tests | pytest | 80%+ coverage |
+| Integration Tests | pytest | All passing |
+| E2E Tests | Playwright | Critical paths pass |
+| Security Scan | CodeQL/Trivy | No high/critical |
 
-### Branch Protection Rules
+### Gate 4: Code Review
 
-**main branch:**
-- Requires PR with at least 1 approval
-- All CI checks must pass
-- No direct pushes
-- Only merge from develop or hotfix branches
-- Signed commits required (recommended)
+- [ ] At least 1 approval
+- [ ] All comments addressed
+- [ ] No unresolved threads
+- [ ] Architecture patterns followed
 
-**develop branch:**
-- Requires PR with at least 1 approval
-- All CI checks must pass
-- Squash merge required
-- Branch must be up to date before merge
+### Gate 5: Pre-Merge
 
----
-
-## 2. Development Workflow
-
-### 10-Step Development Workflow
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│ STEP 1: CREATE FEATURE BRANCH                                   │
-│                                                                 │
-│ Commands:                                                       │
-│   git checkout develop                                          │
-│   git pull origin develop                                       │
-│   git checkout -b feature/FE-001-user-dashboard                 │
-│                                                                 │
-│ Verify:                                                         │
-│   - Branch is based on latest develop                           │
-│   - Branch name follows convention                              │
-├─────────────────────────────────────────────────────────────────┤
-│ STEP 2: IMPLEMENT FEATURE                                       │
-│                                                                 │
-│ Guidelines:                                                     │
-│   - Follow layer-specific standards (frontend/, backend/)       │
-│   - Use templates from templates/ directory                     │
-│   - Commit frequently with conventional commit messages         │
-│   - Add inline documentation for complex logic                  │
-│                                                                 │
-│ Data Flow (Critical):                                           │
-│   User → Client Component → Server Action → FastAPI → PostgreSQL│
-├─────────────────────────────────────────────────────────────────┤
-│ STEP 3: WRITE TESTS (Test-Driven when possible)                 │
-│                                                                 │
-│ Requirements:                                                   │
-│   - Unit tests for all new functions/methods                    │
-│   - Integration tests for API endpoints                         │
-│   - Component tests for React components                        │
-│   - Server action tests with mocked API                         │
-│   - Aim for 80%+ coverage on new code                           │
-│                                                                 │
-│ Templates:                                                      │
-│   - templates/test-api-endpoint.py                              │
-│   - templates/test-server-action.ts                             │
-│   - templates/test-react-component.tsx                          │
-│   - templates/test-e2e.ts                                       │
-├─────────────────────────────────────────────────────────────────┤
-│ STEP 4: RUN LOCAL QUALITY CHECKS                                │
-│                                                                 │
-│ Frontend:                                                       │
-│   npm run lint                    # ESLint                      │
-│   npm run type-check              # TypeScript                  │
-│   npm run build                   # Verify build                │
-│                                                                 │
-│ Backend:                                                        │
-│   uv run ruff check app/          # Linting                     │
-│   uv run ruff format --check app/ # Formatting                  │
-│   uv run mypy app/                # Type checking               │
-├─────────────────────────────────────────────────────────────────┤
-│ STEP 5: RUN TESTS LOCALLY                                       │
-│                                                                 │
-│ Frontend:                                                       │
-│   npm run test                    # Unit + component tests      │
-│   npm run test:coverage           # With coverage report        │
-│                                                                 │
-│ Backend:                                                        │
-│   uv run pytest                   # All tests                   │
-│   uv run pytest --cov=app --cov-fail-under=80  # With coverage  │
-│                                                                 │
-│ E2E (if applicable):                                            │
-│   npm run test:e2e                # Playwright tests            │
-├─────────────────────────────────────────────────────────────────┤
-│ STEP 6: UPDATE DOCUMENTATION                                    │
-│                                                                 │
-│ If applicable:                                                  │
-│   - Update API documentation (OpenAPI)                          │
-│   - Update README if new setup required                         │
-│   - Update CHANGELOG.md for user-facing changes                 │
-│   - Add JSDoc/docstrings for public APIs                        │
-├─────────────────────────────────────────────────────────────────┤
-│ STEP 7: CREATE PULL REQUEST                                     │
-│                                                                 │
-│ PR Title Format:                                                │
-│   [FE-001] Add user dashboard component                         │
-│                                                                 │
-│ PR Description (use template below)                             │
-├─────────────────────────────────────────────────────────────────┤
-│ STEP 8: AUTOMATED CI CHECKS                                     │
-│                                                                 │
-│ Must Pass:                                                      │
-│   ✓ Linting (0 errors, 0 warnings)                              │
-│   ✓ Type checking (TypeScript & mypy)                           │
-│   ✓ Unit tests (80%+ coverage)                                  │
-│   ✓ Integration tests                                           │
-│   ✓ Build succeeds                                              │
-│   ✓ Security scan (CodeQL, Trivy)                               │
-│   ✓ E2E tests (critical paths)                                  │
-├─────────────────────────────────────────────────────────────────┤
-│ STEP 9: CODE REVIEW                                             │
-│                                                                 │
-│ Requirements:                                                   │
-│   - At least 1 approval from team member                        │
-│   - All review comments addressed                               │
-│   - No unresolved threads                                       │
-│   - Reviewer verifies code review checklist                     │
-├─────────────────────────────────────────────────────────────────┤
-│ STEP 10: MERGE TO DEVELOP                                       │
-│                                                                 │
-│ Actions:                                                        │
-│   - Squash and merge                                            │
-│   - Use descriptive merge commit message                        │
-│   - Delete feature branch after merge                           │
-│   - Verify CI passes on develop branch                          │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-### Pull Request Template
-
-```markdown
-## Summary
-Brief description of changes (2-3 sentences)
-
-## Type of Change
-- [ ] Feature (new functionality)
-- [ ] Bug fix (non-breaking fix)
-- [ ] Breaking change (fix or feature that would break existing functionality)
-- [ ] Documentation update
-- [ ] Refactoring (no functional changes)
-
-## Changes Made
-- Change 1
-- Change 2
-- Change 3
-
-## Testing
-- [ ] Unit tests added/updated
-- [ ] Integration tests added/updated
-- [ ] E2E tests added/updated (if applicable)
-- [ ] Manual testing completed
-
-### Test Commands Run
-```bash
-# Commands used to test
-```
-
-## Screenshots (if applicable)
-Add screenshots for UI changes
-
-## Checklist
-- [ ] Code follows project style guidelines
-- [ ] Self-review completed
-- [ ] Comments added for complex logic
+- [ ] develop branch CI passing
+- [ ] No breaking changes (or documented)
 - [ ] Documentation updated
-- [ ] No new warnings generated
-- [ ] All tests pass locally
 - [ ] CHANGELOG updated (if user-facing)
 
-## Related Issues
-Closes #XXX
-```
+### Gate 6: Staging
+
+- [ ] E2E tests pass
+- [ ] Performance benchmarks met
+- [ ] Security audit complete
+- [ ] Database migrations tested
+
+### Gate 7: Production
+
+- [ ] Staging tested by QA
+- [ ] Rollback plan documented
+- [ ] Monitoring ready
+- [ ] Release notes prepared
 
 ---
 
-## 3. Code Review Checklist
+## Definition of Ready (DoR)
 
-Reviewers must verify all items before approving:
+A task is **READY** when:
 
-### Functionality
-- [ ] Code accomplishes the stated task requirements
-- [ ] Edge cases are properly handled
-- [ ] Error handling is appropriate and user-friendly
-- [ ] No obvious bugs or logic errors
-- [ ] Follows the SSR with Server Actions pattern
+### Task-Level
 
-### Architecture
-- [ ] Follows data flow: Client → Server Action → FastAPI → PostgreSQL
-- [ ] No direct API calls from client components
-- [ ] Server components used where possible
-- [ ] Proper separation of concerns
+- [ ] User story and acceptance criteria complete
+- [ ] Scope defined (in/out of scope documented)
+- [ ] No blocking dependencies
+- [ ] Specification approved (Tier 1/2 features)
+- [ ] API contracts defined (if applicable)
+- [ ] Test scenarios drafted
+- [ ] Estimate assigned
+- [ ] Feature branch created
 
-### Code Quality
-- [ ] Follows project coding standards (TypeScript/Python)
-- [ ] No code duplication (DRY principle)
-- [ ] Functions/methods are focused (Single Responsibility)
-- [ ] Naming is clear, consistent, and descriptive
-- [ ] No hardcoded values (use config/env vars)
-- [ ] No debug code or console.log statements
+### Specification-Level
+
+- [ ] Discovery complete (if applicable)
+- [ ] User stories in "As a... I want... So that..." format
+- [ ] Acceptance criteria in BDD format
+- [ ] Assumptions documented
+- [ ] ADRs referenced (if applicable)
+- [ ] QA reviewed test scenarios
+
+### DoR by Task Type
+
+| Type | Minimum DoR |
+|------|-------------|
+| Feature (Tier 1) | Full DoR + Approved spec + QA scenarios |
+| Feature (Tier 2) | Full DoR + Approved spec |
+| Feature (Tier 3) | Simplified DoR + Spec or ticket |
+| Bug fix | Reproduction steps + Expected behavior |
+| Tech debt | Clear scope + Acceptance criteria |
+
+---
+
+## Definition of Done (DoD)
+
+A task is **DONE** when:
+
+### Code Complete
+- [ ] Implementation matches requirements
+- [ ] Follows coding standards
+- [ ] No TODO comments for this task
+- [ ] No debug code or console.log
 - [ ] No `any` types in TypeScript
 
-### Type Safety
-- [ ] TypeScript: Explicit return types on functions
-- [ ] TypeScript: Discriminated unions for state management
-- [ ] Python: Type hints on all functions
-- [ ] Pydantic models for API request/response
-- [ ] Zod schemas for frontend validation
+### Architecture Compliance
+- [ ] Follows SSR with Server Actions pattern
+- [ ] No direct API calls from client components
+- [ ] Proper server vs client components
+- [ ] Type safety enforced
 
-### Security
-- [ ] No secrets or credentials in code
-- [ ] Authentication checked in server actions
-- [ ] Authorization verified before operations
-- [ ] Input validation present (Zod/Pydantic)
-- [ ] SQL injection prevented (SQLAlchemy ORM)
-- [ ] XSS prevention in frontend
-- [ ] CSRF protection for mutations
-- [ ] Audit logging for sensitive operations
+### Tested
+- [ ] Unit tests passing
+- [ ] Integration tests (if API changes)
+- [ ] Component tests (if UI changes)
+- [ ] E2E tests (if critical path)
+- [ ] 80%+ coverage on new code
+- [ ] Manual testing completed
 
-### Testing
-- [ ] Unit tests cover new functionality
-- [ ] Tests are meaningful (not just for coverage)
-- [ ] Integration tests for API changes
-- [ ] Component tests for UI changes
-- [ ] Tests are deterministic (no flakiness)
-- [ ] Edge cases have test coverage
+### Reviewed
+- [ ] PR approved
+- [ ] All comments addressed
 
-### Performance
-- [ ] No N+1 queries (use eager loading)
-- [ ] Appropriate caching implemented
-- [ ] Large lists paginated
-- [ ] Images optimized (next/image)
-- [ ] No unnecessary re-renders
+### Merged
+- [ ] Squash merged to develop
+- [ ] CI passes on develop
+- [ ] Feature branch deleted
 
-### Documentation
-- [ ] Public functions have docstrings/JSDoc
-- [ ] Complex logic has explanatory comments
+### Documented
+- [ ] Code has appropriate docs
+- [ ] API changes in OpenAPI spec
 - [ ] README updated if needed
-- [ ] API documentation updated (OpenAPI)
 
 ---
 
-## Quick Reference Commands
+## Operational Traceability
 
-### Daily Development
-
-```bash
-# Start of day
-git checkout develop
-git pull origin develop
-
-# Create feature branch
-git checkout -b feature/FE-001-description
-
-# During development
-git add -A
-git commit -m "feat(scope): description"
-
-# Before PR
-npm run lint && npm run test         # Frontend
-uv run ruff check . && uv run pytest # Backend
-```
-
-### Conventional Commits
-
-| Type | Description | Example |
-|------|-------------|---------|
-| `feat` | New feature | `feat(auth): add OAuth login` |
-| `fix` | Bug fix | `fix(forms): validation error display` |
-| `docs` | Documentation | `docs(api): update OpenAPI spec` |
-| `style` | Formatting | `style: fix indentation` |
-| `refactor` | Code refactoring | `refactor(users): extract service` |
-| `test` | Adding tests | `test(api): add user endpoint tests` |
-| `chore` | Maintenance | `chore: update dependencies` |
-
----
-
-## Related Standards
-
-- [Quality Gates](./quality-gates.md) - DoR, DoD, traceability, quality gates
-- [Git Workflow](./git-workflow.md) - Branching and commit conventions
-- [CI/CD](./ci-cd.md) - Pipelines, environment promotion, deployments
-- [Monitoring & Alerting](./monitoring-alerting.md) - Incident response
-- [Testing Strategy](../architecture/testing-strategy.md) - Testing hub
-- [Troubleshooting](../guides/troubleshooting.md) - Common issues
-
----
-
-*Part of the Standards Documentation Repository*
-
----
-
-<!-- Source: standards/devops/docker.md (v1.0.0) -->
-
-# Docker Standard
-
-**Version**: 1.0.0
-**Last Updated**: 2025-12-30
-**Status**: Active
-
-## Purpose
-
-This standard defines Docker patterns and best practices for containerizing Next.js and FastAPI applications.
-
-## Scope
-
-- Dockerfile best practices
-- Multi-stage builds
-- docker-compose configuration
-- Development vs production images
-- Health checks and security
-
----
-
-## Directory Structure
+### PR Title Format
 
 ```
-project/
-├── docker/
-│   ├── frontend/
-│   │   ├── Dockerfile
-│   │   └── Dockerfile.dev
-│   └── backend/
-│       ├── Dockerfile
-│       └── Dockerfile.dev
-├── docker-compose.yml
-├── docker-compose.dev.yml
-├── docker-compose.prod.yml
-└── .dockerignore
+[ID] Description
+
+Where ID is:
+- FEAT-XXX: Product feature
+- FR-XXX: Functional requirement
+- BUG-XXX: Bug fix
+- TECH-XXX: Technical improvement
 ```
 
----
+### Commit Message Format
 
-## Frontend Dockerfile (Next.js)
+```
+type(scope): description
 
-### Production Build
-
-```dockerfile
-# docker/frontend/Dockerfile
-# Stage 1: Dependencies
-FROM node:22-alpine AS deps
-WORKDIR /app
-
-# Install dependencies based on lock file
-COPY package.json package-lock.json* ./
-RUN npm ci --only=production
-
-# Stage 2: Build
-FROM node:22-alpine AS builder
-WORKDIR /app
-
-COPY package.json package-lock.json* ./
-RUN npm ci
-
-COPY . .
-
-# Build arguments for environment
-ARG NEXT_PUBLIC_API_URL
-ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
-
-# Disable telemetry during build
-ENV NEXT_TELEMETRY_DISABLED=1
-
-RUN npm run build
-
-# Stage 3: Production runner
-FROM node:22-alpine AS runner
-WORKDIR /app
-
-ENV NODE_ENV=production
-ENV NEXT_TELEMETRY_DISABLED=1
-
-# Create non-root user
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
-
-# Copy built assets
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/.next/standalone ./
-COPY --from=builder /app/.next/static ./.next/static
-
-# Set ownership
-RUN chown -R nextjs:nodejs /app
-
-USER nextjs
-
-EXPOSE 3000
-ENV PORT=3000
-ENV HOSTNAME="0.0.0.0"
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1
-
-CMD ["node", "server.js"]
+Refs: FR-XXX
 ```
 
-### Development Build
+### Test Naming
 
-```dockerfile
-# docker/frontend/Dockerfile.dev
-FROM node:22-alpine
-
-WORKDIR /app
-
-# Install dependencies
-COPY package.json package-lock.json* ./
-RUN npm install
-
-# Copy source
-COPY . .
-
-EXPOSE 3000
-
-CMD ["npm", "run", "dev"]
-```
-
-### next.config.ts for Standalone
-
-```typescript
-// next.config.ts
-import type { NextConfig } from 'next';
-
-const nextConfig: NextConfig = {
-  output: 'standalone',
-  // ... other config
-};
-
-export default nextConfig;
-```
-
----
-
-## Backend Dockerfile (FastAPI)
-
-### Production Build
-
-```dockerfile
-# docker/backend/Dockerfile
-# Stage 1: Build
-FROM python:3.12-slim AS builder
-
-WORKDIR /app
-
-# Install uv
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
-
-# Copy dependency files
-COPY pyproject.toml uv.lock ./
-
-# Install dependencies
-RUN uv sync --frozen --no-dev
-
-# Stage 2: Runtime
-FROM python:3.12-slim AS runtime
-
-WORKDIR /app
-
-# Create non-root user
-RUN groupadd --gid 1000 appgroup && \
-    useradd --uid 1000 --gid appgroup --shell /bin/bash appuser
-
-# Copy virtual environment from builder
-COPY --from=builder /app/.venv /app/.venv
-
-# Copy application code
-COPY --chown=appuser:appgroup ./app ./app
-COPY --chown=appuser:appgroup ./alembic ./alembic
-COPY --chown=appuser:appgroup ./alembic.ini ./
-
-# Set environment
-ENV PATH="/app/.venv/bin:$PATH"
-ENV PYTHONUNBUFFERED=1
-ENV PYTHONDONTWRITEBYTECODE=1
-
-USER appuser
-
-EXPOSE 8000
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
-  CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')" || exit 1
-
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
-```
-
-### Development Build
-
-```dockerfile
-# docker/backend/Dockerfile.dev
-FROM python:3.12-slim
-
-WORKDIR /app
-
-# Install uv
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
-
-# Copy dependency files
-COPY pyproject.toml uv.lock ./
-
-# Install all dependencies including dev
-RUN uv sync --frozen
-
-# Set environment
-ENV PATH="/app/.venv/bin:$PATH"
-ENV PYTHONUNBUFFERED=1
-
-EXPOSE 8000
-
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
-```
-
----
-
-## Docker Compose
-
-### Development Configuration
-
-```yaml
-# docker-compose.dev.yml
-services:
-  frontend:
-    build:
-      context: .
-      dockerfile: docker/frontend/Dockerfile.dev
-    ports:
-      - "3000:3000"
-    volumes:
-      - ./src:/app/src
-      - ./public:/app/public
-      - /app/node_modules
-      - /app/.next
-    environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:8000
-    depends_on:
-      - backend
-
-  backend:
-    build:
-      context: .
-      dockerfile: docker/backend/Dockerfile.dev
-    ports:
-      - "8000:8000"
-    volumes:
-      - ./app:/app/app
-      - ./alembic:/app/alembic
-    environment:
-      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@db:5432/app_dev
-      - REDIS_URL=redis://redis:6379/0
-      - ENVIRONMENT=development
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_started
-
-  db:
-    image: postgres:16-alpine
-    ports:
-      - "5432:5432"
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: app_dev
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-
-volumes:
-  postgres_data:
-  redis_data:
-```
-
-### Production Configuration
-
-```yaml
-# docker-compose.prod.yml
-services:
-  frontend:
-    build:
-      context: .
-      dockerfile: docker/frontend/Dockerfile
-      args:
-        - NEXT_PUBLIC_API_URL=${API_URL}
-    ports:
-      - "3000:3000"
-    environment:
-      - NODE_ENV=production
-    restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          cpus: '1'
-          memory: 512M
-
-  backend:
-    build:
-      context: .
-      dockerfile: docker/backend/Dockerfile
-    ports:
-      - "8000:8000"
-    environment:
-      - DATABASE_URL=${DATABASE_URL}
-      - REDIS_URL=${REDIS_URL}
-      - ENVIRONMENT=production
-      - CLERK_SECRET_KEY=${CLERK_SECRET_KEY}
-    restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          cpus: '2'
-          memory: 1G
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_started
-
-  db:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-      POSTGRES_DB: ${DB_NAME}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          cpus: '2'
-          memory: 2G
-
-  redis:
-    image: redis:7-alpine
-    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
-    volumes:
-      - redis_data:/data
-    restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          cpus: '0.5'
-          memory: 512M
-
-  nginx:
-    image: nginx:alpine
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./nginx/ssl:/etc/nginx/ssl:ro
-    depends_on:
-      - frontend
-      - backend
-    restart: unless-stopped
-
-volumes:
-  postgres_data:
-  redis_data:
-```
-
-### Base Configuration
-
-```yaml
-# docker-compose.yml
-# Shared configuration - extend with dev or prod
-version: '3.8'
-
-x-common-env: &common-env
-  TZ: UTC
-
-services:
-  frontend:
-    environment:
-      <<: *common-env
-
-  backend:
-    environment:
-      <<: *common-env
-```
-
----
-
-## .dockerignore
-
-```dockerignore
-# .dockerignore
-
-# Dependencies
-node_modules
-.venv
-__pycache__
-*.pyc
-
-# Build outputs
-.next
-dist
-build
-*.egg-info
-
-# Development
-.git
-.gitignore
-.env*
-!.env.example
-
-# IDE
-.idea
-.vscode
-*.swp
-*.swo
-
-# Testing
-coverage
-.pytest_cache
-.coverage
-htmlcov
-
-# Docker
-Dockerfile*
-docker-compose*
-.docker
-
-# Documentation
-*.md
-docs
-
-# Misc
-.DS_Store
-Thumbs.db
-*.log
-```
-
----
-
-## Health Check Endpoints
-
-### Next.js Health Check
-
-```typescript
-// app/api/health/route.ts
-import { NextResponse } from 'next/server';
-
-export async function GET() {
-  return NextResponse.json({
-    status: 'healthy',
-    timestamp: new Date().toISOString(),
-  });
-}
-```
-
-### FastAPI Health Check
-
+**Python:**
 ```python
-# app/api/routers/health.py
-from fastapi import APIRouter, Depends
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import text
-
-from app.api.deps import get_db
-from app.core.cache import cache
-
-router = APIRouter()
-
-
-@router.get("/health")
-async def health_check():
-    """Basic health check."""
-    return {"status": "healthy"}
-
-
-@router.get("/health/ready")
-async def readiness_check(db: AsyncSession = Depends(get_db)):
-    """Readiness check with dependency verification."""
-    checks = {
-        "database": False,
-        "redis": False,
-    }
-
-    # Check database
-    try:
-        await db.execute(text("SELECT 1"))
-        checks["database"] = True
-    except Exception:
-        pass
-
-    # Check Redis
-    try:
-        await cache.redis.ping()
-        checks["redis"] = True
-    except Exception:
-        pass
-
-    status = "healthy" if all(checks.values()) else "unhealthy"
-    status_code = 200 if status == "healthy" else 503
-
-    return JSONResponse(
-        status_code=status_code,
-        content={
-            "status": status,
-            "checks": checks,
-        },
-    )
+class TestUserAuth:
+    """Tests for FEAT-001"""
+    def test_login_succeeds(self):
+        """FR-001: User can log in"""
 ```
 
----
-
-## Security Best Practices
-
-### Non-Root User
-
-```dockerfile
-# Always create and use non-root user
-RUN addgroup --system --gid 1001 appgroup
-RUN adduser --system --uid 1001 appuser
-USER appuser
-```
-
-### Read-Only Filesystem
-
-```yaml
-# docker-compose.yml
-services:
-  backend:
-    read_only: true
-    tmpfs:
-      - /tmp
-    volumes:
-      - type: tmpfs
-        target: /app/tmp
-```
-
-### Security Scanning
-
-```bash
-# Scan image for vulnerabilities
-docker scout cves myimage:latest
-
-# Use Trivy
-trivy image myimage:latest
-```
-
-### Secrets Management
-
-```yaml
-# docker-compose.yml
-services:
-  backend:
-    secrets:
-      - db_password
-      - api_key
-
-secrets:
-  db_password:
-    file: ./secrets/db_password.txt
-  api_key:
-    external: true
-```
-
----
-
-## Development Workflow
-
-### Building Images
-
-```bash
-# Build development images
-docker compose -f docker-compose.dev.yml build
-
-# Build production images
-docker compose -f docker-compose.prod.yml build
-
-# Build with no cache
-docker compose build --no-cache
-```
-
-### Running Containers
-
-```bash
-# Start development environment
-docker compose -f docker-compose.dev.yml up
-
-# Start in detached mode
-docker compose -f docker-compose.dev.yml up -d
-
-# View logs
-docker compose logs -f backend
-
-# Stop containers
-docker compose down
-
-# Stop and remove volumes
-docker compose down -v
-```
-
-### Executing Commands
-
-```bash
-# Run migrations
-docker compose exec backend alembic upgrade head
-
-# Open shell
-docker compose exec backend bash
-
-# Run tests
-docker compose exec backend pytest
-
-# Install new package
-docker compose exec backend uv add package-name
-```
-
----
-
-## Multi-Architecture Builds
-
-```bash
-# Build for multiple platforms
-docker buildx build \
-  --platform linux/amd64,linux/arm64 \
-  -t myapp/backend:latest \
-  --push \
-  -f docker/backend/Dockerfile .
-```
-
----
-
-## Related Standards
-
-- [CI/CD Workflows](./ci-cd.md)
-- [Environment Management](./environments.md)
-- [Backend Tech Stack](../backend/tech-stack.md)
-- [Frontend Tech Stack](../frontend/tech-stack.md)
-
----
-
-*Proper containerization ensures consistent, reproducible deployments across all environments.*
-
----
-
-<!-- Source: standards/devops/environments.md (v1.0.0) -->
-
-# Environment Management Standard
-
-**Version**: 1.0.0
-**Last Updated**: 2025-12-30
-**Status**: Active
-
-## Purpose
-
-This standard defines patterns for managing environment variables, secrets, and configuration across development, staging, and production environments.
-
-## Scope
-
-- Environment variable organization
-- Secrets handling
-- Configuration per environment
-- Local development setup
-- CI/CD integration
-
----
-
-## Environment Hierarchy
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                      Production                              │
-│  Most restricted, real user data, full security             │
-└─────────────────────────────────────────────────────────────┘
-                              ▲
-┌─────────────────────────────────────────────────────────────┐
-│                       Staging                                │
-│  Production-like, test data, security enabled               │
-└─────────────────────────────────────────────────────────────┘
-                              ▲
-┌─────────────────────────────────────────────────────────────┐
-│                      Development                             │
-│  Local development, mock services, relaxed security         │
-└─────────────────────────────────────────────────────────────┘
-```
-
----
-
-## Environment Files Structure
-
-### Frontend (Next.js)
-
-```
-frontend/
-├── .env                    # Shared defaults (committed)
-├── .env.local              # Local overrides (not committed)
-├── .env.development        # Development defaults
-├── .env.production         # Production defaults
-└── .env.example            # Template with all variables
-```
-
-### Backend (FastAPI)
-
-```
-backend/
-├── .env                    # Local development (not committed)
-├── .env.example            # Template with all variables
-└── app/
-    └── core/
-        └── config.py       # Settings class with validation
-```
-
----
-
-## Environment Variable Naming
-
-### Conventions
-
-| Convention | Example | Use Case |
-|------------|---------|----------|
-| `NEXT_PUBLIC_*` | `NEXT_PUBLIC_API_URL` | Frontend public variables |
-| `DATABASE_*` | `DATABASE_URL` | Database configuration |
-| `REDIS_*` | `REDIS_URL` | Redis configuration |
-| `*_SECRET_KEY` | `CLERK_SECRET_KEY` | Secret keys |
-| `*_API_KEY` | `STRIPE_API_KEY` | API keys |
-| `*_URL` | `API_URL` | Service URLs |
-
-### Categories
-
-```bash
-# Application
-APP_NAME=myapp
-APP_ENV=development|staging|production
-DEBUG=true|false
-
-# Server
-HOST=0.0.0.0
-PORT=8000
-
-# Database
-DATABASE_URL=postgresql+asyncpg://user:pass@host:5432/db
-DATABASE_POOL_SIZE=20
-DATABASE_MAX_OVERFLOW=10
-
-# Cache
-REDIS_URL=redis://localhost:6379/0
-CACHE_TTL=3600
-
-# Authentication
-CLERK_SECRET_KEY=sk_xxx
-CLERK_PUBLISHABLE_KEY=pk_xxx
-JWT_SECRET_KEY=xxx
-JWT_ALGORITHM=HS256
-
-# External Services
-STRIPE_SECRET_KEY=sk_xxx
-STRIPE_WEBHOOK_SECRET=whsec_xxx
-SENTRY_DSN=https://xxx@sentry.io/xxx
-
-# Feature Flags
-FEATURE_NEW_DASHBOARD=true
-FEATURE_BETA_API=false
-```
-
----
-
-## Frontend Environment Variables
-
-### .env.example
-
-```bash
-# .env.example - Copy to .env.local and fill in values
-
-# ======================
-# PUBLIC VARIABLES
-# These are exposed to the browser
-# ======================
-
-# API Configuration
-NEXT_PUBLIC_API_URL=http://localhost:8000
-NEXT_PUBLIC_APP_URL=http://localhost:3000
-
-# Authentication (Clerk)
-NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_xxx
-
-# Feature Flags
-NEXT_PUBLIC_ENABLE_ANALYTICS=false
-
-# ======================
-# SERVER-ONLY VARIABLES
-# These are only available in server components/actions
-# ======================
-
-# Authentication
-CLERK_SECRET_KEY=sk_test_xxx
-CLERK_WEBHOOK_SECRET=whsec_xxx
-
-# Internal API
-BACKEND_URL=http://localhost:8000
-INTERNAL_API_KEY=xxx
-
-# ======================
-# BUILD-TIME VARIABLES
-# ======================
-ANALYZE=false
-```
-
-### Environment Validation
-
+**TypeScript:**
 ```typescript
-// lib/env.ts
-import { z } from 'zod';
-
-const envSchema = z.object({
-  // Public (available in browser)
-  NEXT_PUBLIC_API_URL: z.string().url(),
-  NEXT_PUBLIC_APP_URL: z.string().url(),
-  NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: z.string().startsWith('pk_'),
-
-  // Server-only
-  CLERK_SECRET_KEY: z.string().startsWith('sk_'),
-  BACKEND_URL: z.string().url(),
-
-  // Optional
-  SENTRY_DSN: z.string().url().optional(),
+describe('UserAuth [FEAT-001]', () => {
+  it('[FR-001] logs in with valid credentials', () => {});
 });
-
-// Validate at build time
-export const env = envSchema.parse({
-  NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
-  NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
-  NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
-  CLERK_SECRET_KEY: process.env.CLERK_SECRET_KEY,
-  BACKEND_URL: process.env.BACKEND_URL,
-  SENTRY_DSN: process.env.SENTRY_DSN,
-});
-
-// Type-safe access
-export type Env = z.infer<typeof envSchema>;
-```
-
-### Usage
-
-```typescript
-// In server components/actions
-import { env } from '@/lib/env';
-
-const response = await fetch(`${env.BACKEND_URL}/api/users`);
-
-// In client components (only NEXT_PUBLIC_* available)
-const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-```
-
----
-
-## Backend Environment Variables
-
-### .env.example
-
-```bash
-# .env.example - Copy to .env and fill in values
-
-# ======================
-# APPLICATION
-# ======================
-APP_NAME=myapp
-ENVIRONMENT=development  # development | staging | production
-DEBUG=true
-LOG_LEVEL=DEBUG  # DEBUG | INFO | WARNING | ERROR
-
-# ======================
-# SERVER
-# ======================
-HOST=0.0.0.0
-PORT=8000
-WORKERS=4
-RELOAD=true  # Only for development
-
-# ======================
-# DATABASE
-# ======================
-DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/myapp_dev
-DATABASE_POOL_SIZE=20
-DATABASE_MAX_OVERFLOW=10
-DATABASE_ECHO=false  # Log SQL queries
-
-# ======================
-# REDIS
-# ======================
-REDIS_URL=redis://localhost:6379/0
-
-# ======================
-# AUTHENTICATION
-# ======================
-CLERK_SECRET_KEY=sk_test_xxx
-CLERK_FRONTEND_API=clerk.xxx.com
-CLERK_PEM_PUBLIC_KEY=""
-
-# ======================
-# SECURITY
-# ======================
-CORS_ORIGINS=["http://localhost:3000"]
-SECRET_KEY=your-secret-key-here
-ALLOWED_HOSTS=["localhost", "127.0.0.1"]
-
-# ======================
-# EXTERNAL SERVICES
-# ======================
-SENTRY_DSN=
-STRIPE_SECRET_KEY=sk_test_xxx
-STRIPE_WEBHOOK_SECRET=whsec_xxx
-
-# ======================
-# FEATURE FLAGS
-# ======================
-FEATURE_NEW_API=false
-```
-
-### Settings Class
-
-```python
-# app/core/config.py
-from functools import lru_cache
-from typing import Literal
-
-from pydantic import (
-    AnyHttpUrl,
-    Field,
-    PostgresDsn,
-    RedisDsn,
-    SecretStr,
-    field_validator,
-)
-from pydantic_settings import BaseSettings, SettingsConfigDict
-
-
-class Settings(BaseSettings):
-    """Application settings with validation."""
-
-    model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
-        case_sensitive=True,
-        extra="ignore",
-    )
-
-    # Application
-    APP_NAME: str = "myapp"
-    ENVIRONMENT: Literal["development", "staging", "production"] = "development"
-    DEBUG: bool = False
-    LOG_LEVEL: str = "INFO"
-
-    # Server
-    HOST: str = "0.0.0.0"
-    PORT: int = 8000
-    WORKERS: int = 4
-    RELOAD: bool = False
-
-    # Database
-    DATABASE_URL: PostgresDsn
-    DATABASE_POOL_SIZE: int = 20
-    DATABASE_MAX_OVERFLOW: int = 10
-    DATABASE_ECHO: bool = False
-
-    # Redis
-    REDIS_URL: RedisDsn
-
-    # Authentication
-    CLERK_SECRET_KEY: SecretStr
-    CLERK_FRONTEND_API: str
-    CLERK_PEM_PUBLIC_KEY: str = ""
-
-    # Security
-    CORS_ORIGINS: list[AnyHttpUrl] = []
-    SECRET_KEY: SecretStr
-    ALLOWED_HOSTS: list[str] = ["localhost"]
-
-    # External Services
-    SENTRY_DSN: str | None = None
-    STRIPE_SECRET_KEY: SecretStr | None = None
-    STRIPE_WEBHOOK_SECRET: SecretStr | None = None
-
-    # Feature Flags
-    FEATURE_NEW_API: bool = False
-
-    @field_validator("CORS_ORIGINS", mode="before")
-    @classmethod
-    def parse_cors_origins(cls, v):
-        if isinstance(v, str):
-            import json
-            return json.loads(v)
-        return v
-
-    @property
-    def is_development(self) -> bool:
-        return self.ENVIRONMENT == "development"
-
-    @property
-    def is_production(self) -> bool:
-        return self.ENVIRONMENT == "production"
-
-
-@lru_cache
-def get_settings() -> Settings:
-    """Get cached settings instance."""
-    return Settings()
-
-
-settings = get_settings()
-```
-
----
-
-## Per-Environment Configuration
-
-### Development
-
-```bash
-# .env (development)
-ENVIRONMENT=development
-DEBUG=true
-LOG_LEVEL=DEBUG
-RELOAD=true
-
-DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/myapp_dev
-REDIS_URL=redis://localhost:6379/0
-
-CORS_ORIGINS=["http://localhost:3000"]
-
-# Use test keys for external services
-CLERK_SECRET_KEY=sk_test_xxx
-STRIPE_SECRET_KEY=sk_test_xxx
-```
-
-### Staging
-
-```bash
-# Environment variables (set in CI/CD or server)
-ENVIRONMENT=staging
-DEBUG=false
-LOG_LEVEL=INFO
-RELOAD=false
-
-DATABASE_URL=postgresql+asyncpg://user:pass@staging-db:5432/myapp_staging
-REDIS_URL=redis://staging-redis:6379/0
-
-CORS_ORIGINS=["https://staging.example.com"]
-
-# Use test keys but with staging config
-CLERK_SECRET_KEY=sk_test_xxx
-STRIPE_SECRET_KEY=sk_test_xxx
-SENTRY_DSN=https://xxx@sentry.io/staging
-```
-
-### Production
-
-```bash
-# Environment variables (set via secrets manager)
-ENVIRONMENT=production
-DEBUG=false
-LOG_LEVEL=WARNING
-RELOAD=false
-
-DATABASE_URL=postgresql+asyncpg://user:pass@prod-db:5432/myapp
-REDIS_URL=redis://prod-redis:6379/0
-
-CORS_ORIGINS=["https://example.com", "https://www.example.com"]
-
-# Live keys
-CLERK_SECRET_KEY=sk_live_xxx
-STRIPE_SECRET_KEY=sk_live_xxx
-SENTRY_DSN=https://xxx@sentry.io/production
-```
-
----
-
-## Secrets Management
-
-### Local Development
-
-```bash
-# Use .env files (gitignored)
-cp .env.example .env
-# Edit .env with your local values
-```
-
-### CI/CD (GitHub Actions)
-
-```yaml
-# Use GitHub secrets and variables
-env:
-  DATABASE_URL: ${{ secrets.DATABASE_URL }}
-  CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
-
-# Use environments for different stages
-jobs:
-  deploy:
-    environment: production
-    steps:
-      - name: Deploy
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-```
-
-### Production (Cloud Providers)
-
-#### AWS Secrets Manager
-
-```python
-# app/core/secrets.py
-import boto3
-import json
-from functools import lru_cache
-
-
-@lru_cache
-def get_secret(secret_name: str) -> dict:
-    """Fetch secret from AWS Secrets Manager."""
-    client = boto3.client("secretsmanager")
-    response = client.get_secret_value(SecretId=secret_name)
-    return json.loads(response["SecretString"])
-
-
-# Usage in settings
-if settings.ENVIRONMENT == "production":
-    secrets = get_secret("myapp/production")
-    DATABASE_URL = secrets["database_url"]
-```
-
-#### Docker Secrets
-
-```yaml
-# docker-compose.yml
-services:
-  backend:
-    secrets:
-      - db_password
-      - clerk_secret
-
-secrets:
-  db_password:
-    file: ./secrets/db_password.txt
-  clerk_secret:
-    external: true
-```
-
-```python
-# Read Docker secret
-def read_secret(name: str) -> str:
-    """Read Docker secret."""
-    secret_path = f"/run/secrets/{name}"
-    try:
-        with open(secret_path) as f:
-            return f.read().strip()
-    except FileNotFoundError:
-        return None
-```
-
----
-
-## Feature Flags
-
-### Configuration
-
-```python
-# app/core/features.py
-from app.core.config import settings
-
-
-class FeatureFlags:
-    """Feature flag management."""
-
-    @property
-    def new_api(self) -> bool:
-        return settings.FEATURE_NEW_API
-
-    @property
-    def beta_features(self) -> bool:
-        # Only in non-production
-        return not settings.is_production
-
-    def is_enabled(self, flag: str) -> bool:
-        """Check if a feature flag is enabled."""
-        return getattr(self, flag, False)
-
-
-features = FeatureFlags()
-```
-
-### Usage
-
-```python
-# In routes
-@router.get("/new-endpoint")
-async def new_endpoint():
-    if not features.new_api:
-        raise HTTPException(status_code=404)
-    return {"message": "New API"}
-
-
-# In templates
-if features.is_enabled("dark_mode"):
-    # Enable dark mode
-```
-
----
-
-## Environment Checklist
-
-### Development Setup
-
-- [ ] Copy `.env.example` to `.env`
-- [ ] Fill in local database credentials
-- [ ] Set up local Redis instance
-- [ ] Configure authentication test keys
-- [ ] Set `DEBUG=true`
-
-### Staging Deployment
-
-- [ ] All secrets in CI/CD secrets store
-- [ ] Test API keys configured
-- [ ] Sentry DSN set
-- [ ] CORS origins updated
-- [ ] Health check endpoints working
-
-### Production Deployment
-
-- [ ] All secrets in secure secrets manager
-- [ ] Production API keys configured
-- [ ] `DEBUG=false`
-- [ ] Appropriate log level
-- [ ] CORS origins restricted
-- [ ] Rate limiting enabled
-- [ ] Monitoring configured
-
----
-
-## Security Best Practices
-
-### Never Commit Secrets
-
-```gitignore
-# .gitignore
-.env
-.env.local
-.env.*.local
-*.pem
-*.key
-secrets/
-```
-
-### Rotate Secrets Regularly
-
-```bash
-# Create rotation schedule
-# - API keys: Quarterly
-# - Database passwords: Monthly
-# - JWT secrets: Bi-annually
-```
-
-### Audit Secret Access
-
-```python
-# Log when secrets are accessed
-import logging
-
-logger = logging.getLogger(__name__)
-
-def get_secret(name: str) -> str:
-    logger.info(f"Secret accessed: {name}")
-    # ... fetch secret
 ```
 
 ---
 
 ## Related Standards
 
-- [Docker Standards](./docker.md)
-- [CI/CD Workflows](./ci-cd.md)
-- [Security Architecture](../architecture/security.md)
+- [Development Workflow](./development-workflow.md)
+- [CI/CD](./ci-cd.md)
+- [Testing Strategy](../architecture/testing-strategy.md)
 
 ---
 
-*Proper environment management ensures secure, consistent configuration across all deployment stages.*
-
----
-
-<!-- Compilation Metadata
-  domain: devops-standards
-  domain_version: 1.0.0
-  compiled_at: 2026-03-25 13:07
-  source: evolv-coder-standards
-  files_compiled: 7/7
--->
+*Quality gates ensure consistent code quality across the development lifecycle.*
