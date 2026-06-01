@@ -195,9 +195,9 @@ main (PRODUCTION) <- Release PRs only
 
 | Gate  | Backend Command                  | Frontend Command    |
 | ----- | -------------------------------- | ------------------- |
-| Tests | `<BACKEND_RUN_CMD> pytest`       | `npm run test`      |
-| Lint  | `<BACKEND_RUN_CMD> ruff check .` | `npm run lint`      |
-| Types | `<BACKEND_RUN_CMD> mypy .`       | `npm run typecheck` |
+| Tests | `node server.js pytest`       | `npm run test`      |
+| Lint  | `node server.js ruff check .` | `npm run lint`      |
+| Types | `node server.js mypy .`       | `npm run typecheck` |
 
 **ALL gates must pass before PR creation.**
 

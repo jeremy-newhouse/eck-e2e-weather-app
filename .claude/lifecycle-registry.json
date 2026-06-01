@@ -402,6 +402,73 @@
         }
       },
       "plan_mode_at": null
+    },
+    "WA-4": {
+      "created_at": "2026-06-01T20:59:15.130Z",
+      "updated_at": "2026-06-01T21:32:27.435Z",
+      "branch": "feat/WA-4-weather-lookup",
+      "issue_number": 14,
+      "first_started_at": "2026-06-01T21:01:00.251Z",
+      "archived_at": null,
+      "priority": null,
+      "steps": {
+        "spec": {
+          "status": "done",
+          "started_at": "2026-06-01T21:01:00.251Z",
+          "completed_at": "2026-06-01T21:09:35.805Z",
+          "gate_verdict": "PASS",
+          "gate_verdict_at": "2026-06-01T21:09:35.805Z",
+          "gate_artifact": "docs/WA-4-weather-lookup/SPEC-REVIEW.md",
+          "forced_at": null,
+          "forced_reason": null,
+          "started_by_session": "8cd00f6e"
+        },
+        "design": {
+          "status": "done",
+          "started_at": "2026-06-01T21:12:50.799Z",
+          "completed_at": "2026-06-01T21:31:14.858Z",
+          "gate_verdict": "PASS",
+          "gate_verdict_at": "2026-06-01T21:31:14.858Z",
+          "gate_artifact": "docs/WA-4-weather-lookup/DESIGN-REVIEW.md",
+          "forced_at": null,
+          "forced_reason": null,
+          "started_by_session": "655eedb2"
+        },
+        "develop": {
+          "status": "active",
+          "started_at": "2026-06-01T21:32:27.435Z",
+          "completed_at": null,
+          "gate_verdict": null,
+          "gate_verdict_at": null,
+          "gate_artifact": null,
+          "forced_at": null,
+          "forced_reason": null,
+          "started_by_session": "ee03157d"
+        },
+        "validate": {
+          "status": "pending",
+          "started_at": null,
+          "completed_at": null,
+          "gate_verdict": null,
+          "gate_verdict_at": null,
+          "gate_artifact": null,
+          "forced_at": null,
+          "forced_reason": null,
+          "started_by_session": null
+        },
+        "deploy": {
+          "status": "pending",
+          "started_at": null,
+          "completed_at": null,
+          "gate_verdict": null,
+          "gate_verdict_at": null,
+          "gate_artifact": null,
+          "forced_at": null,
+          "forced_reason": null,
+          "started_by_session": null
+        }
+      },
+      "plan_mode_at": null
     }
   }
 }

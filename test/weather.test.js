@@ -54,29 +54,15 @@ after((done) => {
 });
 
 describe("GET /api/weather/:city", () => {
-  it("returns 200 and correct data for london", async () => {
-    const { statusCode, body } = await get("/api/weather/london");
-    assert.equal(statusCode, 200);
-    const parsed = JSON.parse(body);
-    const expected = getWeather("london");
-    assert.deepEqual(parsed, expected);
-  });
-
-  it("returns 200 and correct data for miami", async () => {
-    const { statusCode, body } = await get("/api/weather/miami");
-    assert.equal(statusCode, 200);
-    const parsed = JSON.parse(body);
-    const expected = getWeather("miami");
-    assert.deepEqual(parsed, expected);
-  });
-
-  it("returns 200 and correct data for tokyo", async () => {
-    const { statusCode, body } = await get("/api/weather/tokyo");
-    assert.equal(statusCode, 200);
-    const parsed = JSON.parse(body);
-    const expected = getWeather("tokyo");
-    assert.deepEqual(parsed, expected);
-  });
+  for (const city of ["london", "miami", "tokyo"]) {
+    it(`returns 200 and correct data for ${city}`, async () => {
+      const { statusCode, body } = await get(`/api/weather/${city}`);
+      assert.equal(statusCode, 200);
+      const parsed = JSON.parse(body);
+      const expected = getWeather(city);
+      assert.deepEqual(parsed, expected);
+    });
+  }
 
   it("is case-insensitive: LONDON returns same data as london", async () => {
     const { statusCode, body } = await get("/api/weather/LONDON");

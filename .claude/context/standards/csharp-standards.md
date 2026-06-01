@@ -1,10 +1,10 @@
-# Csharp Standards
+# C# Standards
 
 > C# development standards
 
-**Compiled**: 2026-03-25 13:07
+**Compiled**: 2026-06-01 20:55
 **Source**: evolv-coder-standards
-**Domain Version**: 1.0.0
+**Domain Version**: 1.1.0
 
 ---
 
@@ -14,20 +14,18 @@
 
 ---
 
-<!-- Source: standards/backend/csharp.md (v1.0.0) -->
+<!-- Source: standards/backend/csharp.md (v1.1.0) -->
 
 # C# Coding Standards
 
-**Version**: 1.0.0
-**Last Updated**: 2026-02-28
 **Status**: Active
 
 ## Overview
-This document outlines C# coding standards and best practices for ASP.NET Core 8 backend services, covering style, patterns, error handling, testing, and security.
+This document outlines C# coding standards and best practices for ASP.NET Core 10 backend services, covering style, patterns, error handling, testing, and security.
 
 ## Style Guide Foundation
 - **Microsoft C# Coding Conventions**: Foundation for all C# code
-- **C# 12 / .NET 8**: Use modern features (primary constructors, collection expressions, raw string literals, file-scoped namespaces)
+- **C# 14 / .NET 10**: Use modern features (primary constructors, collection expressions, raw string literals, file-scoped namespaces)
 - **Nullable reference types**: Enabled project-wide (`<Nullable>enable</Nullable>`)
 - **Line length**: 120 characters maximum
 
@@ -395,8 +393,8 @@ dotnet list package --vulnerable
 
 <!-- Compilation Metadata
   domain: csharp-standards
-  domain_version: 1.0.0
-  compiled_at: 2026-03-25 13:07
+  domain_version: 1.1.0
+  compiled_at: 2026-06-01 20:55
   source: evolv-coder-standards
   files_compiled: 1/1
 -->

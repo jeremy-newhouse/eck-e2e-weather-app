@@ -2,9 +2,9 @@
 
 > Ruby development standards
 
-**Compiled**: 2026-03-25 13:07
+**Compiled**: 2026-06-01 20:55
 **Source**: evolv-coder-standards
-**Domain Version**: 1.0.0
+**Domain Version**: 1.1.1
 
 ---
 
@@ -14,20 +14,18 @@
 
 ---
 
-<!-- Source: standards/backend/ruby.md (v1.0.0) -->
+<!-- Source: standards/backend/ruby.md (v1.1.1) -->
 
 # Ruby Coding Standards
 
-**Version**: 1.0.0
-**Last Updated**: 2026-02-28
 **Status**: Active
 
 ## Overview
-This document outlines Ruby coding standards and best practices for Rails 7 backend services, covering style, patterns, ActiveRecord, error handling, testing, and security.
+This document outlines Ruby coding standards and best practices for Rails 8 backend services, covering style, patterns, ActiveRecord, error handling, testing, and security.
 
 ## Style Guide Foundation
 - **Ruby Style Guide**: Foundation for all Ruby code (community-driven)
-- **Ruby 3.2+**: Use modern features (pattern matching, Data classes, Ractors)
+- **Ruby 4.0+**: Use modern features (pattern matching, Data classes, Ractors)
 - **Line length**: 120 characters maximum
 - **RuboCop**: Enforced via `.rubocop.yml` in every project
 
@@ -443,8 +441,8 @@ bundle exec rspec && bundle exec rubocop && bundle exec brakeman -q
 
 <!-- Compilation Metadata
   domain: ruby-standards
-  domain_version: 1.0.0
-  compiled_at: 2026-03-25 13:07
+  domain_version: 1.1.1
+  compiled_at: 2026-06-01 20:55
   source: evolv-coder-standards
   files_compiled: 1/1
 -->

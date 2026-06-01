@@ -1,10 +1,10 @@
-# Php Standards
+# PHP Standards
 
 > PHP development standards
 
-**Compiled**: 2026-03-25 13:07
+**Compiled**: 2026-06-01 20:55
 **Source**: evolv-coder-standards
-**Domain Version**: 1.0.0
+**Domain Version**: 1.1.1
 
 ---
 
@@ -14,20 +14,18 @@
 
 ---
 
-<!-- Source: standards/backend/php.md (v1.0.0) -->
+<!-- Source: standards/backend/php.md (v1.1.1) -->
 
 # PHP Coding Standards
 
-**Version**: 1.0.0
-**Last Updated**: 2026-02-28
 **Status**: Active
 
 ## Overview
-This document outlines PHP coding standards and best practices for Laravel 11 backend services, covering style, patterns, error handling, testing, and security.
+This document outlines PHP coding standards and best practices for Laravel 13 backend services, covering style, patterns, error handling, testing, and security.
 
 ## Style Guide Foundation
 - **PSR-12**: Extended coding style foundation for all PHP code
-- **PHP 8.3+**: Use modern features (readonly properties, enums, fibers, named arguments, match expressions)
+- **PHP 8.5+**: Use modern features (readonly properties, enums, fibers, named arguments, match expressions)
 - **Strict types**: Every PHP file must declare `declare(strict_types=1);`
 - **Line length**: 120 characters maximum
 
@@ -436,8 +434,8 @@ composer audit
 
 <!-- Compilation Metadata
   domain: php-standards
-  domain_version: 1.0.0
-  compiled_at: 2026-03-25 13:07
+  domain_version: 1.1.1
+  compiled_at: 2026-06-01 20:55
   source: evolv-coder-standards
   files_compiled: 1/1
 -->

@@ -6,6 +6,9 @@
 
 ## Prerequisites
 
+- Node.js 22+
+- npm
+
 ```bash
 npm install
 ```
