@@ -1,13 +1,39 @@
 # Documentation Standards
-<!-- Compiled: 2026-05-14T21:13:04Z from evolv-coder-standards -->
 
+> Documentation standards: specifications, architecture definition, BRD/PRD, agentic coding, discovery, glossary, changelog, API reference
+
+**Compiled**: 2026-06-01 20:55
+**Source**: evolv-coder-standards
+**Domain Version**: 1.4.1
 
 ---
-<!-- Source: /home/tester/.claude/evolv-coder-standards/standards/documentation/README.md -->
+
+## Contents
+
+- [Readme](#readme)
+- [Specification Standard](#specification-standard)
+- [Architecture Definition](#architecture-definition)
+- [Agentic Coding Standard](#agentic-coding-standard)
+- [Documentation Standard](#documentation-standard)
+- [Business Requirements Standard](#business-requirements-standard)
+- [Discovery Standard](#discovery-standard)
+- [Document Template](#document-template)
+- [Product Requirements Standard](#product-requirements-standard)
+- [Glossary Standard](#glossary-standard)
+- [Documentation Workflow](#documentation-workflow)
+- [Specification Template Sections](#specification-template-sections)
+- [Prd Template Sections](#prd-template-sections)
+- [Readme Standard](#readme-standard)
+- [Changelog Standard](#changelog-standard)
+- [Api Reference Standard](#api-reference-standard)
+- [Onboarding Standard](#onboarding-standard)
+
+---
+
+<!-- Source: standards/documentation/README.md (v1.4.0) -->
+
 # Documentation Standards
 
-**Version**: 1.3.0
-**Last Updated**: 2026-01-03
 **Status**: Active
 
 ## Purpose
@@ -76,6 +102,30 @@ Template for creating new documentation:
 - Formatting guidelines
 - Checklist for new documents
 
+### [readme-standard.md](./readme-standard.md)
+Standard for repository and package README files:
+- When a README is required
+- Required sections (quickstart, install, configuration, usage, dev setup)
+- Length cap and content rules
+
+### [changelog-standard.md](./changelog-standard.md)
+Standard for CHANGELOG.md files:
+- Keep a Changelog format with Added/Changed/Deprecated/Removed/Fixed/Security
+- Semver versioning and pre-release rules
+- Conventional-Commits-derived auto-generation
+
+### [api-reference-standard.md](./api-reference-standard.md)
+Standard for API reference documentation:
+- OpenAPI 3.1 as source of truth
+- Rendering (Redocly default; Stoplight Elements; Swagger UI internal-only)
+- Versioning, deprecation, and CI publishing workflow
+
+### [onboarding-standard.md](./onboarding-standard.md)
+Standard for new-contributor onboarding documentation:
+- Day-1 / Week-1 / Month-1 plan template
+- Per-section ownership and quarterly refresh
+- Communication norms and escalation map
+
 ## Quick Reference
 
 ### Creating New Standards
@@ -105,457 +155,604 @@ See `documentation-standard.md#diagrams-and-visual-documentation` for full guide
 *Part of the Standards Documentation Repository*
 
 ---
-<!-- Source: /home/tester/.claude/evolv-coder-standards/standards/documentation/agentic-coding-standard.md -->
-# Agentic Coding Standard
 
-**Version**: 1.0.0
-**Last Updated**: 2026-01-03
+<!-- Source: standards/documentation/specification-standard.md (v1.4.1) -->
+
+# Specification Standard
+
 **Status**: Active
-**Owner**: Engineering Lead
-**Dependencies**: [Project Constitution](../templates/specifications/project-constitution.md)
-
----
+**Category**: Meta-Documentation
 
 ## Purpose
 
-This standard defines rules and constraints for AI agents (LLMs, coding assistants) when generating, modifying, or reviewing code within projects that follow these standards. It ensures AI-assisted development produces consistent, safe, and maintainable output.
+This standard defines how to create software specifications that bridge architecture documentation to implementation. Specifications ensure that features are well-defined before coding begins, enabling developers to implement correctly and QA to verify completely.
 
-These rules should be referenced in:
-- Project CLAUDE.md files
-- Project Constitution documents
-- CI/CD validation pipelines
+## Scope
 
----
+- **Applies to**: New features, significant changes, API additions, external integrations
+- **Not covered**: Bug fixes (unless scope is significant), minor UI tweaks, configuration changes
+- **Workflow Position**: Discovery → BRD → PRD → Constitution → Architecture → ADRs → **Specifications** → Implementation → QA
 
-## Source-of-Truth Hierarchy
+## Relationship to Discovery Phase
 
-When generating or modifying code, agents must respect this precedence order:
+### Discovery Before Specification
 
-| Priority | Source | Overrides |
-|----------|--------|-----------|
-| 1 | **Project Constitution** | All below |
-| 2 | **PRD / Specifications** | Code, comments |
-| 3 | **Architecture Documentation** | Implementation details |
-| 4 | **ADRs (Architecture Decision Records)** | Related implementations |
-| 5 | **Existing Code Patterns** | New implementations |
-| 6 | **Code Comments / TODOs** | Nothing |
+For new initiatives or unclear requirements, Discovery should precede specification:
 
-### Conflict Resolution
-
-When sources conflict:
-1. Higher-priority source wins
-2. If same priority, ask the user for clarification
-3. Document the conflict and resolution in the output
-4. Never silently override documented decisions
-
----
-
-## Protected Paths
-
-Agents must NOT modify these paths without explicit user confirmation:
-
-### Always Protected (Never Auto-Modify)
-
-```
-# Database
-alembic/versions/          # Migration files
-migrations/                # Any migration directory
-*.sql                      # Raw SQL files (review only)
-
-# Authentication & Security
-**/auth/                   # Authentication modules
-**/security/               # Security modules
-**/*secret*                # Anything named secret
-**/*credential*            # Credential files
-.env*                      # Environment files
-**/keys/                   # Cryptographic keys
-
-# Billing & Financial
-**/billing/                # Billing modules
-**/payment/                # Payment processing
-**/stripe/                 # Payment provider integrations
-
-# Infrastructure
-*.tf                       # Terraform files
-*.tfvars                   # Terraform variables
-docker-compose.prod.yml    # Production compose
-kubernetes/*.yaml          # K8s manifests (prod)
-
-# CI/CD
-.github/workflows/         # GitHub Actions
-.gitlab-ci.yml             # GitLab CI
-Jenkinsfile                # Jenkins pipelines
-```
-
-### Conditionally Protected (Warn Before Modify)
-
-```
-# Configuration
-pyproject.toml             # Python project config
-package.json               # Node project config
-tsconfig.json              # TypeScript config
-next.config.js             # Next.js config
-
-# Lock Files
-uv.lock                    # Python dependencies
-package-lock.json          # Node dependencies
-yarn.lock                  # Yarn dependencies
-
-# Tests (warn on deletion)
-tests/                     # Test directories
-**/*.test.*                # Test files
-**/*.spec.*                # Spec files
-```
-
----
-
-## Security Constraints
-
-### Never Include in Generated Code
-
-```python
-# NEVER generate code that:
-- Hardcodes secrets, API keys, or passwords
-- Logs sensitive data (passwords, tokens, PII)
-- Disables security features (CSRF, CORS, auth checks)
-- Uses deprecated cryptographic algorithms
-- Bypasses input validation
-- Contains SQL injection vulnerabilities
-- Contains XSS vulnerabilities
-- Exposes internal error details to users
-```
-
-### Required Security Patterns
-
-```python
-# ALWAYS use these patterns:
-- Environment variables for secrets
-- Parameterized queries for database access
-- Input validation at system boundaries
-- Output encoding for user-displayed data
-- Secure defaults (deny by default)
-- Approved cryptographic libraries only
-```
-
-### Approved Cryptographic Libraries
-
-| Language | Approved Libraries |
-|----------|-------------------|
-| Python | `cryptography`, `bcrypt`, `argon2-cffi` |
-| TypeScript | `crypto` (Node.js built-in), `bcryptjs` |
-| Hashing | bcrypt, argon2 (NEVER MD5, SHA1 for passwords) |
-| Encryption | AES-256-GCM (NEVER ECB mode) |
-
----
-
-## Quality Gates
-
-Agents must verify these conditions before considering work complete:
-
-### Code Quality
-
-- [ ] Code passes linting (`ruff check`, `eslint`)
-- [ ] Code passes formatting (`ruff format`, `prettier`)
-- [ ] TypeScript has no type errors (`tsc --noEmit`)
-- [ ] Python has type hints on all public functions
-- [ ] No `any` types in TypeScript (except explicit escape hatches)
-- [ ] No `TODO` comments without ticket reference (e.g., `# TODO(FEAT-001): ...`)
-- [ ] No `console.log` / `print` debugging statements
-- [ ] No commented-out code blocks
-
-### Testing
-
-- [ ] Unit tests exist for new functions
-- [ ] Tests pass locally
-- [ ] Test coverage meets threshold (typically 80%+)
-- [ ] Edge cases are tested
-- [ ] Error cases are tested
-
-### Documentation
-
-- [ ] Public APIs have docstrings
-- [ ] Complex logic has inline comments
-- [ ] Breaking changes documented
-- [ ] CHANGELOG updated if applicable
-
----
-
-## Verification Discipline
-
-For non-trivial changes, agents must produce:
-
-### 1. Test Plan
-
-Before implementing, document:
-- What will be tested
-- How it will be tested
-- Edge cases to cover
-- Performance considerations
-
-### 2. Negative Cases
-
-Always implement handling for:
-- Invalid input
-- Missing data
-- Network failures
-- Timeout scenarios
-- Permission denied
-- Resource not found
-
-### 3. Rollback Plan
-
-For data-affecting changes:
-- How to revert the change
-- Data migration rollback steps
-- Feature flag to disable
-
----
-
-## Prompt/Context Hygiene
-
-### Required Context Before Generating
-
-Agents should request or verify they have:
-
-| Context Type | Required For |
-|--------------|--------------|
-| Project Constitution | Any code generation |
-| Relevant ADRs | Architectural decisions |
-| Existing patterns | New implementations |
-| Test patterns | Test generation |
-| Error handling patterns | Error-prone code |
-| Specification/PRD | Feature implementations |
-
-### Context Loading Order
-
-```
-1. CLAUDE.md (project-specific instructions)
-2. Relevant specification or PRD section
-3. Related existing code files
-4. Test patterns for similar features
-5. Architecture documentation (if architectural change)
-```
-
----
-
-## Code Generation Guidelines
-
-### Prefer
-
-```
-- Editing existing files over creating new ones
-- Following existing patterns over introducing new ones
-- Minimal changes that solve the problem
-- Self-documenting code with clear naming
-- Composition over inheritance
-- Explicit over implicit
-- Simple over clever
-```
-
-### Avoid
-
-```
-- Over-engineering (features not requested)
-- Premature abstraction (wait for 3+ duplications)
-- Adding dependencies without justification
-- Changing unrelated code ("while I'm here...")
-- Breaking backwards compatibility silently
-- Magic numbers without constants
-- Deep nesting (max 3 levels)
-```
-
----
-
-## Error Handling Requirements
-
-### Backend (Python/FastAPI)
-
-```python
-# Required: Use appropriate HTTP status codes
-raise HTTPException(
-    status_code=status.HTTP_404_NOT_FOUND,
-    detail="Resource not found"  # User-safe message
-)
-
-# Required: Log internal details, don't expose
-logger.error(f"Database error: {internal_error}")
-raise HTTPException(
-    status_code=500,
-    detail="Internal server error"  # Generic message
-)
-```
-
-### Frontend (TypeScript/React)
-
-```typescript
-// Required: Use ActionResult pattern
-interface ActionResult<T> {
-  success: boolean;
-  data?: T;
-  error?: string;
-  errors?: Array<{ field: string; message: string }>;
-}
-
-// Required: Handle all error states in UI
-if (result.error) {
-  // Show user-friendly error
-}
-```
-
----
-
-## Commit Message Requirements
-
-When generating commit messages:
-
-```
-Format: [ID] type: description
-
-Where:
-- ID = FEAT-XXX, FR-XXX, or BUG-XXX
-- type = feat, fix, refactor, test, docs, chore
-- description = imperative mood, lowercase
-
-Examples:
-[FEAT-001] feat: add user authentication flow
-[FR-042] fix: handle null pointer in payment processing
-[BUG-123] fix: resolve race condition in cache invalidation
-```
-
----
-
-## PR Title Format
-
-```
-[ID] Description
-
-Examples:
-[FEAT-001] Add user authentication with Clerk
-[FR-042] Fix payment processing null pointer
-[BUG-123] Resolve cache race condition
-```
-
----
-
-## Test Naming Requirements
-
-```python
-# Python: test_{what}_{when}_{expected}
-def test_create_user_with_valid_data_returns_user():
-    pass
-
-def test_create_user_with_duplicate_email_raises_conflict():
-    pass
-```
-
-```typescript
-// TypeScript: describe/it pattern with IDs
-describe('UserService [FEAT-001]', () => {
-  it('[IT-001] creates user with valid data', () => {});
-  it('[IT-002] throws on duplicate email', () => {});
-});
-```
-
----
-
-## CLAUDE.md Template Section
-
-Add this section to project CLAUDE.md files:
+1. **Discovery validates the problem** before detailed specification begins
+2. **Discovery outputs** inform specification content (pain points → requirements)
+3. **Stakeholder insights** from Discovery shape user stories and acceptance criteria
 
 ```markdown
-## Agentic Coding Controls
-
-This project follows the [Agentic Coding Standard](path/to/standards/documentation/agentic-coding-standard.md).
-
-### Source of Truth (This Project)
-1. PROJECT-CONSTITUTION.md
-2. specifications/*.md
-3. Existing code patterns
-
-### Protected Paths (This Project)
-- `alembic/versions/` - Never modify without explicit request
-- `app/core/security/` - Security-critical, require review
-- `app/billing/` - Financial, require review
-
-### Project-Specific Rules
-- [Add any project-specific agent rules here]
+**Discovery Reference**: DISC-XXX (if Discovery was conducted)
 ```
 
----
+### When Discovery Precedes Specification
 
-## CI/CD Validation
+**Conduct Discovery first when**:
+- New product or major initiative
+- Problem statement is unclear or unvalidated
+- Multiple stakeholders with different perspectives
+- User needs are assumed, not verified
 
-Implement these checks in CI pipelines:
+**Skip to Specification when**:
+- Bug fixes with clear reproduction steps
+- Technical improvements with defined scope
+- Small enhancements where requirements are explicit
+- Discovery already completed for parent initiative
 
-### Required Checks
+See [Discovery Standard](./discovery-standard.md) for full Discovery guidance.
 
-```yaml
-# Example GitHub Actions snippet
-- name: Validate Traceability
-  run: |
-    # Ensure PR title has ID
-    if ! echo "$PR_TITLE" | grep -qE '^\[FEAT-[0-9]+\]|^\[FR-[0-9]+\]|^\[BUG-[0-9]+\]'; then
-      echo "PR title must start with [FEAT-XXX], [FR-XXX], or [BUG-XXX]"
-      exit 1
-    fi
+## Relationship to Business Requirements Document (BRD)
 
-- name: Check No TODO Without Ticket
-  run: |
-    # Ensure TODOs have ticket references
-    if grep -rn 'TODO' --include='*.py' --include='*.ts' | grep -v 'TODO('; then
-      echo "TODOs must include ticket reference: TODO(FEAT-XXX)"
-      exit 1
-    fi
+### BRD Before Specification
 
-- name: Protected Path Check
-  run: |
-    # Warn if protected paths modified
-    PROTECTED="alembic/versions|security|billing|payment"
-    if git diff --name-only HEAD~1 | grep -E "$PROTECTED"; then
-      echo "WARNING: Protected paths modified - requires additional review"
-    fi
+When a Business Requirements Document exists, specifications should:
+
+1. **Reference the BRD**: Include BRD ID in specification header
+2. **Trace Requirements**: Map business requirements (BR-XXX) to functional requirements (FR-XXX)
+3. **Align Scope**: Specification scope should align with BRD scope
+
+```markdown
+**BRD Reference**: BRD-XXX (if applicable)
+
+## Traceability to Business Requirements
+| Business Requirement | Spec Requirement | Rationale |
+|---------------------|------------------|-----------|
+| BR-001 | FR-001, FR-002 | [How spec implements BR] |
 ```
 
----
+### When to Create a BRD First
 
-## Exceptions Process
+See [Business Requirements Standard](./business-requirements-standard.md) for guidance on when to create a BRD before specifications.
 
-When an agent needs to deviate from these standards:
+**Create BRD first when**:
+- Business context is unclear
+- Multiple stakeholders with different priorities
+- Success metrics needed
+- Significant investment (>2 weeks)
 
-1. **Document the reason** in the code comment
-2. **Reference the exception** in PR description
-3. **Get explicit approval** from code owner
-4. **Add to tech debt tracker** if temporary
+**Skip to Specification when**:
+- Bug fixes with clear requirements
+- Technical improvements
+- Small enhancements with obvious requirements
+
+## Relationship to Product Requirements Document (PRD)
+
+### PRD Before Specification
+
+When a Product Requirements Document exists, specifications should:
+
+1. **Reference the PRD**: Include PRD ID in specification header
+2. **Trace Features**: Map product features (FEAT-XXX) to functional requirements (FR-XXX)
+3. **Reference User Stories**: Link functional requirements to user stories (US-XXX)
+
+```markdown
+**PRD Reference**: PRD-XXX (if applicable)
+**BRD Reference**: BRD-XXX (if applicable)
+
+## Traceability to Product Requirements
+| Feature | User Stories | Spec Requirements |
+|---------|--------------|-------------------|
+| FEAT-001 | US-001, US-002 | FR-001, FR-002 |
+| FEAT-002 | US-003 | FR-003, FR-004 |
+```
+
+### Complete Traceability Chain
+
+See [Documentation Workflow](documentation-workflow.md#traceability-chain) for the complete traceability model and ID reference patterns.
+
+### When PRD Precedes Specification
+
+**PRD typically precedes specs when**:
+- User personas and user stories are defined
+- Product features need technical translation
+- UX/design work has been completed
+- Multiple features map to one specification
+
+**Skip PRD when**:
+- Technical-only changes
+- API-only changes without user-facing impact
+- Small enhancements with obvious requirements
+
+See [Product Requirements Standard](./product-requirements-standard.md) for full PRD guidance.
+
+## Relationship to Architecture Decision Records (ADRs)
+
+### ADR Cross-References
+
+Specifications must reference relevant ADRs when:
+
+1. **Architectural decisions** affect the specification (technology choices, patterns)
+2. **Trade-offs** were made that constrain the implementation
+3. **Alternatives were rejected** that future readers should understand
+
+```markdown
+## Related ADRs
+
+| ADR | Impact on This Specification |
+|-----|------------------------------|
+| `ADR-001-database-choice.md` | Defines database choice |
+| `ADR-003-authentication-pattern.md` | Establishes authentication pattern |
+```
+
+### When to Create a New ADR
+
+If the specification requires a significant architectural decision not yet documented:
+
+1. **Create the ADR first** in `architecture/adr/`
+2. **Reference it** in the specification
+3. **Get ADR approved** before specification approval
+
+See [ADR Framework](../architecture/adr/README.md) for ADR creation guidance.
+
+## QA Co-Authorship Requirement
+
+### Test Scenarios Must Be QA Co-Authored
+
+For Tier 1 and Tier 2 specifications, test scenarios should be co-authored with QA:
+
+1. **QA reviews user stories** to identify edge cases
+2. **QA contributes test scenarios** based on acceptance criteria
+3. **QA signs off** on the specification's testability
+
+```markdown
+## Approval
+
+| Role | Name | Date | Status |
+|------|------|------|--------|
+| Product Owner | | | Pending |
+| Tech Lead | | | Pending |
+| **QA Lead (Co-Author)** | | | Pending |
+```
+
+### Benefits of QA Co-Authorship
+
+- **Shift-left testing**: Test scenarios defined before implementation
+- **Reduced ambiguity**: QA perspective catches unclear requirements early
+- **Better coverage**: Edge cases and error scenarios identified upfront
+- **Faster verification**: QA ready to test immediately after implementation
+
+### QA Involvement by Tier
+
+| Tier | QA Co-Authorship | Test Scenario Depth |
+|------|------------------|---------------------|
+| Tier 1 (Full) | Required | Full test matrix, performance, security |
+| Tier 2 (Standard) | Required | Key scenarios, happy/error paths |
+| Tier 3 (Lightweight) | Recommended | Minimal scenarios, acceptance criteria |
+
+## Agentic Coding Considerations
+
+When AI agents generate or update specifications:
+
+1. **Follow the Agentic Coding Standard** for quality constraints
+2. **Reference source documents** (Discovery, PRD) explicitly
+3. **Mark assumptions clearly** in the Assumptions & Ambiguities section
+4. **Request QA review** for test scenarios
+
+See [Agentic Coding Standard](./agentic-coding-standard.md) for agent-specific rules.
+
+## Relationship to Other Documentation
+
+See [Documentation Workflow](documentation-workflow.md#specification-repository-relationship) for how specifications relate to the standards repository, project architecture, and codebase.
+
+## Specification Tiers
+
+Choose the appropriate tier based on feature complexity and risk:
+
+| Tier | Name | When to Use | Effort |
+|------|------|-------------|--------|
+| **1** | Full | Major features, architectural changes, cross-team coordination, high-risk changes | 4-8 hours |
+| **2** | Standard | Typical features, new API endpoints, moderate complexity | 1-4 hours |
+| **3** | Lightweight | Small features, enhancements, bug fixes with significant scope | 30-60 min |
+
+### Tier Selection Guide
+
+```
+Is this a major architectural change or new system component?
+├── Yes → Tier 1 (Full)
+└── No
+    ├── Does it span multiple services or require cross-team coordination?
+    │   ├── Yes → Tier 1 (Full)
+    │   └── No
+    │       ├── Is this a typical feature with frontend + backend changes?
+    │       │   ├── Yes → Tier 2 (Standard)
+    │       │   └── No
+    │       │       ├── Is this an API-only change?
+    │       │       │   ├── Yes → Tier 2 (API Contract)
+    │       │       │   └── No → Tier 3 (Lightweight)
+    │       └── Is this an external service integration?
+    │           ├── Yes → Tier 2 (Integration)
+    │           └── No → Tier 3 (Lightweight)
+```
+
+### Required Sections by Tier
+
+| Section | Tier 1 | Tier 2 | Tier 3 |
+|---------|--------|--------|--------|
+| Overview & Problem Statement | Required | Required | Required |
+| User Stories | Required | Required | Required |
+| Acceptance Criteria (BDD) | Required | Required | Required |
+| Functional Requirements | Required | Required | Optional |
+| **Assumptions & Ambiguities** | Required | Required | Simplified |
+| Non-Functional Requirements | Required | Required | Optional |
+| Threat Model | Required | Required | If applicable |
+| Data Requirements | Required | Required | If applicable |
+| API Contracts | Required | Required | If applicable |
+| UI/UX Specifications | Required | Simplified | Optional |
+| Edge Cases & Error Handling | Required | Required | Key cases only |
+| Test Scenarios | Required | Required | Key scenarios |
+| Dependencies | Required | Required | Required |
+| Rollout Plan | Required | Optional | Not required |
+| Monitoring | Required | Optional | Not required |
+| Approval Sign-off | Required | Required | Required |
+
+## Specification Types
+
+### 1. Feature Specification
+
+**Purpose**: Document end-to-end features spanning frontend and backend
+
+**When to Use**:
+- New user-facing functionality
+- Features requiring UI, API, and database changes
+- Cross-cutting concerns affecting multiple system areas
+
+**Template**: `feature-spec.md` (single tiered template with tier markers)
+
+### 2. API Contract Specification
+
+**Purpose**: Document backend API endpoints with detailed contracts
+
+**When to Use**:
+- New API endpoints without significant frontend work
+- API versioning or breaking changes
+- Internal service-to-service APIs
+- Public/partner API additions
+
+**Template**: `api-contract-spec.md`
+
+### 3. Integration Specification
+
+**Purpose**: Document external service integrations
+
+**When to Use**:
+- Third-party API integrations
+- Webhook implementations (inbound or outbound)
+- External service replacements
+- Message queue integrations
+
+**Template**: `integration-spec.md`
+
+### 4. Project Constitution
+
+**Purpose**: Define governing principles and constraints for a project
+
+**When to Use**:
+- New project initialization
+- When multiple teams work on the same project
+- When architectural constraints need documentation
+- When compliance requirements exist
+
+**Template**: `project-constitution.md`
+
+**Key Sections**:
+- Architectural Principles (non-negotiable patterns)
+- Performance Budgets (response times, resource limits)
+- Scalability Constraints (load requirements, geographic distribution)
+- Security Posture (authentication, data protection)
+- Compliance Requirements (GDPR, HIPAA, SOC2)
+- Testing Requirements (coverage targets, quality gates)
+- Exception Process (how to request deviations)
+
+**Usage**: Feature specifications should reference the project constitution. Deviations from constitutional requirements must follow the exception process documented in the constitution.
+
+## Specification ID Convention
+
+```
+SPEC-[TYPE]-[NUMBER]
+```
+
+**Types**:
+- `FEAT` - Feature specification
+- `API` - API contract specification
+- `INT` - Integration specification
+
+**Examples**:
+- `SPEC-FEAT-001` - User profile photo upload
+- `SPEC-API-012` - Orders API v2
+- `SPEC-INT-003` - Stripe payment integration
+
+**Numbering**: Sequential within each type, padded to 3 digits.
+
+## Core Sections
+
+See [Specification Template Sections](specification-template-sections.md) for the complete template walkthrough of all specification sections (Overview, Problem Statement, User Stories, Functional Requirements, Assumptions & Ambiguities, Non-Functional Requirements, Threat Model, Data Requirements, API Contracts, Test Scenarios, Approval).
+
+## Specification Workflow
+
+### Status Lifecycle
+
+```
+Draft → Review → Approved → Implemented → Deprecated
+          ↓
+       Revision (back to Draft)
+```
+
+**Status Definitions**:
+- **Draft**: Initial creation, incomplete
+- **Review**: Ready for stakeholder review
+- **Approved**: Signed off, ready for implementation
+- **Implemented**: Feature is live in production
+- **Deprecated**: Superseded or no longer applicable
+
+### Workflow Steps
+
+1. **Create Spec**
+   - Select appropriate tier and template
+   - Fill in all required sections
+   - Set status to "Draft"
+
+2. **Internal Review**
+   - Author self-reviews for completeness
+   - Peer developer reviews technical feasibility
+   - Update status to "Review"
+
+3. **Stakeholder Approval**
+   - Product Owner reviews requirements
+   - Tech Lead reviews technical approach
+   - QA Lead reviews testability
+   - All sign off in Approval section
+   - Update status to "Approved"
+
+4. **Implementation**
+   - Developer references spec during coding
+   - Code comments include spec ID
+   - PRs reference spec document
+   - Update spec with Implementation PR link
+
+5. **Verification**
+   - QA uses acceptance criteria for test cases
+   - Tests reference spec IDs
+   - Update status to "Implemented" when deployed
+
+6. **Maintenance**
+   - Update spec if requirements change
+   - Increment version number
+   - Add to revision history
+   - Set to "Deprecated" if superseded
+
+## Traceability
+
+### Requirements to Code
+
+Reference spec IDs in code comments:
 
 ```python
-# EXCEPTION(AGENTIC-SECURITY): Using MD5 for legacy system compatibility
-# Approved by: @security-lead on 2026-01-03
-# Ticket: TECH-DEBT-042
-# Planned remediation: FEAT-099
-import hashlib  # noqa: S303
+# Python (FastAPI)
+class PhotoUpload(Base):
+    """
+    Photo upload model.
+
+    Spec Reference:
+        - Spec: SPEC-FEAT-003 Section 5.1
+        - Requirements: FR-001, FR-002
+    """
 ```
 
+```typescript
+// TypeScript (Server Actions)
+/**
+ * Upload user profile photo
+ *
+ * @spec SPEC-FEAT-003
+ * @requirements FR-001, FR-002, NFR-001
+ * @acceptance AC-001, AC-002
+ */
+export async function uploadProfilePhoto(...)
+```
+
+### Traceability Matrix
+
+Maintain in each spec:
+
+```markdown
+## Traceability Matrix
+
+| Requirement | Implementation | Test Case | Status |
+|-------------|----------------|-----------|--------|
+| FR-001 | app/models/photo.py | UT-001, IT-001 | Implemented |
+| FR-002 | app/actions/photos.ts | IT-002 | Implemented |
+```
+
+## File Organization
+
+### In Architecture Repository
+
+```
+project-name-architecture/
+├── specifications/
+│   ├── README.md                    # Index and status tracking
+│   ├── features/
+│   │   ├── SPEC-FEAT-001-user-registration.md
+│   │   ├── SPEC-FEAT-002-profile-management.md
+│   │   └── SPEC-FEAT-003-photo-upload.md
+│   ├── api-contracts/
+│   │   ├── SPEC-API-001-users-api.md
+│   │   └── SPEC-API-002-photos-api.md
+│   └── integrations/
+│       └── SPEC-INT-001-image-processing.md
+└── ... (other architecture folders)
+```
+
+### Spec File Naming
+
+```
+SPEC-[TYPE]-[NUMBER]-[kebab-case-name].md
+```
+
+Examples:
+- `SPEC-FEAT-001-user-registration.md`
+- `SPEC-API-012-orders-api-v2.md`
+- `SPEC-INT-003-stripe-payments.md`
+
+## Best Practices
+
+### Do
+
+- **Start with User Stories**: Begin every spec with who benefits and why
+- **Be Specific**: Include concrete examples, not vague descriptions
+- **Define Acceptance Criteria**: Every story needs testable criteria
+- **Number Requirements**: Enable traceability with FR-XXX numbering
+- **Include Error Cases**: Document what happens when things go wrong
+- **Show Data Contracts**: Explicit JSON schemas, not prose descriptions
+- **Version the Spec**: Track changes with semantic versioning
+- **Get Sign-off**: Don't implement without approval
+
+### Don't
+
+- **Don't Skip Non-Goals**: Explicitly state what's out of scope
+- **Don't Assume Context**: Write for someone unfamiliar with the project
+- **Don't Over-Specify UI**: Focus on behavior, not pixel-perfect layouts
+- **Don't Forget Performance**: Include NFRs from the start
+- **Don't Write Novels**: Be concise; use tables and lists
+- **Don't Delay Testing**: Write test scenarios during spec, not after
+- **Don't Ignore Edge Cases**: They always become production bugs
+- **Don't Gold-Plate**: Match spec detail to feature complexity (use tiers)
+
+## Examples
+
+### Good Example: User Story with Acceptance Criteria
+
+```markdown
+### Story 1: Upload Profile Photo
+**As a** registered user
+**I want** to upload my profile photo
+**So that** my account is personalized and recognizable
+
+**Acceptance Criteria**:
+```gherkin
+Given I am logged into my account
+And I am on my profile settings page
+When I click "Upload Photo" button
+And I select a valid image file (JPG, PNG, WebP under 5MB)
+Then the image is uploaded successfully
+And my profile displays the new photo
+And a success notification appears
+
+Given I am logged into my account
+When I try to upload a file larger than 5MB
+Then I see an error message "Image must be smaller than 5MB"
+And the file is not uploaded
+```
+
+**INVEST Assessment**:
+- [x] Independent - Can be developed without other profile features
+- [x] Negotiable - File types and size limits can be discussed
+- [x] Valuable - Users want personalized profiles
+- [x] Estimable - Team estimates 5 story points
+- [x] Small - Fits in one sprint
+- [x] Testable - Clear acceptance criteria above
+```
+
+### Bad Example: Vague Requirements
+
+```markdown
+### Story 1: Photo Upload
+**As a** user
+**I want** to upload photos
+**So that** they are saved
+
+**Acceptance Criteria**:
+- Photos should upload
+- Errors should be handled
+```
+
+**Why it's bad**:
+- User type is vague ("user" vs "registered user")
+- No specific file constraints
+- No testable acceptance criteria
+- No error scenarios defined
+- INVEST not assessed
+
+## Checklist
+
+Before marking a spec as "Review":
+
+- [ ] Spec ID assigned following convention
+- [ ] All required sections for tier are complete
+- [ ] User stories follow "As a... I want... So that..." format
+- [ ] Acceptance criteria use Given/When/Then format
+- [ ] INVEST criteria assessed for each story
+- [ ] Requirements numbered (FR-XXX)
+- [ ] Requirements prioritized (MoSCoW)
+- [ ] Non-functional requirements specified
+- [ ] Data model changes documented
+- [ ] API contracts include request/response schemas
+- [ ] Error cases documented
+- [ ] Test scenarios cover acceptance criteria
+- [ ] Dependencies identified
+- [ ] Related documentation linked
+- [ ] Version set to 1.0.0 (or incremented)
+
+## Related Standards
+
+- [Discovery Standard](./discovery-standard.md) - Stakeholder interview phase (precedes BRD/PRD)
+- [Business Requirements Standard](./business-requirements-standard.md) - BRD standard (precedes PRD/specs)
+- [Product Requirements Standard](./product-requirements-standard.md) - PRD standard (precedes specs)
+- [Agentic Coding Standard](./agentic-coding-standard.md) - AI agent constraints
+- [ADR Framework](../architecture/adr/README.md) - Architecture Decision Records
+- [Documentation Standard](./documentation-standard.md) - General documentation guidelines
+- [Architecture Definition Standard](./architecture-definition.md) - Project architecture documentation
+- [Threat Modeling Standard](../architecture/threat-modeling.md) - STRIDE threat analysis methodology
+- [API Design](../backend/python.md) - Backend API patterns
+- [Server Actions](../frontend/server-actions.md) - Frontend data flow patterns
+- [Database Naming](../database/naming-conventions.md) - Database conventions
+
+## References
+
+- [IEEE 830-1998](https://standards.ieee.org/standard/830-1998.html) - Software Requirements Specification
+- [Behavior-Driven Development](https://cucumber.io/docs/bdd/) - BDD with Cucumber/Gherkin
+- [User Stories Applied](https://www.mountaingoatsoftware.com/books/user-stories-applied) - Mike Cohn
+- [INVEST Criteria](https://www.agilealliance.org/glossary/invest/) - Agile Alliance
+- [MoSCoW Prioritization](https://www.productplan.com/glossary/moscow-prioritization/) - ProductPlan
+
+## Revision History
+
+| Version | Date | Author | Changes |
+|---------|------|--------|---------|
+| 1.4.0 | 2026-05-24 | Standards Team | Extracted template sections and workflow/traceability to dedicated files (F-066, F-062) |
+| 1.3.1 | 2026-05-19 | Standards Team | Added Threat Model required section for security-relevant features |
+| 1.2.0 | 2026-01-03 | Standards Team | Discovery phase integration, ADR cross-references, QA co-authorship, Agentic coding considerations |
+| 1.1.0 | 2025-12-30 | Standards Team | Added Project Constitution template, Assumptions & Ambiguities section |
+| 1.0.0 | 2025-12-30 | Standards Team | Initial specification standard |
+
 ---
 
-## Related Documents
+<!-- Source: standards/documentation/architecture-definition.md (v1.0.1) -->
 
-- [Project Constitution Template](../templates/specifications/project-constitution.md)
-- [Development Workflow](../devops/development-workflow.md)
-- [Security Architecture](../architecture/security.md)
-- [Testing Strategy](../architecture/testing-strategy.md)
-- [Documentation Standard](./documentation-standard.md)
-- [Specification Standard](./specification-standard.md)
-
----
-
-*Part of the Standards Documentation Repository*
-
----
-<!-- Source: /home/tester/.claude/evolv-coder-standards/standards/documentation/architecture-definition.md -->
 # Architecture Definition Standard
 
-**Version**: 1.0.1
-**Last Updated**: 2025-12-30
 **Status**: Active
 **Category**: Meta-Documentation
 
@@ -1247,8 +1444,8 @@ When starting a new project architecture repository:
 
 - [Documentation Standard](./documentation-standard.md) - Generic documentation guidelines
 - [Specification Standard](./specification-standard.md) - Feature and API specification guidelines
-- [New Project Setup Guide](../guides/new-project-setup.md) - Step-by-step project setup
-- [CLAUDE.md](../CLAUDE.md) - Workflow guidance and navigation
+- *new-project-setup.md* in `standards/guides/` (planned — see `standards/guides/README.md`) — Step-by-step project setup
+- [CLAUDE.md](../../CLAUDE.md) - Workflow guidance and navigation
 - [Architecture Patterns](../architecture/README.md) - System architecture patterns
 - [Frontend Standards](../frontend/README.md) - Frontend implementation standards
 - [Backend Standards](../backend/README.md) - Backend implementation standards
@@ -1284,14 +1481,1190 @@ standards/templates/architecture-repository/
 ---
 
 *Part of the Standards Documentation Repository*
-*Version 2.0.0 - Updated for multi-repository pattern*
 
 ---
-<!-- Source: /home/tester/.claude/evolv-coder-standards/standards/documentation/business-requirements-standard.md -->
+
+<!-- Source: standards/documentation/agentic-coding-standard.md (v1.0.0) -->
+
+# Agentic Coding Standard
+
+**Status**: Active
+**Owner**: Engineering Lead
+**Dependencies**: *Project Constitution* — `standards/templates/specifications/project-constitution.md` (planned — see `standards/templates/README.md`)
+
+---
+
+## Purpose
+
+This standard defines rules and constraints for AI agents (LLMs, coding assistants) when generating, modifying, or reviewing code within projects that follow these standards. It ensures AI-assisted development produces consistent, safe, and maintainable output.
+
+These rules should be referenced in:
+- Project CLAUDE.md files
+- Project Constitution documents
+- CI/CD validation pipelines
+
+---
+
+## Source-of-Truth Hierarchy
+
+When generating or modifying code, agents must respect this precedence order:
+
+| Priority | Source | Overrides |
+|----------|--------|-----------|
+| 1 | **Project Constitution** | All below |
+| 2 | **PRD / Specifications** | Code, comments |
+| 3 | **Architecture Documentation** | Implementation details |
+| 4 | **ADRs (Architecture Decision Records)** | Related implementations |
+| 5 | **Existing Code Patterns** | New implementations |
+| 6 | **Code Comments / TODOs** | Nothing |
+
+### Conflict Resolution
+
+When sources conflict:
+1. Higher-priority source wins
+2. If same priority, ask the user for clarification
+3. Document the conflict and resolution in the output
+4. Never silently override documented decisions
+
+---
+
+## Protected Paths
+
+Agents must NOT modify these paths without explicit user confirmation:
+
+### Always Protected (Never Auto-Modify)
+
+```
+# Database
+alembic/versions/          # Migration files
+migrations/                # Any migration directory
+*.sql                      # Raw SQL files (review only)
+
+# Authentication & Security
+**/auth/                   # Authentication modules
+**/security/               # Security modules
+**/*secret*                # Anything named secret
+**/*credential*            # Credential files
+.env*                      # Environment files
+**/keys/                   # Cryptographic keys
+
+# Billing & Financial
+**/billing/                # Billing modules
+**/payment/                # Payment processing
+**/stripe/                 # Payment provider integrations
+
+# Infrastructure
+*.tf                       # Terraform files
+*.tfvars                   # Terraform variables
+docker-compose.prod.yml    # Production compose
+kubernetes/*.yaml          # K8s manifests (prod)
+
+# CI/CD
+.github/workflows/         # GitHub Actions
+.gitlab-ci.yml             # GitLab CI
+Jenkinsfile                # Jenkins pipelines
+```
+
+### Conditionally Protected (Warn Before Modify)
+
+```
+# Configuration
+pyproject.toml             # Python project config
+package.json               # Node project config
+tsconfig.json              # TypeScript config
+next.config.js             # Next.js config
+
+# Lock Files
+uv.lock                    # Python dependencies
+package-lock.json          # Node dependencies
+yarn.lock                  # Yarn dependencies
+
+# Tests (warn on deletion)
+tests/                     # Test directories
+**/*.test.*                # Test files
+**/*.spec.*                # Spec files
+```
+
+---
+
+## Security Constraints
+
+### Never Include in Generated Code
+
+```python
+# NEVER generate code that:
+- Hardcodes secrets, API keys, or passwords
+- Logs sensitive data (passwords, tokens, PII)
+- Disables security features (CSRF, CORS, auth checks)
+- Uses deprecated cryptographic algorithms
+- Bypasses input validation
+- Contains SQL injection vulnerabilities
+- Contains XSS vulnerabilities
+- Exposes internal error details to users
+```
+
+### Required Security Patterns
+
+```python
+# ALWAYS use these patterns:
+- Environment variables for secrets
+- Parameterized queries for database access
+- Input validation at system boundaries
+- Output encoding for user-displayed data
+- Secure defaults (deny by default)
+- Approved cryptographic libraries only
+```
+
+### Approved Cryptographic Libraries
+
+| Language | Approved Libraries |
+|----------|-------------------|
+| Python | `cryptography`, `bcrypt`, `argon2-cffi` |
+| TypeScript | `crypto` (Node.js built-in), `bcryptjs` |
+| Hashing | bcrypt, argon2 (NEVER MD5, SHA1 for passwords) |
+| Encryption | AES-256-GCM (NEVER ECB mode) |
+
+---
+
+## Quality Gates
+
+Agents must verify these conditions before considering work complete:
+
+### Code Quality
+
+- [ ] Code passes linting (`ruff check`, `eslint`)
+- [ ] Code passes formatting (`ruff format`, `prettier`)
+- [ ] TypeScript has no type errors (`tsc --noEmit`)
+- [ ] Python has type hints on all public functions
+- [ ] No `any` types in TypeScript (except explicit escape hatches)
+- [ ] No `TODO` comments without ticket reference (e.g., `# TODO(FEAT-001): ...`)
+- [ ] No `console.log` / `print` debugging statements
+- [ ] No commented-out code blocks
+
+### Testing
+
+- [ ] Unit tests exist for new functions
+- [ ] Tests pass locally
+- [ ] Test coverage meets threshold (typically 80%+)
+- [ ] Edge cases are tested
+- [ ] Error cases are tested
+
+### Documentation
+
+- [ ] Public APIs have docstrings
+- [ ] Complex logic has inline comments
+- [ ] Breaking changes documented
+- [ ] CHANGELOG updated if applicable
+
+---
+
+## Verification Discipline
+
+For non-trivial changes, agents must produce:
+
+### 1. Test Plan
+
+Before implementing, document:
+- What will be tested
+- How it will be tested
+- Edge cases to cover
+- Performance considerations
+
+### 2. Negative Cases
+
+Always implement handling for:
+- Invalid input
+- Missing data
+- Network failures
+- Timeout scenarios
+- Permission denied
+- Resource not found
+
+### 3. Rollback Plan
+
+For data-affecting changes:
+- How to revert the change
+- Data migration rollback steps
+- Feature flag to disable
+
+---
+
+## Prompt/Context Hygiene
+
+### Required Context Before Generating
+
+Agents should request or verify they have:
+
+| Context Type | Required For |
+|--------------|--------------|
+| Project Constitution | Any code generation |
+| Relevant ADRs | Architectural decisions |
+| Existing patterns | New implementations |
+| Test patterns | Test generation |
+| Error handling patterns | Error-prone code |
+| Specification/PRD | Feature implementations |
+
+### Context Loading Order
+
+```
+1. CLAUDE.md (project-specific instructions)
+2. Relevant specification or PRD section
+3. Related existing code files
+4. Test patterns for similar features
+5. Architecture documentation (if architectural change)
+```
+
+---
+
+## Code Generation Guidelines
+
+### Prefer
+
+```
+- Editing existing files over creating new ones
+- Following existing patterns over introducing new ones
+- Minimal changes that solve the problem
+- Self-documenting code with clear naming
+- Composition over inheritance
+- Explicit over implicit
+- Simple over clever
+```
+
+### Avoid
+
+```
+- Over-engineering (features not requested)
+- Premature abstraction (wait for 3+ duplications)
+- Adding dependencies without justification
+- Changing unrelated code ("while I'm here...")
+- Breaking backwards compatibility silently
+- Magic numbers without constants
+- Deep nesting (max 3 levels)
+```
+
+---
+
+## Error Handling Requirements
+
+### Backend (Python/FastAPI)
+
+```python
+# Required: Use appropriate HTTP status codes
+raise HTTPException(
+    status_code=status.HTTP_404_NOT_FOUND,
+    detail="Resource not found"  # User-safe message
+)
+
+# Required: Log internal details, don't expose
+logger.error(f"Database error: {internal_error}")
+raise HTTPException(
+    status_code=500,
+    detail="Internal server error"  # Generic message
+)
+```
+
+### Frontend (TypeScript/React)
+
+```typescript
+// Required: Use ActionResult<T> discriminated union — see standards/frontend/server-actions.md
+
+// Required: Handle all error states in UI
+if (!result.success) {
+  // Show user-friendly error from result.error
+}
+```
+
+---
+
+## Commit Message Requirements
+
+When generating commit messages:
+
+```
+Format: [ID] type: description
+
+Where:
+- ID = FEAT-XXX, FR-XXX, or BUG-XXX
+- type = feat, fix, refactor, test, docs, chore
+- description = imperative mood, lowercase
+
+Examples:
+[FEAT-001] feat: add user authentication flow
+[FR-042] fix: handle null pointer in payment processing
+[BUG-123] fix: resolve race condition in cache invalidation
+```
+
+---
+
+## PR Title Format
+
+```
+[ID] Description
+
+Examples:
+[FEAT-001] Add user authentication with Clerk
+[FR-042] Fix payment processing null pointer
+[BUG-123] Resolve cache race condition
+```
+
+---
+
+## Test Naming Requirements
+
+```python
+# Python: test_{what}_{when}_{expected}
+def test_create_user_with_valid_data_returns_user():
+    pass
+
+def test_create_user_with_duplicate_email_raises_conflict():
+    pass
+```
+
+```typescript
+// TypeScript: describe/it pattern with IDs
+describe('UserService [FEAT-001]', () => {
+  it('[IT-001] creates user with valid data', () => {});
+  it('[IT-002] throws on duplicate email', () => {});
+});
+```
+
+---
+
+## CLAUDE.md Template Section
+
+Add this section to project CLAUDE.md files:
+
+```markdown
+## Agentic Coding Controls
+
+This project follows the [Agentic Coding Standard](path/to/standards/documentation/agentic-coding-standard.md).
+
+### Source of Truth (This Project)
+1. PROJECT-CONSTITUTION.md
+2. specifications/*.md
+3. Existing code patterns
+
+### Protected Paths (This Project)
+- `alembic/versions/` - Never modify without explicit request
+- `app/core/security/` - Security-critical, require review
+- `app/billing/` - Financial, require review
+
+### Project-Specific Rules
+- [Add any project-specific agent rules here]
+```
+
+---
+
+## CI/CD Validation
+
+Implement these checks in CI pipelines:
+
+### Required Checks
+
+```yaml
+# Example GitHub Actions snippet
+- name: Validate Traceability
+  run: |
+    # Ensure PR title has ID
+    if ! echo "$PR_TITLE" | grep -qE '^\[FEAT-[0-9]+\]|^\[FR-[0-9]+\]|^\[BUG-[0-9]+\]'; then
+      echo "PR title must start with [FEAT-XXX], [FR-XXX], or [BUG-XXX]"
+      exit 1
+    fi
+
+- name: Check No TODO Without Ticket
+  run: |
+    # Ensure TODOs have ticket references
+    if grep -rn 'TODO' --include='*.py' --include='*.ts' | grep -v 'TODO('; then
+      echo "TODOs must include ticket reference: TODO(FEAT-XXX)"
+      exit 1
+    fi
+
+- name: Protected Path Check
+  run: |
+    # Warn if protected paths modified
+    PROTECTED="alembic/versions|security|billing|payment"
+    if git diff --name-only HEAD~1 | grep -E "$PROTECTED"; then
+      echo "WARNING: Protected paths modified - requires additional review"
+    fi
+```
+
+---
+
+## Exceptions Process
+
+When an agent needs to deviate from these standards:
+
+1. **Document the reason** in the code comment
+2. **Reference the exception** in PR description
+3. **Get explicit approval** from code owner
+4. **Add to tech debt tracker** if temporary
+
+```python
+# EXCEPTION(AGENTIC-SECURITY): Using MD5 for legacy system compatibility
+# Approved by: @security-lead on 2026-01-03
+# Ticket: TECH-DEBT-042
+# Planned remediation: FEAT-099
+import hashlib  # noqa: S303
+```
+
+---
+
+## Related Documents
+
+- *Project Constitution Template* — `standards/templates/specifications/project-constitution.md` (planned — see `BACKLOG.md`)
+- [Development Workflow](../devops/development-workflow.md)
+- [Security Architecture](../architecture/security.md)
+- [Testing Strategy](../architecture/testing-strategy.md)
+- [Documentation Standard](./documentation-standard.md)
+- [Specification Standard](./specification-standard.md)
+
+---
+
+*Part of the Standards Documentation Repository*
+
+---
+
+<!-- Source: standards/documentation/documentation-standard.md (v1.2.1) -->
+
+# Documentation Standard
+
+**Status**: Active
+
+## Purpose
+
+This document establishes the standard for creating, organizing, and maintaining technical standards documentation within this repository. It ensures consistency, discoverability, and maintainability across all documentation.
+
+## Principles
+
+1. **Clarity**: Documentation must be clear, concise, and unambiguous
+2. **Consistency**: Follow established patterns for structure and naming
+3. **Discoverability**: Use logical organization and clear naming
+4. **Maintainability**: Design for easy updates and version control
+5. **Accessibility**: Make content easy to navigate for both humans and AI assistants
+
+## Directory Structure
+
+### Root Level Organization
+
+```
+standards/
+├── README.md                    # Repository overview and navigation
+├── CHANGELOG.md                 # Version history for all standards
+├── CLAUDE.md                    # AI assistant guidance
+│
+├── documentation/               # Documentation standards (documentation about documentation)
+│   └── documentation-standard.md
+│
+├── frontend/                    # Frontend development standards
+│   ├── README.md
+│   ├── tech-stack.md
+│   ├── typescript.md
+│   ├── components.md
+│   ├── server-actions.md
+│   ├── forms-validation.md
+│   ├── error-handling.md
+│   ├── accessibility.md
+│   └── testing.md
+│
+├── backend/                     # Backend development standards
+│   ├── README.md
+│   ├── tech-stack.md
+│   ├── python.md
+│   ├── error-handling.md
+│   └── testing.md
+│
+├── database/                    # Database standards
+│   ├── README.md
+│   ├── naming-conventions.md
+│   ├── schema-design.md
+│   ├── migrations.md
+│   └── performance.md
+│
+├── architecture/                # System architecture standards
+│   ├── README.md
+│   ├── data-flow.md
+│   ├── authentication.md
+│   ├── caching.md
+│   ├── error-contract.md
+│   ├── observability.md
+│   ├── testing-strategy.md
+│   ├── security.md
+│   └── adr/
+│
+├── devops/                      # DevOps and deployment standards
+│   ├── README.md
+│   ├── git-workflow.md
+│   ├── docker.md
+│   ├── ci-cd.md
+│   └── environments.md
+│
+├── guides/                      # Implementation guides
+│   ├── README.md
+│   ├── quick-reference.md
+│   ├── new-project-setup.md
+│   └── troubleshooting.md
+│
+├── templates/                   # Code templates
+│   ├── README.md
+│   ├── api-endpoint.py
+│   ├── server-action.ts
+│   ├── react-component.tsx
+│   ├── database-model.py
+│   └── architecture-repository/ # Architecture repository templates
+│       ├── blank-template/      # Empty template for new projects
+│       └── example-project/     # Fully documented example
+│
+└── documentation/               # Documentation standards (this directory)
+    ├── documentation-standard.md
+    └── architecture-definition.md  # Standard for project architecture docs
+```
+
+## Naming Conventions
+
+### Directory Names
+- **Format**: `lowercase-with-hyphens` (kebab-case)
+- **Singular or Plural**: Use singular for concept categories (e.g., `frontend`, `backend`, `database`)
+- **Clarity**: Names should be immediately understandable
+- **Examples**: ✅ `frontend`, `backend`, `database` | ❌ `FrontEnd`, `back_end`, `dbs`
+
+### File Names
+- **Format**: `lowercase-with-hyphens.md` (kebab-case)
+- **Descriptive**: Name should clearly indicate content
+- **Specificity**: Use specific names over generic ones
+- **Examples**:
+  - ✅ `server-actions.md`, `error-contract.md`, `naming-conventions.md`
+  - ❌ `ServerActions.md`, `error_contract.md`, `stuff.md`
+
+### Special Files
+- `README.md` - Overview and navigation for each directory (ALWAYS capitalized)
+- `CHANGELOG.md` - Version history (ALWAYS capitalized)
+- `CLAUDE.md` - AI assistant guidance (ALWAYS capitalized)
+
+## Document Structure
+
+### Standard Document Template
+
+Every standard document should follow this structure:
+
+```markdown
+# [Document Title]
+
+**Version**: X.Y.Z
+**Last Updated**: YYYY-MM-DD
+**Status**: [Draft | Active | Deprecated]
+
+## Purpose
+
+[1-2 sentences explaining why this standard exists]
+
+## Scope
+
+[What this standard covers and what it doesn't]
+
+## Standards
+
+### [Section 1]
+
+[Content with clear examples]
+
+### [Section 2]
+
+[Content with clear examples]
+
+## Examples
+
+### ✅ Good Example
+[Code or pattern to follow]
+
+### ❌ Bad Example
+[Code or pattern to avoid]
+
+## Checklist
+
+- [ ] Requirement 1
+- [ ] Requirement 2
+
+## Related Standards
+
+- [Link to related standard 1]
+- [Link to related standard 2]
+
+## References
+
+- [External resource 1]
+- [External resource 2]
+
+## Revision History
+
+| Version | Date | Changes |
+|---------|------|---------|
+| 1.0.0   | 2024-11-10 | Initial version |
+```
+
+### README.md Template
+
+Every directory should have a README.md:
+
+```markdown
+# [Category Name]
+
+## Overview
+
+[Brief description of this category]
+
+## Standards in This Category
+
+- **[standard-name.md]** - Brief description
+- **[another-standard.md]** - Brief description
+
+## Quick Reference
+
+[Most important concepts or patterns]
+
+## Related Categories
+
+- [Link to related category]
+
+---
+*Part of the [Project Name] Standards Documentation*
+```
+
+## Content Guidelines
+
+### Writing Style
+
+1. **Voice**: Use active voice and imperative mood for requirements
+   - ✅ "Use async/await for all database operations"
+   - ❌ "Async/await should be used for database operations"
+
+2. **Clarity**: Write for developers of all experience levels
+   - Define technical terms on first use
+   - Include context and rationale
+   - Provide concrete examples
+
+3. **Completeness**: Cover the "what", "why", and "how"
+   - **What**: State the requirement clearly
+   - **Why**: Explain the rationale
+   - **How**: Show implementation examples
+
+4. **Consistency**: Use consistent terminology
+   - Maintain a glossary if needed
+   - Use the same terms across all documents
+
+### Code Examples
+
+1. **Format**: Use proper syntax highlighting
+   ```typescript
+   // ✅ Good: Clear, complete example
+   export async function getUser(id: string): Promise<User> {
+     return await db.user.findUnique({ where: { id } });
+   }
+   ```
+
+2. **Context**: Provide file paths for examples
+   ```typescript
+   // src/app/actions/users.ts
+   'use server';
+
+   export async function createUser(data: UserInput) {
+     // implementation
+   }
+   ```
+
+3. **Contrast**: Show both good and bad examples
+   ```typescript
+   // ❌ Bad: Direct database access from client
+   const users = await prisma.user.findMany();
+
+   // ✅ Good: Use server action
+   const users = await getUsers();
+   ```
+
+### Sections Organization
+
+1. **Logical Flow**: Organize from general to specific
+2. **Progressive Disclosure**: Start with essentials, add details later
+3. **Scannable**: Use headings, lists, and tables effectively
+4. **Visual Aids**: Include diagrams for complex concepts
+
+## Diagrams and Visual Documentation
+
+### Diagram Strategy
+
+Use two types of diagrams based on complexity and use case:
+
+| Type | Format | When to Use |
+|------|--------|-------------|
+| **Inline** | Mermaid (`.md`) | Simple to moderate diagrams, embedded in documentation |
+| **Standalone** | Draw.io (`.drawio`) | Complex architecture diagrams, detailed system topology |
+
+### Inline Diagrams with Mermaid
+
+Use Mermaid syntax for diagrams that are:
+- Simple to moderate complexity
+- Need to be version-controlled as text
+- Should render directly in GitHub/GitLab/Obsidian
+- Frequently updated alongside documentation
+
+#### Flowcharts
+
+```mermaid
+flowchart TD
+    A[User Request] --> B{Authenticated?}
+    B -->|Yes| C[Server Action]
+    B -->|No| D[Redirect to Login]
+    C --> E[FastAPI Backend]
+    E --> F[(PostgreSQL)]
+    F --> E
+    E --> C
+    C --> G[Return Response]
+```
+
+**Syntax:**
+```
+flowchart TD
+    A[User Request] --> B{Authenticated?}
+    B -->|Yes| C[Server Action]
+    B -->|No| D[Redirect to Login]
+    C --> E[FastAPI Backend]
+    E --> F[(PostgreSQL)]
+```
+
+#### Sequence Diagrams
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant F as Frontend
+    participant SA as Server Action
+    participant API as FastAPI
+    participant DB as PostgreSQL
+
+    U->>F: Submit Form
+    F->>SA: createUser(data)
+    SA->>API: POST /api/users
+    API->>DB: INSERT user
+    DB-->>API: User record
+    API-->>SA: UserResponse
+    SA->>SA: revalidatePath('/users')
+    SA-->>F: { success: true, data }
+    F-->>U: Show Success
+```
+
+**Syntax:**
+```
+sequenceDiagram
+    participant U as User
+    participant F as Frontend
+    U->>F: Submit Form
+    F-->>U: Show Success
+```
+
+#### Entity Relationship Diagrams
+
+```mermaid
+erDiagram
+    users ||--o{ orders : places
+    users {
+        uuid id PK
+        string email UK
+        string name
+        timestamp created_at
+    }
+    orders ||--|{ order_items : contains
+    orders {
+        uuid id PK
+        uuid user_id FK
+        decimal total
+        string status
+    }
+    order_items {
+        uuid id PK
+        uuid order_id FK
+        uuid product_id FK
+        int quantity
+    }
+    products ||--o{ order_items : "ordered in"
+    products {
+        uuid id PK
+        string name
+        decimal price
+    }
+```
+
+#### State Diagrams
+
+```mermaid
+stateDiagram-v2
+    [*] --> Draft
+    Draft --> Pending: Submit
+    Pending --> Approved: Approve
+    Pending --> Rejected: Reject
+    Rejected --> Draft: Revise
+    Approved --> Published: Publish
+    Published --> [*]
+```
+
+#### Architecture Diagrams (Simple)
+
+```mermaid
+graph TB
+    subgraph "Frontend - Vercel"
+        Next[Next.js 16]
+    end
+
+    subgraph "Backend - AWS"
+        API[FastAPI]
+        Worker[Celery]
+    end
+
+    subgraph "Data"
+        DB[(PostgreSQL)]
+        Cache[(Redis)]
+    end
+
+    Next -->|Server Actions| API
+    API --> DB
+    API --> Cache
+    Worker --> DB
+
+    style Next fill:#2196F3,color:#fff
+    style API fill:#4CAF50,color:#fff
+    style DB fill:#FF9800,color:#fff
+```
+
+#### Class Diagrams (for API/Type structures)
+
+```mermaid
+classDiagram
+    class User {
+        +uuid id
+        +string email
+        +string name
+        +create()
+        +update()
+        +delete()
+    }
+    class Order {
+        +uuid id
+        +uuid user_id
+        +decimal total
+        +string status
+        +calculate_total()
+    }
+    User "1" --> "*" Order : places
+```
+
+### Standalone Diagrams with Draw.io
+
+Use Draw.io (`.drawio` files) for diagrams that:
+- Are highly complex with many components
+- Require precise positioning and custom styling
+- Need to be exported as high-resolution images
+- Contain sensitive details not suitable for plain text
+
+#### File Organization
+
+```
+project/
+├── docs/
+│   ├── architecture/
+│   │   ├── overview.md              # Contains inline Mermaid
+│   │   └── diagrams/
+│   │       ├── system-topology.drawio
+│   │       ├── network-architecture.drawio
+│   │       └── exports/             # PNG/SVG exports
+│   │           ├── system-topology.png
+│   │           └── network-architecture.svg
+```
+
+#### Naming Conventions for Draw.io Files
+
+| Type | Pattern | Example |
+|------|---------|---------|
+| System diagrams | `system-{name}.drawio` | `system-topology.drawio` |
+| Network diagrams | `network-{name}.drawio` | `network-architecture.drawio` |
+| Flow diagrams | `flow-{process}.drawio` | `flow-user-registration.drawio` |
+| Component diagrams | `component-{name}.drawio` | `component-auth-service.drawio` |
+
+#### Draw.io Best Practices
+
+1. **Version Control**: Commit `.drawio` files to version control
+2. **Export Formats**: Export as both PNG (for docs) and SVG (for web)
+3. **Consistent Styling**: Use a consistent color palette across diagrams
+4. **Layered Design**: Use layers for different aspects (infrastructure, data, users)
+5. **Embed in Docs**: Reference exported images in markdown. Diagram
+   exports live under `./diagrams/exports/` once the topology is finalized;
+   reference them with a relative image path like
+   `![System Topology](./diagrams/exports/system-topology.png)`.
+
+### VS Code Extensions for Diagrams
+
+#### Required Extensions
+
+| Extension | Purpose |
+|-----------|---------|
+| **Markdown Preview Mermaid Support** | Renders Mermaid in VS Code preview |
+| **Draw.io Integration** | Edit `.drawio` files directly in VS Code |
+
+#### Recommended Extensions
+
+| Extension | Purpose |
+|-----------|---------|
+| **Mermaid Markdown Syntax Highlighting** | Syntax highlighting for Mermaid code blocks |
+| **Markdown All in One** | Enhanced markdown editing with TOC support |
+
+#### VS Code Settings
+
+Add to `.vscode/settings.json`:
+```json
+{
+  "markdown.mermaid.theme": "default",
+  "hediet.vscode-drawio.theme": "Kennedy"
+}
+```
+
+### When to Use Which Diagram Type
+
+```mermaid
+flowchart TD
+    A[Need a Diagram?] --> B{Complexity?}
+    B -->|Simple/Moderate| C{Needs Version Control?}
+    B -->|Complex| D[Use Draw.io]
+    C -->|Yes| E[Use Mermaid]
+    C -->|No| F{One-time Use?}
+    F -->|Yes| D
+    F -->|No| E
+
+    D --> G[.drawio file]
+    E --> H[Inline Mermaid]
+
+    style E fill:#4CAF50,color:#fff
+    style D fill:#2196F3,color:#fff
+```
+
+**Decision Guide:**
+
+| Scenario | Recommendation |
+|----------|----------------|
+| Data flow between components | Mermaid sequence diagram |
+| Database schema | Mermaid ER diagram |
+| Simple architecture overview | Mermaid graph/flowchart |
+| Complex multi-service topology | Draw.io |
+| Network infrastructure with IP addresses | Draw.io |
+| State machine for business logic | Mermaid state diagram |
+| UI wireframes | Draw.io or Figma (not covered here) |
+
+## Metadata Requirements
+
+### Document Front Matter
+
+Every standard document must include:
+
+```markdown
+# [Title]
+
+**Version**: X.Y.Z (Semantic versioning)
+**Last Updated**: YYYY-MM-DD
+**Status**: Draft | In Review | Approved | Active | Deprecated
+**Owner**: [Name - decision maker for this document]
+**Reviewers**: [Names - who approved this document]
+```
+
+#### Optional Metadata (Recommended for Specifications)
+
+```markdown
+**Dependencies**: [Links to prerequisite documents]
+**Related**: [Cross-reference related documents]
+**Review Date**: YYYY-MM-DD [when to revisit]
+```
+
+### Document Status Lifecycle
+
+Documents progress through these states:
+
+```mermaid
+stateDiagram-v2
+    [*] --> Draft
+    Draft --> InReview: Submit for review
+    InReview --> Approved: All reviewers approve
+    InReview --> Draft: Revision needed
+    Approved --> Active: Published
+    Active --> Deprecated: Superseded or obsolete
+    Deprecated --> [*]
+```
+
+| Status | Meaning | Who Can Edit |
+|--------|---------|--------------|
+| **Draft** | Initial creation, incomplete | Author |
+| **In Review** | Ready for stakeholder review | Author (for revisions) |
+| **Approved** | Signed off, ready for use | Owner (with version bump) |
+| **Active** | In use, published | Owner (with version bump) |
+| **Deprecated** | Superseded or no longer applicable | Owner only |
+
+### Version Control
+
+Follow semantic versioning (MAJOR.MINOR.PATCH):
+
+- **MAJOR**: Breaking changes or complete rewrites
+- **MINOR**: New standards added, non-breaking changes
+- **PATCH**: Clarifications, typos, formatting
+
+## Cross-Referencing
+
+### Internal Links
+
+1. **Relative paths**: Use relative paths for internal links
+   ```markdown
+   See [Error Contract](../architecture/error-contract.md) for details.
+   ```
+
+2. **Section links**: Link to specific sections when relevant
+   ```markdown
+   See [Authentication Flow](../architecture/authentication.md#oauth-flow).
+   ```
+
+3. **Consistency**: Maintain a consistent linking style
+
+### External Links
+
+1. **Official docs**: Link to official documentation when available
+2. **Stability**: Use version-specific links when possible
+3. **Context**: Provide context for external links
+
+## Maintenance
+
+### Review Cycle
+
+- **Quarterly**: Review all standards for accuracy
+- **On technology updates**: Update when dependencies change
+- **On team feedback**: Incorporate learnings and feedback
+
+### Deprecation Process
+
+1. Mark document status as "Deprecated"
+2. Add deprecation notice at the top
+3. Link to replacement standard
+4. Set removal date (typically 6 months)
+5. Update CHANGELOG.md
+
+```markdown
+> **⚠️ DEPRECATED**: This standard is deprecated as of YYYY-MM-DD.
+> Use [New Standard](link) instead.
+> This document will be removed on YYYY-MM-DD.
+```
+
+### Update Process
+
+1. Create a branch for changes
+2. Update the document(s)
+3. Update version number
+4. Add entry to CHANGELOG.md
+5. Update "Last Updated" date
+6. Create pull request for review
+
+## Accessibility
+
+### For Human Readers
+
+1. **Clear hierarchy**: Use headings properly (H1 > H2 > H3)
+2. **Table of contents**: Auto-generated or manual for long docs
+3. **Search-friendly**: Use descriptive headings and keywords
+4. **Print-friendly**: Ensure content works in print/PDF
+
+### For AI Assistants
+
+1. **Machine-readable index**: Maintain INDEX.md with structured data
+2. **Consistent patterns**: Use predictable document structure
+3. **Clear context**: Include purpose and scope sections
+4. **Navigation aids**: Provide clear category mappings
+
+## Quality Checklist
+
+Before finalizing any standard document:
+
+- [ ] Follows document structure template
+- [ ] Includes proper metadata (version, date, status)
+- [ ] Uses correct naming convention
+- [ ] Contains clear examples (both good and bad)
+- [ ] Has no broken internal links
+- [ ] Uses consistent terminology
+- [ ] Includes rationale for requirements
+- [ ] Updated CHANGELOG.md
+- [ ] Reviewed for clarity and completeness
+- [ ] Proper markdown formatting
+- [ ] Code examples are tested and correct
+
+## Tools and Automation
+
+### Recommended Tools
+
+- **Linting**: markdownlint for markdown consistency
+- **Link checking**: markdown-link-check for broken links
+- **Spell check**: cspell or similar
+- **Formatting**: Prettier with markdown plugin
+
+### Git Hooks
+
+Consider pre-commit hooks for:
+- Markdown linting
+- Link checking
+- Ensuring CHANGELOG.md is updated
+- Validating document structure
+
+## Examples
+
+### Good Directory Structure Example
+
+```
+backend/
+├── README.md                 # Overview of backend standards
+├── tech-stack.md            # Complete tech stack specification
+├── python.md                # Python language conventions
+├── error-handling.md        # Error handling patterns
+└── testing.md               # Testing strategies
+```
+
+### Bad Directory Structure Example
+
+```
+backend/
+├── readme.txt               # ❌ Wrong extension
+├── BackendStack.md          # ❌ Wrong case
+├── python_stuff.md          # ❌ Vague name, wrong case
+├── API.md                   # ❌ Too generic
+└── test-1.md               # ❌ Unclear, numbered
+```
+
+## Related Standards
+
+- [Architecture Definition Standard](./architecture-definition.md) - Standard for creating project-specific architecture repositories
+- [Discovery Standard](./discovery-standard.md) - Stakeholder interview and problem validation phase
+- [Agentic Coding Standard](./agentic-coding-standard.md) - AI agent coding constraints and controls
+- [Specification Standard](./specification-standard.md) - Feature specification creation
+- [ADR Framework](../architecture/adr/README.md) - Architecture Decision Records
+
+## References
+
+- [Google Developer Documentation Style Guide](https://developers.google.com/style)
+- [Microsoft Writing Style Guide](https://docs.microsoft.com/en-us/style-guide/)
+- [Markdown Guide](https://www.markdownguide.org/)
+- [Semantic Versioning](https://semver.org/)
+
+## Revision History
+
+| Version | Date       | Changes                    |
+|---------|------------|----------------------------|
+| 1.2.0   | 2026-01-03 | Enhanced metadata (Owner, Dependencies, Review Date), document lifecycle state diagram, related standards |
+| 1.1.0   | 2025-12-30 | Added diagrams and visual documentation section (Mermaid + Draw.io standards) |
+| 1.0.0   | 2024-11-10 | Initial documentation standard |
+
+---
+
+<!-- Source: standards/documentation/business-requirements-standard.md (v1.1.0) -->
+
 # Business Requirements Document (BRD) Standard
 
-**Version**: 1.0.0
-**Last Updated**: 2025-12-30
 **Status**: Active
 **Category**: Meta-Documentation
 
@@ -1307,51 +2680,7 @@ This standard defines how to create Business Requirements Documents (BRDs) that 
 
 ## Relationship to Other Documentation
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│   Business Requirements Document (BRD)        ← THIS DOC     │
-│   - Business context, problem statement                      │
-│   - Business objectives & success metrics                    │
-│   - Stakeholder alignment                                    │
-│   - High-level requirements (BR-XXX)                         │
-└─────────────────────────────────────────────────────────────┘
-                         │
-                         │ Informs
-                         ▼
-┌─────────────────────────────────────────────────────────────┐
-│   Product Requirements Document (PRD)                        │
-│   - User personas & target audience                          │
-│   - User stories & use cases                                 │
-│   - Feature definitions (FEAT-XXX)                           │
-│   - Traces back to BR-XXX                                    │
-└─────────────────────────────────────────────────────────────┘
-                         │
-                         │ Informs
-                         ▼
-┌─────────────────────────────────────────────────────────────┐
-│   Architecture Documentation                                 │
-│   - System design decisions                                  │
-│   - Technical approach                                       │
-└─────────────────────────────────────────────────────────────┘
-                         │
-                         │ Guides
-                         ▼
-┌─────────────────────────────────────────────────────────────┐
-│   Specifications (SPEC-XXX)                                  │
-│   - Technical requirements (FR-XXX)                          │
-│   - API contracts, data models                               │
-│   - Traces back to FEAT-XXX and BR-XXX                       │
-└─────────────────────────────────────────────────────────────┘
-                         │
-                         │ Guides
-                         ▼
-┌─────────────────────────────────────────────────────────────┐
-│   Implementation                                             │
-│   - Code references spec IDs                                 │
-│   - Tests verify acceptance criteria                         │
-│   - QA validates business requirements met                   │
-└─────────────────────────────────────────────────────────────┘
-```
+See [Documentation Workflow](documentation-workflow.md) for the complete development lifecycle, document hierarchy, and traceability framework.
 
 ## Relationship to Product Requirements Document (PRD)
 
@@ -1368,9 +2697,7 @@ When a BRD defines business requirements, a Product Requirements Document (PRD) 
 
 ### Traceability Chain
 
-```
-BRD (BR-XXX) → PRD (FEAT-XXX, US-XXX) → Spec (FR-XXX) → Tests (IT-XXX)
-```
+See [Documentation Workflow](documentation-workflow.md#traceability-chain) for the complete traceability model.
 
 ### When to Create PRD After BRD
 
@@ -1389,25 +2716,7 @@ See [Product Requirements Standard](./product-requirements-standard.md) for full
 
 ## Complete Development Workflow
 
-```mermaid
-flowchart LR
-    A[BRD] --> B[PRD]
-    B --> C[Architecture]
-    C --> D[Specifications]
-    D --> E[Implementation Plan]
-    E --> F[Tasks]
-    F --> G[QA Verification]
-```
-
-| Phase | Document | Purpose | Owner |
-|-------|----------|---------|-------|
-| 0. Business Requirements | `BRD-XXX-name.md` | Define business WHAT and WHY | Business Owner |
-| 0.5 Product Requirements | `PRD-XXX-name.md` | Define product WHAT for users | Product Owner |
-| 1. Architecture | `architecture/*.md` | Define system design | Tech Lead |
-| 2. Specifications | `SPEC-XXX-name.md` | Define HOW technically | Engineering |
-| 3. Implementation Plan | `implementation-plan.md` | Define phases & milestones | Engineering |
-| 4. Tasks | `task-tracker.md` | Track individual work items | Team |
-| 5. QA Verification | Test results & sign-off | Verify requirements met | QA |
+See [Documentation Workflow](documentation-workflow.md#complete-development-workflow) for the full workflow diagram and phase table.
 
 ## When to Create a BRD
 
@@ -2012,14 +3321,15 @@ Before marking a BRD as "Review":
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
+| 1.1.0 | 2026-05-24 | Standards Team | Extracted workflow/traceability to documentation-workflow.md (F-066) |
 | 1.0.0 | 2025-12-30 | Standards Team | Initial BRD standard |
 
 ---
-<!-- Source: /home/tester/.claude/evolv-coder-standards/standards/documentation/discovery-standard.md -->
+
+<!-- Source: standards/documentation/discovery-standard.md (v1.0.0) -->
+
 # Discovery Standard
 
-**Version**: 1.0.0
-**Last Updated**: 2026-01-03
 **Status**: Active
 **Owner**: Product/Engineering Lead
 **Dependencies**: None (this is the first phase)
@@ -2274,7 +3584,7 @@ Stakeholders             → RACI, approval sign-off
 
 ## Template Reference
 
-Use the Discovery Template: [`templates/specifications/discovery-template.md`](../templates/specifications/discovery-template.md)
+Use the Discovery Template: *`standards/templates/specifications/discovery-template.md`* (planned — see `standards/templates/README.md` and `BACKLOG.md`)
 
 ---
 
@@ -2283,7 +3593,7 @@ Use the Discovery Template: [`templates/specifications/discovery-template.md`](.
 - [Business Requirements Standard](./business-requirements-standard.md)
 - [Product Requirements Standard](./product-requirements-standard.md)
 - [Specification Standard](./specification-standard.md)
-- [CLAUDE.md](../CLAUDE.md) - Documentation workflow
+- [CLAUDE.md](../../CLAUDE.md) - Documentation workflow
 - [Architecture](../architecture/README.md) - System architecture patterns
 
 ---
@@ -2291,11 +3601,11 @@ Use the Discovery Template: [`templates/specifications/discovery-template.md`](.
 *Part of the Standards Documentation Repository*
 
 ---
-<!-- Source: /home/tester/.claude/evolv-coder-standards/standards/documentation/document-template.md -->
+
+<!-- Source: standards/documentation/document-template.md (v1.0.1) -->
+
 # Document Template
 
-**Version**: 1.0.0
-**Last Updated**: 2025-12-30
 **Status**: Active
 
 ## Purpose
@@ -2389,8 +3699,8 @@ Copy the content below when creating a new document:
 
 ## Related Standards
 
-- [Related Document 1](./path-to-document.md) - Brief description
-- [Related Document 2](../category/document.md) - Brief description
+- `Related Document 1` (./path-to-document.md) - Brief description
+- `Related Document 2` (../category/document.md) - Brief description
 
 ---
 
@@ -2548,748 +3858,11 @@ Before finalizing a new document:
 *Part of the Standards Documentation Repository*
 
 ---
-<!-- Source: /home/tester/.claude/evolv-coder-standards/standards/documentation/documentation-standard.md -->
-# Documentation Standard
 
-**Version**: 1.0.0
-**Last Updated**: 2026-01-03
-**Status**: Active
+<!-- Source: standards/documentation/product-requirements-standard.md (v1.1.0) -->
 
-## Purpose
-
-This document establishes the standard for creating, organizing, and maintaining technical standards documentation within this repository. It ensures consistency, discoverability, and maintainability across all documentation.
-
-## Principles
-
-1. **Clarity**: Documentation must be clear, concise, and unambiguous
-2. **Consistency**: Follow established patterns for structure and naming
-3. **Discoverability**: Use logical organization and clear naming
-4. **Maintainability**: Design for easy updates and version control
-5. **Accessibility**: Make content easy to navigate for both humans and AI assistants
-
-## Directory Structure
-
-### Root Level Organization
-
-```
-standards/
-├── README.md                    # Repository overview and navigation
-├── CHANGELOG.md                 # Version history for all standards
-├── CLAUDE.md                    # AI assistant guidance
-│
-├── documentation/               # Documentation standards (documentation about documentation)
-│   └── documentation-standard.md
-│
-├── frontend/                    # Frontend development standards
-│   ├── README.md
-│   ├── tech-stack.md
-│   ├── typescript.md
-│   ├── components.md
-│   ├── server-actions.md
-│   ├── forms-validation.md
-│   ├── error-handling.md
-│   ├── accessibility.md
-│   └── testing.md
-│
-├── backend/                     # Backend development standards
-│   ├── README.md
-│   ├── tech-stack.md
-│   ├── python.md
-│   ├── error-handling.md
-│   └── testing.md
-│
-├── database/                    # Database standards
-│   ├── README.md
-│   ├── naming-conventions.md
-│   ├── schema-design.md
-│   ├── migrations.md
-│   └── performance.md
-│
-├── architecture/                # System architecture standards
-│   ├── README.md
-│   ├── data-flow.md
-│   ├── authentication.md
-│   ├── caching.md
-│   ├── error-contract.md
-│   ├── observability.md
-│   ├── testing-strategy.md
-│   ├── security.md
-│   └── adr/
-│
-├── devops/                      # DevOps and deployment standards
-│   ├── README.md
-│   ├── git-workflow.md
-│   ├── docker.md
-│   ├── ci-cd.md
-│   └── environments.md
-│
-├── guides/                      # Implementation guides
-│   ├── README.md
-│   ├── quick-reference.md
-│   ├── new-project-setup.md
-│   └── troubleshooting.md
-│
-├── templates/                   # Code templates
-│   ├── README.md
-│   ├── api-endpoint.py
-│   ├── server-action.ts
-│   ├── react-component.tsx
-│   ├── database-model.py
-│   └── architecture-repository/ # Architecture repository templates
-│       ├── blank-template/      # Empty template for new projects
-│       └── example-project/     # Fully documented example
-│
-└── documentation/               # Documentation standards (this directory)
-    ├── documentation-standard.md
-    └── architecture-definition.md  # Standard for project architecture docs
-```
-
-## Naming Conventions
-
-### Directory Names
-- **Format**: `lowercase-with-hyphens` (kebab-case)
-- **Singular or Plural**: Use singular for concept categories (e.g., `frontend`, `backend`, `database`)
-- **Clarity**: Names should be immediately understandable
-- **Examples**: ✅ `frontend`, `backend`, `database` | ❌ `FrontEnd`, `back_end`, `dbs`
-
-### File Names
-- **Format**: `lowercase-with-hyphens.md` (kebab-case)
-- **Descriptive**: Name should clearly indicate content
-- **Specificity**: Use specific names over generic ones
-- **Examples**:
-  - ✅ `server-actions.md`, `error-contract.md`, `naming-conventions.md`
-  - ❌ `ServerActions.md`, `error_contract.md`, `stuff.md`
-
-### Special Files
-- `README.md` - Overview and navigation for each directory (ALWAYS capitalized)
-- `CHANGELOG.md` - Version history (ALWAYS capitalized)
-- `CLAUDE.md` - AI assistant guidance (ALWAYS capitalized)
-
-## Document Structure
-
-### Standard Document Template
-
-Every standard document should follow this structure:
-
-```markdown
-# [Document Title]
-
-**Version**: X.Y.Z
-**Last Updated**: YYYY-MM-DD
-**Status**: [Draft | Active | Deprecated]
-
-## Purpose
-
-[1-2 sentences explaining why this standard exists]
-
-## Scope
-
-[What this standard covers and what it doesn't]
-
-## Standards
-
-### [Section 1]
-
-[Content with clear examples]
-
-### [Section 2]
-
-[Content with clear examples]
-
-## Examples
-
-### ✅ Good Example
-[Code or pattern to follow]
-
-### ❌ Bad Example
-[Code or pattern to avoid]
-
-## Checklist
-
-- [ ] Requirement 1
-- [ ] Requirement 2
-
-## Related Standards
-
-- [Link to related standard 1]
-- [Link to related standard 2]
-
-## References
-
-- [External resource 1]
-- [External resource 2]
-
-## Revision History
-
-| Version | Date | Changes |
-|---------|------|---------|
-| 1.0.0   | 2024-11-10 | Initial version |
-```
-
-### README.md Template
-
-Every directory should have a README.md:
-
-```markdown
-# [Category Name]
-
-## Overview
-
-[Brief description of this category]
-
-## Standards in This Category
-
-- **[standard-name.md]** - Brief description
-- **[another-standard.md]** - Brief description
-
-## Quick Reference
-
-[Most important concepts or patterns]
-
-## Related Categories
-
-- [Link to related category]
-
----
-*Part of the [Project Name] Standards Documentation*
-```
-
-## Content Guidelines
-
-### Writing Style
-
-1. **Voice**: Use active voice and imperative mood for requirements
-   - ✅ "Use async/await for all database operations"
-   - ❌ "Async/await should be used for database operations"
-
-2. **Clarity**: Write for developers of all experience levels
-   - Define technical terms on first use
-   - Include context and rationale
-   - Provide concrete examples
-
-3. **Completeness**: Cover the "what", "why", and "how"
-   - **What**: State the requirement clearly
-   - **Why**: Explain the rationale
-   - **How**: Show implementation examples
-
-4. **Consistency**: Use consistent terminology
-   - Maintain a glossary if needed
-   - Use the same terms across all documents
-
-### Code Examples
-
-1. **Format**: Use proper syntax highlighting
-   ```typescript
-   // ✅ Good: Clear, complete example
-   export async function getUser(id: string): Promise<User> {
-     return await db.user.findUnique({ where: { id } });
-   }
-   ```
-
-2. **Context**: Provide file paths for examples
-   ```typescript
-   // src/app/actions/users.ts
-   'use server';
-
-   export async function createUser(data: UserInput) {
-     // implementation
-   }
-   ```
-
-3. **Contrast**: Show both good and bad examples
-   ```typescript
-   // ❌ Bad: Direct database access from client
-   const users = await prisma.user.findMany();
-
-   // ✅ Good: Use server action
-   const users = await getUsers();
-   ```
-
-### Sections Organization
-
-1. **Logical Flow**: Organize from general to specific
-2. **Progressive Disclosure**: Start with essentials, add details later
-3. **Scannable**: Use headings, lists, and tables effectively
-4. **Visual Aids**: Include diagrams for complex concepts
-
-## Diagrams and Visual Documentation
-
-### Diagram Strategy
-
-Use two types of diagrams based on complexity and use case:
-
-| Type | Format | When to Use |
-|------|--------|-------------|
-| **Inline** | Mermaid (`.md`) | Simple to moderate diagrams, embedded in documentation |
-| **Standalone** | Draw.io (`.drawio`) | Complex architecture diagrams, detailed system topology |
-
-### Inline Diagrams with Mermaid
-
-Use Mermaid syntax for diagrams that are:
-- Simple to moderate complexity
-- Need to be version-controlled as text
-- Should render directly in GitHub/GitLab/Obsidian
-- Frequently updated alongside documentation
-
-#### Flowcharts
-
-```mermaid
-flowchart TD
-    A[User Request] --> B{Authenticated?}
-    B -->|Yes| C[Server Action]
-    B -->|No| D[Redirect to Login]
-    C --> E[FastAPI Backend]
-    E --> F[(PostgreSQL)]
-    F --> E
-    E --> C
-    C --> G[Return Response]
-```
-
-**Syntax:**
-```
-flowchart TD
-    A[User Request] --> B{Authenticated?}
-    B -->|Yes| C[Server Action]
-    B -->|No| D[Redirect to Login]
-    C --> E[FastAPI Backend]
-    E --> F[(PostgreSQL)]
-```
-
-#### Sequence Diagrams
-
-```mermaid
-sequenceDiagram
-    participant U as User
-    participant F as Frontend
-    participant SA as Server Action
-    participant API as FastAPI
-    participant DB as PostgreSQL
-
-    U->>F: Submit Form
-    F->>SA: createUser(data)
-    SA->>API: POST /api/users
-    API->>DB: INSERT user
-    DB-->>API: User record
-    API-->>SA: UserResponse
-    SA->>SA: revalidatePath('/users')
-    SA-->>F: { success: true, data }
-    F-->>U: Show Success
-```
-
-**Syntax:**
-```
-sequenceDiagram
-    participant U as User
-    participant F as Frontend
-    U->>F: Submit Form
-    F-->>U: Show Success
-```
-
-#### Entity Relationship Diagrams
-
-```mermaid
-erDiagram
-    users ||--o{ orders : places
-    users {
-        uuid id PK
-        string email UK
-        string name
-        timestamp created_at
-    }
-    orders ||--|{ order_items : contains
-    orders {
-        uuid id PK
-        uuid user_id FK
-        decimal total
-        string status
-    }
-    order_items {
-        uuid id PK
-        uuid order_id FK
-        uuid product_id FK
-        int quantity
-    }
-    products ||--o{ order_items : "ordered in"
-    products {
-        uuid id PK
-        string name
-        decimal price
-    }
-```
-
-#### State Diagrams
-
-```mermaid
-stateDiagram-v2
-    [*] --> Draft
-    Draft --> Pending: Submit
-    Pending --> Approved: Approve
-    Pending --> Rejected: Reject
-    Rejected --> Draft: Revise
-    Approved --> Published: Publish
-    Published --> [*]
-```
-
-#### Architecture Diagrams (Simple)
-
-```mermaid
-graph TB
-    subgraph "Frontend - Vercel"
-        Next[Next.js 16]
-    end
-
-    subgraph "Backend - AWS"
-        API[FastAPI]
-        Worker[Celery]
-    end
-
-    subgraph "Data"
-        DB[(PostgreSQL)]
-        Cache[(Redis)]
-    end
-
-    Next -->|Server Actions| API
-    API --> DB
-    API --> Cache
-    Worker --> DB
-
-    style Next fill:#2196F3,color:#fff
-    style API fill:#4CAF50,color:#fff
-    style DB fill:#FF9800,color:#fff
-```
-
-#### Class Diagrams (for API/Type structures)
-
-```mermaid
-classDiagram
-    class User {
-        +uuid id
-        +string email
-        +string name
-        +create()
-        +update()
-        +delete()
-    }
-    class Order {
-        +uuid id
-        +uuid user_id
-        +decimal total
-        +string status
-        +calculate_total()
-    }
-    User "1" --> "*" Order : places
-```
-
-### Standalone Diagrams with Draw.io
-
-Use Draw.io (`.drawio` files) for diagrams that:
-- Are highly complex with many components
-- Require precise positioning and custom styling
-- Need to be exported as high-resolution images
-- Contain sensitive details not suitable for plain text
-
-#### File Organization
-
-```
-project/
-├── docs/
-│   ├── architecture/
-│   │   ├── overview.md              # Contains inline Mermaid
-│   │   └── diagrams/
-│   │       ├── system-topology.drawio
-│   │       ├── network-architecture.drawio
-│   │       └── exports/             # PNG/SVG exports
-│   │           ├── system-topology.png
-│   │           └── network-architecture.svg
-```
-
-#### Naming Conventions for Draw.io Files
-
-| Type | Pattern | Example |
-|------|---------|---------|
-| System diagrams | `system-{name}.drawio` | `system-topology.drawio` |
-| Network diagrams | `network-{name}.drawio` | `network-architecture.drawio` |
-| Flow diagrams | `flow-{process}.drawio` | `flow-user-registration.drawio` |
-| Component diagrams | `component-{name}.drawio` | `component-auth-service.drawio` |
-
-#### Draw.io Best Practices
-
-1. **Version Control**: Commit `.drawio` files to version control
-2. **Export Formats**: Export as both PNG (for docs) and SVG (for web)
-3. **Consistent Styling**: Use a consistent color palette across diagrams
-4. **Layered Design**: Use layers for different aspects (infrastructure, data, users)
-5. **Embed in Docs**: Reference exported images in markdown:
-   ```markdown
-   ![System Topology](./diagrams/exports/system-topology.png)
-   ```
-
-### VS Code Extensions for Diagrams
-
-#### Required Extensions
-
-| Extension | Purpose |
-|-----------|---------|
-| **Markdown Preview Mermaid Support** | Renders Mermaid in VS Code preview |
-| **Draw.io Integration** | Edit `.drawio` files directly in VS Code |
-
-#### Recommended Extensions
-
-| Extension | Purpose |
-|-----------|---------|
-| **Mermaid Markdown Syntax Highlighting** | Syntax highlighting for Mermaid code blocks |
-| **Markdown All in One** | Enhanced markdown editing with TOC support |
-
-#### VS Code Settings
-
-Add to `.vscode/settings.json`:
-```json
-{
-  "markdown.mermaid.theme": "default",
-  "hediet.vscode-drawio.theme": "Kennedy"
-}
-```
-
-### When to Use Which Diagram Type
-
-```mermaid
-flowchart TD
-    A[Need a Diagram?] --> B{Complexity?}
-    B -->|Simple/Moderate| C{Needs Version Control?}
-    B -->|Complex| D[Use Draw.io]
-    C -->|Yes| E[Use Mermaid]
-    C -->|No| F{One-time Use?}
-    F -->|Yes| D
-    F -->|No| E
-
-    D --> G[.drawio file]
-    E --> H[Inline Mermaid]
-
-    style E fill:#4CAF50,color:#fff
-    style D fill:#2196F3,color:#fff
-```
-
-**Decision Guide:**
-
-| Scenario | Recommendation |
-|----------|----------------|
-| Data flow between components | Mermaid sequence diagram |
-| Database schema | Mermaid ER diagram |
-| Simple architecture overview | Mermaid graph/flowchart |
-| Complex multi-service topology | Draw.io |
-| Network infrastructure with IP addresses | Draw.io |
-| State machine for business logic | Mermaid state diagram |
-| UI wireframes | Draw.io or Figma (not covered here) |
-
-## Metadata Requirements
-
-### Document Front Matter
-
-Every standard document must include:
-
-```markdown
-# [Title]
-
-**Version**: X.Y.Z (Semantic versioning)
-**Last Updated**: YYYY-MM-DD
-**Status**: Draft | In Review | Approved | Active | Deprecated
-**Owner**: [Name - decision maker for this document]
-**Reviewers**: [Names - who approved this document]
-```
-
-#### Optional Metadata (Recommended for Specifications)
-
-```markdown
-**Dependencies**: [Links to prerequisite documents]
-**Related**: [Cross-reference related documents]
-**Review Date**: YYYY-MM-DD [when to revisit]
-```
-
-### Document Status Lifecycle
-
-Documents progress through these states:
-
-```mermaid
-stateDiagram-v2
-    [*] --> Draft
-    Draft --> InReview: Submit for review
-    InReview --> Approved: All reviewers approve
-    InReview --> Draft: Revision needed
-    Approved --> Active: Published
-    Active --> Deprecated: Superseded or obsolete
-    Deprecated --> [*]
-```
-
-| Status | Meaning | Who Can Edit |
-|--------|---------|--------------|
-| **Draft** | Initial creation, incomplete | Author |
-| **In Review** | Ready for stakeholder review | Author (for revisions) |
-| **Approved** | Signed off, ready for use | Owner (with version bump) |
-| **Active** | In use, published | Owner (with version bump) |
-| **Deprecated** | Superseded or no longer applicable | Owner only |
-
-### Version Control
-
-Follow semantic versioning (MAJOR.MINOR.PATCH):
-
-- **MAJOR**: Breaking changes or complete rewrites
-- **MINOR**: New standards added, non-breaking changes
-- **PATCH**: Clarifications, typos, formatting
-
-## Cross-Referencing
-
-### Internal Links
-
-1. **Relative paths**: Use relative paths for internal links
-   ```markdown
-   See [Error Contract](../architecture/error-contract.md) for details.
-   ```
-
-2. **Section links**: Link to specific sections when relevant
-   ```markdown
-   See [Authentication Flow](../architecture/authentication.md#oauth-flow).
-   ```
-
-3. **Consistency**: Maintain a consistent linking style
-
-### External Links
-
-1. **Official docs**: Link to official documentation when available
-2. **Stability**: Use version-specific links when possible
-3. **Context**: Provide context for external links
-
-## Maintenance
-
-### Review Cycle
-
-- **Quarterly**: Review all standards for accuracy
-- **On technology updates**: Update when dependencies change
-- **On team feedback**: Incorporate learnings and feedback
-
-### Deprecation Process
-
-1. Mark document status as "Deprecated"
-2. Add deprecation notice at the top
-3. Link to replacement standard
-4. Set removal date (typically 6 months)
-5. Update CHANGELOG.md
-
-```markdown
-> **⚠️ DEPRECATED**: This standard is deprecated as of YYYY-MM-DD.
-> Use [New Standard](link) instead.
-> This document will be removed on YYYY-MM-DD.
-```
-
-### Update Process
-
-1. Create a branch for changes
-2. Update the document(s)
-3. Update version number
-4. Add entry to CHANGELOG.md
-5. Update "Last Updated" date
-6. Create pull request for review
-
-## Accessibility
-
-### For Human Readers
-
-1. **Clear hierarchy**: Use headings properly (H1 > H2 > H3)
-2. **Table of contents**: Auto-generated or manual for long docs
-3. **Search-friendly**: Use descriptive headings and keywords
-4. **Print-friendly**: Ensure content works in print/PDF
-
-### For AI Assistants
-
-1. **Machine-readable index**: Maintain INDEX.md with structured data
-2. **Consistent patterns**: Use predictable document structure
-3. **Clear context**: Include purpose and scope sections
-4. **Navigation aids**: Provide clear category mappings
-
-## Quality Checklist
-
-Before finalizing any standard document:
-
-- [ ] Follows document structure template
-- [ ] Includes proper metadata (version, date, status)
-- [ ] Uses correct naming convention
-- [ ] Contains clear examples (both good and bad)
-- [ ] Has no broken internal links
-- [ ] Uses consistent terminology
-- [ ] Includes rationale for requirements
-- [ ] Updated CHANGELOG.md
-- [ ] Reviewed for clarity and completeness
-- [ ] Proper markdown formatting
-- [ ] Code examples are tested and correct
-
-## Tools and Automation
-
-### Recommended Tools
-
-- **Linting**: markdownlint for markdown consistency
-- **Link checking**: markdown-link-check for broken links
-- **Spell check**: cspell or similar
-- **Formatting**: Prettier with markdown plugin
-
-### Git Hooks
-
-Consider pre-commit hooks for:
-- Markdown linting
-- Link checking
-- Ensuring CHANGELOG.md is updated
-- Validating document structure
-
-## Examples
-
-### Good Directory Structure Example
-
-```
-backend/
-├── README.md                 # Overview of backend standards
-├── tech-stack.md            # Complete tech stack specification
-├── python.md                # Python language conventions
-├── error-handling.md        # Error handling patterns
-└── testing.md               # Testing strategies
-```
-
-### Bad Directory Structure Example
-
-```
-backend/
-├── readme.txt               # ❌ Wrong extension
-├── BackendStack.md          # ❌ Wrong case
-├── python_stuff.md          # ❌ Vague name, wrong case
-├── API.md                   # ❌ Too generic
-└── test-1.md               # ❌ Unclear, numbered
-```
-
-## Related Standards
-
-- [Architecture Definition Standard](./architecture-definition.md) - Standard for creating project-specific architecture repositories
-- [Discovery Standard](./discovery-standard.md) - Stakeholder interview and problem validation phase
-- [Agentic Coding Standard](./agentic-coding-standard.md) - AI agent coding constraints and controls
-- [Specification Standard](./specification-standard.md) - Feature specification creation
-- [ADR Framework](../architecture/adr/README.md) - Architecture Decision Records
-
-## References
-
-- [Google Developer Documentation Style Guide](https://developers.google.com/style)
-- [Microsoft Writing Style Guide](https://docs.microsoft.com/en-us/style-guide/)
-- [Markdown Guide](https://www.markdownguide.org/)
-- [Semantic Versioning](https://semver.org/)
-
-## Revision History
-
-| Version | Date       | Changes                    |
-|---------|------------|----------------------------|
-| 1.2.0   | 2026-01-03 | Enhanced metadata (Owner, Dependencies, Review Date), document lifecycle state diagram, related standards |
-| 1.1.0   | 2025-12-30 | Added diagrams and visual documentation section (Mermaid + Draw.io standards) |
-| 1.0.0   | 2024-11-10 | Initial documentation standard |
-
----
-<!-- Source: /home/tester/.claude/evolv-coder-standards/standards/documentation/product-requirements-standard.md -->
 # Product Requirements Document (PRD) Standard
 
-**Version**: 1.0.0
-**Last Updated**: 2026-01-03
 **Status**: Active
 **Category**: Meta-Documentation
 
@@ -3305,74 +3878,11 @@ This standard defines how to create Product Requirements Documents (PRDs) that c
 
 ## Relationship to Other Documentation
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│   Business Requirements Document (BRD)                       │
-│   - Business context, problem statement                      │
-│   - Business objectives & success metrics                    │
-│   - Stakeholder alignment                                    │
-│   - High-level requirements (BR-XXX)                         │
-└─────────────────────────────────────────────────────────────┘
-                         │
-                         │ Informs
-                         ▼
-┌─────────────────────────────────────────────────────────────┐
-│   Product Requirements Document (PRD)          ← THIS DOC    │
-│   - User personas & target audience                          │
-│   - User stories & use cases                                 │
-│   - Feature definitions (FEAT-XXX)                           │
-│   - Product success metrics                                  │
-│   - Traces back to BR-XXX                                    │
-└─────────────────────────────────────────────────────────────┘
-                         │
-                         │ Informs
-                         ▼
-┌─────────────────────────────────────────────────────────────┐
-│   Architecture Documentation                                 │
-│   - System design decisions                                  │
-│   - Technical approach                                       │
-└─────────────────────────────────────────────────────────────┘
-                         │
-                         │ Guides
-                         ▼
-┌─────────────────────────────────────────────────────────────┐
-│   Specifications (SPEC-XXX)                                  │
-│   - Technical requirements (FR-XXX)                          │
-│   - API contracts, data models                               │
-│   - Traces back to FEAT-XXX and BR-XXX                       │
-└─────────────────────────────────────────────────────────────┘
-                         │
-                         │ Guides
-                         ▼
-┌─────────────────────────────────────────────────────────────┐
-│   Implementation                                             │
-│   - Code references spec IDs                                 │
-│   - Tests verify acceptance criteria                         │
-│   - QA validates requirements met                            │
-└─────────────────────────────────────────────────────────────┘
-```
+See [Documentation Workflow](documentation-workflow.md) for the complete development lifecycle, document hierarchy, and traceability framework.
 
 ## Complete Development Workflow
 
-```mermaid
-flowchart LR
-    A[BRD] --> B[PRD]
-    B --> C[Architecture]
-    C --> D[Specifications]
-    D --> E[Implementation Plan]
-    E --> F[Tasks]
-    F --> G[QA Verification]
-```
-
-| Phase | Document | Purpose | Owner |
-|-------|----------|---------|-------|
-| 0. Business Requirements | `BRD-XXX-name.md` | Define business WHAT and WHY | Business Owner |
-| **0.5 Product Requirements** | **`PRD-XXX-name.md`** | **Define product WHAT for users** | **Product Owner** |
-| 1. Architecture | `architecture/*.md` | Define system design | Tech Lead |
-| 2. Specifications | `SPEC-XXX-name.md` | Define HOW technically | Engineering |
-| 3. Implementation Plan | `implementation-plan.md` | Define phases & milestones | Engineering |
-| 4. Tasks | `task-tracker.md` | Track individual work items | Team |
-| 5. QA Verification | Test results & sign-off | Verify requirements met | QA |
+See [Documentation Workflow](documentation-workflow.md#complete-development-workflow) for the full workflow diagram and phase table.
 
 ## When to Create a PRD
 
@@ -3487,6 +3997,931 @@ Examples:
 - `PRD-001-customer-dashboard-redesign.md`
 - `PRD-012-mobile-app-mvp.md`
 - `PRD-023-partner-portal-features.md`
+
+## Core Sections
+
+See [PRD Template Sections](prd-template-sections.md) for the complete template walkthrough of all PRD sections (Header, Product Overview, Personas, User Stories, Use Cases, Features, Metrics, UI/UX, Constraints, Dependencies, Roadmap, Assumptions, Traceability, Approval, Revision History).
+
+## Traceability Model
+
+See [Documentation Workflow](documentation-workflow.md#traceability-chain) for the complete traceability chain and ID reference patterns.
+
+## Status Lifecycle
+
+```
+Draft → Review → Approved → Superseded
+          ↓
+       Revision (back to Draft)
+```
+
+**Status Definitions**:
+- **Draft**: Initial creation, incomplete
+- **Review**: Ready for stakeholder review
+- **Approved**: Signed off, ready for architecture/specification
+- **Superseded**: Replaced by newer PRD or no longer applicable
+
+## File Organization
+
+### In Project Documentation Folder
+
+```
+repos/{project-name}/
+├── README.md                           # Project hub
+├── CLAUDE.md                           # AI guidance
+├── task-tracker.md                     # Sprint tracking
+├── implementation-plan.md              # Phased implementation
+│
+├── business-requirements/              # BRDs
+│   └── ...
+│
+├── product-requirements/               # PRDs
+│   ├── README.md                       # PRD index and status
+│   ├── PRD-001-customer-dashboard.md
+│   ├── PRD-002-mobile-app-mvp.md
+│   └── PRD-003-partner-portal.md
+│
+├── architecture/                       # Architecture docs
+│   └── ...
+│
+└── specifications/                     # Technical specs
+    └── ...
+```
+
+## Best Practices
+
+### Do
+
+- **Focus on Users**: Write from the user's perspective, not the system's
+- **Be Specific**: Include concrete examples and acceptance criteria
+- **Define Personas**: Understand who will use the product before defining features
+- **Prioritize Ruthlessly**: Use MoSCoW to distinguish must-haves from nice-to-haves
+- **Include Wireframes**: Visual mockups clarify requirements
+- **Link to BRD**: Ensure product requirements trace back to business requirements
+- **Validate Assumptions**: Document and validate assumptions about user behavior
+- **Measure Success**: Define product-level metrics distinct from business metrics
+
+### Don't
+
+- **Don't Specify Implementation**: Focus on what, not how (technically)
+- **Don't Skip User Stories**: User stories with acceptance criteria are essential
+- **Don't Forget Personas**: Features without personas lack context
+- **Don't Over-Engineer**: Match PRD detail to feature complexity (use tiers)
+- **Don't Ignore Edge Cases**: Document alternative flows and error conditions
+- **Don't Mix Audiences**: Keep PRD focused on product, not business strategy
+- **Don't Delay Review**: Get feedback early from UX and engineering
+
+## Examples
+
+### Good Example: User Story
+
+```markdown
+#### US-001: Filter Spending by Date
+
+**As a** customer
+**I want** to filter my spending history by date range
+**So that** I can understand my spending patterns over specific periods
+
+**Acceptance Criteria**:
+```gherkin
+Given I am on the spending history page
+When I select a start date and end date
+Then I see only transactions within that date range
+And the total spending for that period is displayed
+And I can clear the filter to see all transactions
+```
+
+**Priority**: Must Have
+**Effort Estimate**: M
+**Feature Reference**: FEAT-001
+```
+
+### Bad Example: User Story
+
+```markdown
+#### US-001: Date Filter
+As a user I want to filter by date.
+```
+
+**Why it's bad**:
+- Vague persona ("user" instead of specific persona)
+- No "so that" explaining value
+- No acceptance criteria
+- No priority or effort estimate
+- No traceability
+
+### Good Example: Feature Definition
+
+```markdown
+#### FEAT-001: Spending Filter Component
+
+**Priority**: Must Have
+**Related User Stories**: US-001, US-002, US-003
+**Business Requirement**: BR-001
+
+**Description**:
+A filter panel on the spending history page that allows customers to narrow
+down their transaction list by date range, category, and amount range. The
+filter should be intuitive with sensible defaults and remember the user's
+last-used settings.
+
+**Functional Behavior**:
+- Date range: Calendar picker for start/end dates
+- Category: Multi-select dropdown with all transaction categories
+- Amount: Slider for min/max amount
+- Filter results update in real-time as criteria change
+- "Clear All" button resets to default view
+
+**Constraints**:
+- Maximum date range: 1 year
+- Must work on mobile viewports
+```
+
+### Bad Example: Feature Definition
+
+```markdown
+#### FEAT-001: Filter
+Add filtering to the page.
+```
+
+**Why it's bad**:
+- No priority
+- No user story reference
+- No description of what "filtering" means
+- No functional behavior defined
+- No constraints
+
+## Checklist
+
+Before marking a PRD as "Review":
+
+- [ ] PRD ID assigned following convention
+- [ ] All required sections for tier are complete
+- [ ] Product overview includes vision and goals
+- [ ] Target personas are defined with goals and pain points
+- [ ] User stories follow As a/I want/So that format
+- [ ] User stories have Gherkin acceptance criteria
+- [ ] Use cases define main flow and alternatives
+- [ ] Features numbered (FEAT-XXX) and prioritized
+- [ ] Product success metrics are defined
+- [ ] UI/UX requirements included (for Tier 1/2)
+- [ ] Assumptions and ambiguities documented
+- [ ] Traceability to BRD established (if applicable)
+- [ ] Related documentation linked
+- [ ] Version set to 1.0.0 (or incremented)
+
+## Related Standards
+
+- [Business Requirements Standard](./business-requirements-standard.md) - BRD standard (PRD follows BRD)
+- [Specification Standard](./specification-standard.md) - Technical specifications (follows PRD)
+- [Documentation Standard](./documentation-standard.md) - General documentation guidelines
+- [Architecture Definition Standard](./architecture-definition.md) - System architecture
+- [Discovery Standard](./discovery-standard.md) - Stakeholder interview phase (may precede BRD/PRD)
+
+## References
+
+- [INVEST User Stories](https://www.agilealliance.org/glossary/invest/) - User story quality criteria
+- [Gherkin Reference](https://cucumber.io/docs/gherkin/reference/) - Acceptance criteria syntax
+- [Persona Template Guide](https://www.usability.gov/how-to-and-tools/methods/personas.html) - Creating user personas
+- [MoSCoW Prioritization](https://www.productplan.com/glossary/moscow-prioritization/) - Priority framework
+
+## Revision History
+
+| Version | Date | Author | Changes |
+|---------|------|--------|---------|
+| 1.1.0 | 2026-05-24 | Standards Team | Extracted template sections and workflow/traceability to dedicated files (F-066, F-062) |
+| 1.0.0 | 2026-01-03 | Standards Team | Initial PRD standard |
+
+---
+
+<!-- Source: standards/documentation/glossary-standard.md (v1.0.1) -->
+
+# Glossary Standard
+
+**Status**: Active
+**Owner**: Product/Engineering Lead
+**Dependencies**: [Discovery Standard](./discovery-standard.md)
+
+## Purpose
+
+This standard defines the format, content, and maintenance of a project
+**Glossary** — a single, authoritative list of domain terms used by the
+team, the product, and its documentation.
+
+A well-maintained glossary aligns the team on a shared **ubiquitous
+language** (Domain-Driven Design), eliminates synonym drift, and gives
+new contributors a fast on-ramp to the problem domain.
+
+## When to Author a Glossary
+
+### Required
+
+- As a **Discovery deliverable** (see
+  [Discovery Standard](./discovery-standard.md), section "Discovery
+  Deliverables") for any project where Discovery is required.
+- For products with non-trivial domain vocabulary (finance, healthcare,
+  insurance, logistics, regulated industries).
+
+### Recommended
+
+- Any project lasting longer than two weeks.
+- When more than one team interacts with the product (engineering,
+  product, support, ops).
+
+### Skip
+
+- Trivial scripts, one-off bug fixes, internal tooling fully covered
+  by upstream docs.
+
+## Ubiquitous-Language Alignment (DDD)
+
+The glossary is the project's source of truth for the **ubiquitous
+language** (DDD): a single set of terms shared between domain experts,
+product, and engineering, reflected in code, APIs, UI copy, and docs.
+
+1. **One term, one meaning.** If two stakeholders use the same word
+   for different concepts, pick one canonical meaning; record the
+   other as a deprecated alias or as a separate term with a distinct
+   name.
+2. **Code mirrors the glossary.** Class, table, and API field names
+   should match glossary terms (modulo casing rules — see CLAUDE.md).
+3. **Bounded contexts get scope.** When the same term means different
+   things in different contexts (e.g. `Order` in Sales vs.
+   Fulfillment), record each as a separate entry with a distinct
+   `Scope / Context`.
+4. **No synonyms in production text.** Once a term is canonical, stop
+   using its synonyms in new docs, UI copy, and code; record them in
+   `Deprecated Aliases`.
+
+## Term Entry Template
+
+Every glossary entry MUST include the fields below. Optional fields
+may be omitted when not applicable.
+
+```markdown
+### <Term>
+
+- **Definition** (required): One- to three-sentence canonical
+  definition. Plain language; avoid circular definitions.
+- **Scope / Context** (required): Bounded context, product area, or
+  system where this definition applies (e.g. "Billing context",
+  "Customer-facing API", "All contexts").
+- **Related Terms**: Other glossary entries this term references or
+  contrasts with.
+- **Examples**: One or two concrete examples in use.
+- **Deprecated Aliases**: Synonyms or older names that MUST NOT be
+  used in new content; include retirement date if known.
+- **Source of Truth**: Link to the system, schema, document, or owner
+  that authoritatively defines this term.
+```
+
+## Worked Example
+
+```markdown
+### Customer
+
+- **Definition**: A legal entity (individual or organization) that has
+  signed a Master Services Agreement and holds at least one active
+  Subscription.
+- **Scope / Context**: All contexts. In Billing, "Customer" is the
+  billable party recorded in `customers.id`.
+- **Related Terms**: Subscription, Tenant.
+- **Examples**: Acme Corp signs an MSA → Customer record created.
+- **Deprecated Aliases**: "Client" (retired 2026-01-15), "End User"
+  (retired 2026-03-01; use "User" for individual humans).
+- **Source of Truth**: `customers` table; owned by the Billing team.
+
+### Tenant
+
+- **Definition**: An isolated data partition belonging to a single
+  Customer. One Customer maps to exactly one Tenant.
+- **Scope / Context**: Platform context (multi-tenancy).
+- **Related Terms**: Customer, Workspace.
+- **Examples**: `tenant_id = "cust_acme_001"` scopes Acme's queries.
+- **Deprecated Aliases**: "Org" (retired 2026-02-10).
+- **Source of Truth**: [Multi-Tenancy Standard](../database/multi-tenancy.md)
+  and `tenants` table.
+
+### Subscription
+
+- **Definition**: A recurring billing arrangement between a Customer
+  and the platform, defined by a plan, billing cycle, and status.
+- **Scope / Context**: Billing context.
+- **Related Terms**: Customer, Plan, Invoice.
+- **Source of Truth**: `subscriptions` table; Stripe is external SoT
+  for status transitions.
+```
+
+## Storage and Location
+
+- **Discovery phase**: as the `Glossary` section of the Discovery
+  Document (`DISC-NNN-*.md`).
+- **Ongoing**: promote to `docs/glossary.md` once past Discovery; link
+  back from the Discovery Document, BRD, PRD, and Specifications.
+- **Single file per project.** Do not split by team or bounded
+  context — use the `Scope / Context` field instead.
+
+## Maintenance
+
+**Ownership.** Each glossary has a **named owner** (typically the
+Product Lead or Tech Lead), responsible for accepting new terms,
+retiring deprecated aliases, and resolving definition conflicts.
+
+**Review cadence.**
+
+- *Quarterly*: Owner reviews for stale terms, missing entries surfaced
+  by new features, and code/glossary drift.
+- *On feature spec creation*: Spec authors confirm domain terms used
+  in the spec are defined; if not, add or propose entries before
+  approval.
+- *On rename*: When code, APIs, or UI rename a domain concept, update
+  the glossary in the same change set and add the old name to
+  `Deprecated Aliases`.
+
+**Change process.** Propose a new or modified term via pull request;
+owner reviews for clarity, scope, and conflict with existing terms; on
+approval, merge; on rename, update referring docs and record the old
+name as a deprecated alias.
+
+## Anti-Patterns
+
+| Anti-Pattern | Impact | Correct Approach |
+|---|---|---|
+| Multiple glossaries per project | Drift, contradictory definitions | One glossary, scoped per term |
+| No source of truth | Definitions rot silently | Link to authoritative system or owner |
+| Listing synonyms as equals | Encourages drift | Pick one canonical term; mark others deprecated |
+| Glossary-only updates | Code and glossary diverge | Update code, docs, and glossary in the same PR |
+| Skipping `Scope / Context` | Same term means different things in different contexts, undetected | Make scope mandatory |
+
+## Related Documents
+
+- [Discovery Standard](./discovery-standard.md) — Glossary is a
+  required Discovery deliverable.
+- [Documentation Standard](./documentation-standard.md) — front matter
+  and document conventions.
+- [Specification Standard](./specification-standard.md) — specs must
+  use glossary terms consistently.
+
+## References
+
+- Eric Evans, *Domain-Driven Design* (2003) — Ubiquitous Language and
+  Bounded Contexts.
+- Vaughn Vernon, *Implementing Domain-Driven Design* (2013).
+
+## Revision History
+
+| Version | Date       | Changes                          |
+|---------|------------|----------------------------------|
+| 1.0.0   | 2026-05-20 | Initial glossary standard (F-069) |
+
+---
+
+<!-- Source: standards/documentation/documentation-workflow.md (v1.0.0) -->
+
+# Documentation Workflow & Traceability
+
+**Status**: Active
+**Category**: Meta-Documentation
+
+## Purpose
+
+This standard defines the development documentation hierarchy, workflow stages, and traceability framework shared across BRD, PRD, and Specification standards.
+
+## Document Hierarchy
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│   Business Requirements Document (BRD)                       │
+│   - Business context, problem statement                      │
+│   - Business objectives & success metrics                    │
+│   - Stakeholder alignment                                    │
+│   - High-level requirements (BR-XXX)                         │
+└─────────────────────────────────────────────────────────────┘
+                         │
+                         │ Informs
+                         ▼
+┌─────────────────────────────────────────────────────────────┐
+│   Product Requirements Document (PRD)                        │
+│   - User personas & target audience                          │
+│   - User stories & use cases                                 │
+│   - Feature definitions (FEAT-XXX)                           │
+│   - Product success metrics                                  │
+│   - Traces back to BR-XXX                                    │
+└─────────────────────────────────────────────────────────────┘
+                         │
+                         │ Informs
+                         ▼
+┌─────────────────────────────────────────────────────────────┐
+│   Architecture Documentation                                 │
+│   - System design decisions                                  │
+│   - Technical approach                                       │
+└─────────────────────────────────────────────────────────────┘
+                         │
+                         │ Guides
+                         ▼
+┌─────────────────────────────────────────────────────────────┐
+│   Specifications (SPEC-XXX)                                  │
+│   - Technical requirements (FR-XXX)                          │
+│   - API contracts, data models                               │
+│   - Traces back to FEAT-XXX and BR-XXX                       │
+└─────────────────────────────────────────────────────────────┘
+                         │
+                         │ Guides
+                         ▼
+┌─────────────────────────────────────────────────────────────┐
+│   Implementation                                             │
+│   - Code references spec IDs                                 │
+│   - Tests verify acceptance criteria                         │
+│   - QA validates requirements met                            │
+└─────────────────────────────────────────────────────────────┘
+```
+
+## Complete Development Workflow
+
+```mermaid
+flowchart LR
+    A[BRD] --> B[PRD]
+    B --> C[Architecture]
+    C --> D[Specifications]
+    D --> E[Implementation Plan]
+    E --> F[Tasks]
+    F --> G[QA Verification]
+```
+
+| Phase | Document | Purpose | Owner |
+|-------|----------|---------|-------|
+| 0. Business Requirements | `BRD-XXX-name.md` | Define business WHAT and WHY | Business Owner |
+| 0.5 Product Requirements | `PRD-XXX-name.md` | Define product WHAT for users | Product Owner |
+| 1. Architecture | `architecture/*.md` | Define system design | Tech Lead |
+| 2. Specifications | `SPEC-XXX-name.md` | Define HOW technically | Engineering |
+| 3. Implementation Plan | `implementation-plan.md` | Define phases & milestones | Engineering |
+| 4. Tasks | `task-tracker.md` | Track individual work items | Team |
+| 5. QA Verification | Test results & sign-off | Verify requirements met | QA |
+
+## Traceability Chain
+
+```
+BRD (BR-XXX) → PRD (FEAT-XXX, US-XXX) → Spec (FR-XXX) → Tests (IT-XXX)
+```
+
+### Complete Traceability Model
+
+```
+BRD: BR-XXX (Business Requirements)
+         │
+         │ defines business needs for
+         ▼
+PRD: FEAT-XXX (Features) ← US-XXX (User Stories) ← UC-XXX (Use Cases)
+         │
+         │ implemented by
+         ▼
+Specifications: FR-XXX (Functional Requirements)
+         │
+         │ verified by
+         ▼
+Tests: IT-XXX (Integration Tests), UT-XXX (Unit Tests)
+```
+
+### ID Reference Patterns
+
+| ID Pattern | Document | Example |
+|------------|----------|---------|
+| BR-XXX | BRD | BR-001: Customer can view spending history |
+| US-XXX | PRD | US-001: As a customer, I want to filter spending |
+| UC-XXX | PRD | UC-001: Filter Spending by Date Range |
+| FEAT-XXX | PRD | FEAT-001: Spending Filter Component |
+| FR-XXX | Specification | FR-001: Filter supports date range selection |
+| IT-XXX | Test Plan | IT-001: Verify filter returns correct data |
+
+## Specification Repository Relationship
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│   Standards Repository                                       │
+│   - Generic patterns & best practices                        │
+│   - Specification standards & templates                      │
+└─────────────────────────────────────────────────────────────┘
+                         ▲
+                         │ References
+                         │
+┌─────────────────────────────────────────────────────────────┐
+│   Project Architecture Repository                            │
+│   project-name-architecture/                                 │
+│   - System architecture & design                             │
+│   - specifications/  ← PROJECT SPECS LIVE HERE               │
+│       ├── features/                                          │
+│       ├── api-contracts/                                     │
+│       └── integrations/                                      │
+└─────────────────────────────────────────────────────────────┘
+                         │
+                         │ Guides
+                         ▼
+┌─────────────────────────────────────────────────────────────┐
+│   Project Codebase                                           │
+│   project-name/                                              │
+│   - Implementation (references spec IDs in code comments)    │
+│   - Tests (mapped to spec acceptance criteria)               │
+└─────────────────────────────────────────────────────────────┘
+```
+
+## Status Lifecycle
+
+All documentation types follow this lifecycle:
+
+```
+Draft → Review → Approved → Implemented/Superseded
+          ↓
+       Revision (back to Draft)
+```
+
+| Status | BRD/PRD | Specification |
+|--------|---------|---------------|
+| Draft | Initial creation | Initial creation |
+| Review | Stakeholder review | Peer + stakeholder review |
+| Approved | Ready for architecture/spec | Ready for implementation |
+| Implemented | N/A | Feature deployed to production |
+| Superseded | Replaced by newer document | N/A |
+| Deprecated | N/A | No longer applicable |
+
+## Related Standards
+
+- [Business Requirements Standard](./business-requirements-standard.md)
+- [Product Requirements Standard](./product-requirements-standard.md)
+- [Specification Standard](./specification-standard.md)
+
+---
+
+<!-- Source: standards/documentation/specification-template-sections.md (v1.0.1) -->
+
+# Specification Template Sections
+
+**Status**: Active
+**Category**: Meta-Documentation
+
+## Purpose
+
+This document provides the detailed template walkthrough for each section of a specification. Reference this when authoring new specifications.
+
+## Core Sections
+
+### 1. Overview
+
+Every specification must start with:
+
+```markdown
+# [Feature Name] Specification
+
+**Spec ID**: SPEC-[TYPE]-[NUMBER]
+**Version**: 1.0.0
+**Created**: YYYY-MM-DD
+**Last Updated**: YYYY-MM-DD
+**Status**: Draft | Review | Approved | Implemented | Deprecated
+**Tier**: Full | Standard | Lightweight
+**Author**: [Name]
+**Reviewers**: [Names]
+
+## Related Documentation
+- **Architecture**: [Link to architecture doc]
+- **Parent Epic/Story**: [Link to ticket]
+- **Implementation PR**: [Link when available]
+- **Test Plan**: [Link when available]
+```
+
+### 2. Problem Statement
+
+Clearly articulate the problem being solved:
+
+```markdown
+## 1. Overview
+
+### 1.1 Problem Statement
+[2-3 sentences describing the problem from the user's perspective]
+
+### 1.2 Goals
+- [Goal 1 - what success looks like]
+- [Goal 2]
+
+### 1.3 Non-Goals
+- [Explicitly excluded scope item 1]
+- [Explicitly excluded scope item 2]
+
+### 1.4 Success Metrics
+| Metric | Target | Measurement |
+|--------|--------|-------------|
+| [Metric name] | [Target value] | [How it's measured] |
+```
+
+### 3. User Stories
+
+Use the standard user story format with INVEST criteria validation:
+
+````markdown
+## 2. User Stories
+
+### Story 1: [Title]
+**As a** [user type]
+**I want** [action/capability]
+**So that** [benefit/value]
+
+**Acceptance Criteria**:
+```gherkin
+Given [precondition]
+When [action]
+Then [expected result]
+And [additional result]
+```
+
+**INVEST Assessment**:
+- [ ] **I**ndependent - Can be developed separately
+- [ ] **N**egotiable - Details can be discussed
+- [ ] **V**aluable - Delivers user value
+- [ ] **E**stimable - Team can estimate effort
+- [ ] **S**mall - Fits in a sprint
+- [ ] **T**estable - Has clear acceptance criteria
+````
+
+### 4. Functional Requirements
+
+Number requirements and assign priority:
+
+```markdown
+## 3. Functional Requirements
+
+### 3.1 [Requirement Category]
+
+#### FR-001: [Requirement Title]
+**Priority**: Must Have | Should Have | Could Have | Won't Have
+**Description**: [Detailed description]
+**Business Rule**: [If applicable]
+**Validation**: [How to verify this requirement is met]
+```
+
+**Priority Levels (MoSCoW)**:
+- **Must Have**: Critical for release, non-negotiable
+- **Should Have**: Important but not critical, can be deferred
+- **Could Have**: Nice to have, low priority
+- **Won't Have**: Explicitly excluded from this release
+
+### 4.1 Assumptions & Ambiguities
+
+Track requirement confidence levels to prevent implementation of unvalidated requirements:
+
+```markdown
+### 3.x Assumptions & Ambiguities
+
+#### Confirmed Decisions (✓)
+| Decision | Rationale | Confirmed By | Date |
+|----------|-----------|--------------|------|
+| [Decision] | [Why] | [Stakeholder] | [Date] |
+
+#### Under Discussion (?)
+| Topic | Options | Stakeholder | ETA | Impact if Delayed |
+|-------|---------|-------------|-----|-------------------|
+| [Topic] | [Options] | [Who] | [When] | [Blocks what] |
+
+#### Blockers (⚠️)
+| Blocker | Impact | Mitigation | Owner | Status |
+|---------|--------|------------|-------|--------|
+| [Blocker] | [What can't proceed] | [Workaround] | [Owner] | [Status] |
+
+#### Key Assumptions
+- [ ] [Assumption that, if wrong, requires spec revision]
+```
+
+**Why This Section Matters**:
+- Prevents implementation of unconfirmed requirements
+- Tracks pending decisions with stakeholder ownership
+- Documents blockers for visibility
+- Records assumptions that may invalidate the spec if wrong
+
+**Confidence Markers**:
+- **✓ Confirmed**: Requirement is finalized, approved to implement
+- **? Under Discussion**: Options being considered, not yet decided
+- **⚠️ Blocked**: External dependency preventing progress
+
+### 5. Non-Functional Requirements
+
+```markdown
+## 4. Non-Functional Requirements
+
+### 4.1 Performance
+| Requirement | Target | Measurement |
+|-------------|--------|-------------|
+| Response time | < 200ms | API latency p95 |
+| Throughput | 100 req/s | Load test |
+
+### 4.2 Security
+- [ ] Authentication required (method: [Clerk/JWT/API Key])
+- [ ] Authorization rules: [Describe who can do what]
+- [ ] Data sensitivity: [Public/Internal/Confidential/Restricted]
+- [ ] Input validation: [Approach]
+
+### 4.3 Accessibility
+- WCAG 2.2 AA compliance
+- Screen reader support
+- Keyboard navigation
+
+### 4.4 Scalability
+- Expected load: [X users/day]
+- Data growth: [X records/month]
+```
+
+### 5.1 Threat Model (Security-Relevant Features)
+
+For features that handle sensitive data, modify authentication/authorization, expose new API surfaces, or integrate with external systems, include a threat model using STRIDE per-component analysis. See [Threat Modeling Standard](../architecture/threat-modeling.md) for methodology.
+
+```markdown
+## Threat Model
+
+### Assets
+| Asset | Sensitivity | Location |
+|-------|-------------|----------|
+| [Data or capability] | [Public/Internal/Confidential/Restricted] | [Component] |
+
+### Trust Boundaries
+| Boundary | From | To | Controls |
+|----------|------|----|----------|
+| [Name] | [Lower trust zone] | [Higher trust zone] | [Auth mechanism] |
+
+### STRIDE Analysis
+| Component | Category | Threat | Likelihood | Impact | Risk | Mitigation |
+|-----------|----------|--------|------------|--------|------|------------|
+| [Component] | [S/T/R/I/D/E] | [Description] | [H/M/L] | [H/M/L] | [Rating] | [Control] |
+
+### Residual Risks
+| Risk | Rating | Rationale for Acceptance |
+|------|--------|--------------------------|
+| [Remaining threat] | [Rating] | [Why acceptable] |
+```
+
+### 6. Data Requirements
+
+````markdown
+## 5. Data Requirements
+
+### 5.1 Data Model Changes
+
+#### New Tables
+```sql
+CREATE TABLE [table_name] (
+    id SERIAL PRIMARY KEY,
+    [column_name] [type] [constraints],
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+```
+
+#### Modified Tables
+| Table | Change | Migration Notes |
+|-------|--------|-----------------|
+| [table] | [change] | [notes] |
+
+### 5.2 Data Validation Rules
+| Field | Rule | Error Message |
+|-------|------|---------------|
+| [field] | [rule] | [message] |
+
+### 5.3 Data Relationships
+```mermaid
+erDiagram
+    ENTITY1 ||--o{ ENTITY2 : relationship
+```
+````
+
+### 7. API Contracts
+
+````markdown
+## 6. API Contracts
+
+### 6.1 New Endpoints
+
+#### POST /api/v1/[resource]
+**Purpose**: [Brief description]
+**Authentication**: Required (Bearer token)
+**Authorization**: [Role requirements]
+
+**Request**:
+```json
+{
+  "field1": "string (required, min: 2, max: 100)",
+  "field2": "integer (optional, min: 0)"
+}
+```
+
+**Response (201 Created)**:
+```json
+{
+  "id": 1,
+  "field1": "value",
+  "created_at": "2025-01-15T10:00:00Z"
+}
+```
+
+**Error Responses**:
+
+All error responses MUST conform to RFC 9457 Problem Details. See
+[`error-contract.md`](../architecture/error-contract.md) for the canonical
+shape, problem-type URIs, and the validation `errors` extension.
+
+| Status | Condition | Problem `type` |
+|--------|-----------|----------------|
+| 401 | Unauthenticated | `/problems/unauthorized` |
+| 403 | Unauthorized | `/problems/forbidden` |
+| 404 | Not found | `/problems/resource-not-found` |
+| 409 | Conflict | `/problems/conflict` |
+| 422 | Validation error | `/problems/validation-error` (with `errors[]`) |
+
+Example 422 body:
+```json
+{
+  "type": "/problems/validation-error",
+  "title": "Validation Error",
+  "status": 422,
+  "detail": "Request validation failed",
+  "instance": "/api/v1/[resource]",
+  "request_id": "550e8400-e29b-41d4-a716-446655440000",
+  "timestamp": "2026-03-25T14:32:00.123456Z",
+  "errors": [
+    { "field": "field1", "message": "Field required", "value": null }
+  ]
+}
+```
+
+### 6.2 Server Actions
+
+```typescript
+// Action: create[Feature]
+// File: app/actions/[feature].ts
+
+interface Input {
+  field1: string;  // min: 2, max: 100
+  field2?: number; // optional, min: 0
+}
+
+interface Output {
+  success: boolean;
+  data?: { id: number; field1: string; };
+  error?: string;
+  errors?: Array<{ field: string; message: string; }>;
+}
+```
+````
+
+### 8. Test Scenarios
+
+````markdown
+## 9. Test Scenarios
+
+### 9.1 Unit Tests
+| ID | Scenario | Input | Expected Output |
+|----|----------|-------|-----------------|
+| UT-001 | [Scenario] | [Input] | [Output] |
+
+### 9.2 Integration Tests
+| ID | Scenario | Preconditions | Steps | Expected Result |
+|----|----------|---------------|-------|-----------------|
+| IT-001 | [Scenario] | [Preconditions] | [Steps] | [Result] |
+
+### 9.3 E2E Tests
+```gherkin
+Feature: [Feature Name]
+
+  Scenario: [Scenario Name]
+    Given [context]
+    When [action]
+    Then [expected result]
+```
+````
+
+### 9. Approval
+
+```markdown
+## Approval
+
+| Role | Name | Date | Status |
+|------|------|------|--------|
+| Product Owner | | | Pending |
+| Tech Lead | | | Pending |
+| QA Lead | | | Pending |
+```
+
+## Related Standards
+
+- [Specification Standard](./specification-standard.md)
+- [Error Contract](../architecture/error-contract.md)
+- [Threat Modeling Standard](../architecture/threat-modeling.md)
+
+---
+
+<!-- Source: standards/documentation/prd-template-sections.md (v1.0.1) -->
+
+# PRD Template Sections
+
+**Status**: Active
+**Category**: Meta-Documentation
+
+## Purpose
+
+This document provides the detailed template walkthrough for each section of a Product Requirements Document. Reference this when authoring new PRDs.
 
 ## Core Sections
 
@@ -3720,7 +5155,7 @@ Define the user experience:
 - {Pattern 2}: {Description}
 
 ### Accessibility Requirements
-- WCAG 2.1 AA compliance
+- WCAG 2.2 AA compliance
 - {Specific accessibility requirement}
 ```
 
@@ -3867,1125 +5302,421 @@ Track changes:
 | 1.0.0 | YYYY-MM-DD | {Name} | Initial PRD |
 ```
 
-## Traceability Model
-
-### Complete Traceability Chain
-
-```
-BRD: BR-XXX (Business Requirements)
-         │
-         │ defines business needs for
-         ▼
-PRD: FEAT-XXX (Features) ← US-XXX (User Stories) ← UC-XXX (Use Cases)
-         │
-         │ implemented by
-         ▼
-Specifications: FR-XXX (Functional Requirements)
-         │
-         │ verified by
-         ▼
-Tests: IT-XXX (Integration Tests), UT-XXX (Unit Tests)
-```
-
-### ID Reference Patterns
-
-| ID Pattern | Document | Example |
-|------------|----------|---------|
-| BR-XXX | BRD | BR-001: Customer can view spending history |
-| US-XXX | PRD | US-001: As a customer, I want to filter spending |
-| UC-XXX | PRD | UC-001: Filter Spending by Date Range |
-| FEAT-XXX | PRD | FEAT-001: Spending Filter Component |
-| FR-XXX | Specification | FR-001: Filter supports date range selection |
-| IT-XXX | Test Plan | IT-001: Verify filter returns correct data |
-
-## Status Lifecycle
-
-```
-Draft → Review → Approved → Superseded
-          ↓
-       Revision (back to Draft)
-```
-
-**Status Definitions**:
-- **Draft**: Initial creation, incomplete
-- **Review**: Ready for stakeholder review
-- **Approved**: Signed off, ready for architecture/specification
-- **Superseded**: Replaced by newer PRD or no longer applicable
-
-## File Organization
-
-### In Project Documentation Folder
-
-```
-repos/{project-name}/
-├── README.md                           # Project hub
-├── CLAUDE.md                           # AI guidance
-├── task-tracker.md                     # Sprint tracking
-├── implementation-plan.md              # Phased implementation
-│
-├── business-requirements/              # BRDs
-│   └── ...
-│
-├── product-requirements/               # PRDs
-│   ├── README.md                       # PRD index and status
-│   ├── PRD-001-customer-dashboard.md
-│   ├── PRD-002-mobile-app-mvp.md
-│   └── PRD-003-partner-portal.md
-│
-├── architecture/                       # Architecture docs
-│   └── ...
-│
-└── specifications/                     # Technical specs
-    └── ...
-```
-
-## Best Practices
-
-### Do
-
-- **Focus on Users**: Write from the user's perspective, not the system's
-- **Be Specific**: Include concrete examples and acceptance criteria
-- **Define Personas**: Understand who will use the product before defining features
-- **Prioritize Ruthlessly**: Use MoSCoW to distinguish must-haves from nice-to-haves
-- **Include Wireframes**: Visual mockups clarify requirements
-- **Link to BRD**: Ensure product requirements trace back to business requirements
-- **Validate Assumptions**: Document and validate assumptions about user behavior
-- **Measure Success**: Define product-level metrics distinct from business metrics
-
-### Don't
-
-- **Don't Specify Implementation**: Focus on what, not how (technically)
-- **Don't Skip User Stories**: User stories with acceptance criteria are essential
-- **Don't Forget Personas**: Features without personas lack context
-- **Don't Over-Engineer**: Match PRD detail to feature complexity (use tiers)
-- **Don't Ignore Edge Cases**: Document alternative flows and error conditions
-- **Don't Mix Audiences**: Keep PRD focused on product, not business strategy
-- **Don't Delay Review**: Get feedback early from UX and engineering
-
-## Examples
-
-### Good Example: User Story
-
-```markdown
-#### US-001: Filter Spending by Date
-
-**As a** customer
-**I want** to filter my spending history by date range
-**So that** I can understand my spending patterns over specific periods
-
-**Acceptance Criteria**:
-```gherkin
-Given I am on the spending history page
-When I select a start date and end date
-Then I see only transactions within that date range
-And the total spending for that period is displayed
-And I can clear the filter to see all transactions
-```
-
-**Priority**: Must Have
-**Effort Estimate**: M
-**Feature Reference**: FEAT-001
-```
-
-### Bad Example: User Story
-
-```markdown
-#### US-001: Date Filter
-As a user I want to filter by date.
-```
-
-**Why it's bad**:
-- Vague persona ("user" instead of specific persona)
-- No "so that" explaining value
-- No acceptance criteria
-- No priority or effort estimate
-- No traceability
-
-### Good Example: Feature Definition
-
-```markdown
-#### FEAT-001: Spending Filter Component
-
-**Priority**: Must Have
-**Related User Stories**: US-001, US-002, US-003
-**Business Requirement**: BR-001
-
-**Description**:
-A filter panel on the spending history page that allows customers to narrow
-down their transaction list by date range, category, and amount range. The
-filter should be intuitive with sensible defaults and remember the user's
-last-used settings.
-
-**Functional Behavior**:
-- Date range: Calendar picker for start/end dates
-- Category: Multi-select dropdown with all transaction categories
-- Amount: Slider for min/max amount
-- Filter results update in real-time as criteria change
-- "Clear All" button resets to default view
-
-**Constraints**:
-- Maximum date range: 1 year
-- Must work on mobile viewports
-```
-
-### Bad Example: Feature Definition
-
-```markdown
-#### FEAT-001: Filter
-Add filtering to the page.
-```
-
-**Why it's bad**:
-- No priority
-- No user story reference
-- No description of what "filtering" means
-- No functional behavior defined
-- No constraints
-
-## Checklist
-
-Before marking a PRD as "Review":
-
-- [ ] PRD ID assigned following convention
-- [ ] All required sections for tier are complete
-- [ ] Product overview includes vision and goals
-- [ ] Target personas are defined with goals and pain points
-- [ ] User stories follow As a/I want/So that format
-- [ ] User stories have Gherkin acceptance criteria
-- [ ] Use cases define main flow and alternatives
-- [ ] Features numbered (FEAT-XXX) and prioritized
-- [ ] Product success metrics are defined
-- [ ] UI/UX requirements included (for Tier 1/2)
-- [ ] Assumptions and ambiguities documented
-- [ ] Traceability to BRD established (if applicable)
-- [ ] Related documentation linked
-- [ ] Version set to 1.0.0 (or incremented)
-
 ## Related Standards
 
-- [Business Requirements Standard](./business-requirements-standard.md) - BRD standard (PRD follows BRD)
-- [Specification Standard](./specification-standard.md) - Technical specifications (follows PRD)
-- [Documentation Standard](./documentation-standard.md) - General documentation guidelines
-- [Architecture Definition Standard](./architecture-definition.md) - System architecture
-- [Discovery Standard](./discovery-standard.md) - Stakeholder interview phase (may precede BRD/PRD)
-
-## References
-
-- [INVEST User Stories](https://www.agilealliance.org/glossary/invest/) - User story quality criteria
-- [Gherkin Reference](https://cucumber.io/docs/gherkin/reference/) - Acceptance criteria syntax
-- [Persona Template Guide](https://www.usability.gov/how-to-and-tools/methods/personas.html) - Creating user personas
-- [MoSCoW Prioritization](https://www.productplan.com/glossary/moscow-prioritization/) - Priority framework
-
-## Revision History
-
-| Version | Date | Author | Changes |
-|---------|------|--------|---------|
-| 1.0.0 | 2026-01-03 | Standards Team | Initial PRD standard |
+- [Product Requirements Standard](./product-requirements-standard.md)
+- [Business Requirements Standard](./business-requirements-standard.md)
+- [Specification Standard](./specification-standard.md)
 
 ---
-<!-- Source: /home/tester/.claude/evolv-coder-standards/standards/documentation/specification-standard.md -->
-# Specification Standard
 
-**Version**: 1.0.0
-**Last Updated**: 2026-01-03
+<!-- Source: standards/documentation/readme-standard.md (v1.0.0) -->
+
+# README Standard
+
 **Status**: Active
-**Category**: Meta-Documentation
 
 ## Purpose
 
-This standard defines how to create software specifications that bridge architecture documentation to implementation. Specifications ensure that features are well-defined before coding begins, enabling developers to implement correctly and QA to verify completely.
+Defines when a `README.md` file is required, the sections it must contain, and the rules that keep it accurate. The README is the entry point for both human and agent readers; it must orient a new reader within minutes.
 
 ## Scope
 
-- **Applies to**: New features, significant changes, API additions, external integrations
-- **Not covered**: Bug fixes (unless scope is significant), minor UI tweaks, configuration changes
-- **Workflow Position**: Discovery → BRD → PRD → Constitution → Architecture → ADRs → **Specifications** → Implementation → QA
-
-## Relationship to Discovery Phase
-
-### Discovery Before Specification
-
-For new initiatives or unclear requirements, Discovery should precede specification:
-
-1. **Discovery validates the problem** before detailed specification begins
-2. **Discovery outputs** inform specification content (pain points → requirements)
-3. **Stakeholder insights** from Discovery shape user stories and acceptance criteria
-
-```markdown
-**Discovery Reference**: DISC-XXX (if Discovery was conducted)
-```
-
-### When Discovery Precedes Specification
-
-**Conduct Discovery first when**:
-- New product or major initiative
-- Problem statement is unclear or unvalidated
-- Multiple stakeholders with different perspectives
-- User needs are assumed, not verified
-
-**Skip to Specification when**:
-- Bug fixes with clear reproduction steps
-- Technical improvements with defined scope
-- Small enhancements where requirements are explicit
-- Discovery already completed for parent initiative
-
-See [Discovery Standard](./discovery-standard.md) for full Discovery guidance.
-
-## Relationship to Business Requirements Document (BRD)
-
-### BRD Before Specification
-
-When a Business Requirements Document exists, specifications should:
-
-1. **Reference the BRD**: Include BRD ID in specification header
-2. **Trace Requirements**: Map business requirements (BR-XXX) to functional requirements (FR-XXX)
-3. **Align Scope**: Specification scope should align with BRD scope
-
-```markdown
-**BRD Reference**: BRD-XXX (if applicable)
-
-## Traceability to Business Requirements
-| Business Requirement | Spec Requirement | Rationale |
-|---------------------|------------------|-----------|
-| BR-001 | FR-001, FR-002 | [How spec implements BR] |
-```
-
-### When to Create a BRD First
-
-See [Business Requirements Standard](./business-requirements-standard.md) for guidance on when to create a BRD before specifications.
-
-**Create BRD first when**:
-- Business context is unclear
-- Multiple stakeholders with different priorities
-- Success metrics needed
-- Significant investment (>2 weeks)
-
-**Skip to Specification when**:
-- Bug fixes with clear requirements
-- Technical improvements
-- Small enhancements with obvious requirements
-
-## Relationship to Product Requirements Document (PRD)
-
-### PRD Before Specification
-
-When a Product Requirements Document exists, specifications should:
-
-1. **Reference the PRD**: Include PRD ID in specification header
-2. **Trace Features**: Map product features (FEAT-XXX) to functional requirements (FR-XXX)
-3. **Reference User Stories**: Link functional requirements to user stories (US-XXX)
-
-```markdown
-**PRD Reference**: PRD-XXX (if applicable)
-**BRD Reference**: BRD-XXX (if applicable)
-
-## Traceability to Product Requirements
-| Feature | User Stories | Spec Requirements |
-|---------|--------------|-------------------|
-| FEAT-001 | US-001, US-002 | FR-001, FR-002 |
-| FEAT-002 | US-003 | FR-003, FR-004 |
-```
-
-### Complete Traceability Chain
-
-```
-BRD (BR-XXX) → PRD (FEAT-XXX, US-XXX) → Spec (FR-XXX) → Tests (IT-XXX)
-```
-
-### When PRD Precedes Specification
-
-**PRD typically precedes specs when**:
-- User personas and user stories are defined
-- Product features need technical translation
-- UX/design work has been completed
-- Multiple features map to one specification
-
-**Skip PRD when**:
-- Technical-only changes
-- API-only changes without user-facing impact
-- Small enhancements with obvious requirements
-
-See [Product Requirements Standard](./product-requirements-standard.md) for full PRD guidance.
-
-## Relationship to Architecture Decision Records (ADRs)
-
-### ADR Cross-References
-
-Specifications must reference relevant ADRs when:
-
-1. **Architectural decisions** affect the specification (technology choices, patterns)
-2. **Trade-offs** were made that constrain the implementation
-3. **Alternatives were rejected** that future readers should understand
-
-```markdown
-## Related ADRs
-
-| ADR | Impact on This Specification |
-|-----|------------------------------|
-| [ADR-001](../architecture/adr/ADR-001-xxx.md) | Defines database choice |
-| [ADR-003](../architecture/adr/ADR-003-xxx.md) | Establishes authentication pattern |
-```
-
-### When to Create a New ADR
-
-If the specification requires a significant architectural decision not yet documented:
-
-1. **Create the ADR first** in `architecture/adr/`
-2. **Reference it** in the specification
-3. **Get ADR approved** before specification approval
-
-See [ADR Framework](../architecture/adr/README.md) for ADR creation guidance.
-
-## QA Co-Authorship Requirement
-
-### Test Scenarios Must Be QA Co-Authored
-
-For Tier 1 and Tier 2 specifications, test scenarios should be co-authored with QA:
-
-1. **QA reviews user stories** to identify edge cases
-2. **QA contributes test scenarios** based on acceptance criteria
-3. **QA signs off** on the specification's testability
-
-```markdown
-## Approval
-
-| Role | Name | Date | Status |
-|------|------|------|--------|
-| Product Owner | | | Pending |
-| Tech Lead | | | Pending |
-| **QA Lead (Co-Author)** | | | Pending |
-```
-
-### Benefits of QA Co-Authorship
-
-- **Shift-left testing**: Test scenarios defined before implementation
-- **Reduced ambiguity**: QA perspective catches unclear requirements early
-- **Better coverage**: Edge cases and error scenarios identified upfront
-- **Faster verification**: QA ready to test immediately after implementation
-
-### QA Involvement by Tier
-
-| Tier | QA Co-Authorship | Test Scenario Depth |
-|------|------------------|---------------------|
-| Tier 1 (Full) | Required | Full test matrix, performance, security |
-| Tier 2 (Standard) | Required | Key scenarios, happy/error paths |
-| Tier 3 (Lightweight) | Recommended | Minimal scenarios, acceptance criteria |
-
-## Agentic Coding Considerations
-
-When AI agents generate or update specifications:
-
-1. **Follow the Agentic Coding Standard** for quality constraints
-2. **Reference source documents** (Discovery, PRD) explicitly
-3. **Mark assumptions clearly** in the Assumptions & Ambiguities section
-4. **Request QA review** for test scenarios
-
-See [Agentic Coding Standard](./agentic-coding-standard.md) for agent-specific rules.
-
-## Relationship to Other Documentation
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│   Standards Repository                                       │
-│   - Generic patterns & best practices                        │
-│   - This specification standard                              │
-│   - Specification templates                                  │
-└─────────────────────────────────────────────────────────────┘
-                         ▲
-                         │ References
-                         │
-┌─────────────────────────────────────────────────────────────┐
-│   Project Architecture Repository                            │
-│   project-name-architecture/                                 │
-│   - System architecture & design                             │
-│   - specifications/  ← PROJECT SPECS LIVE HERE               │
-│       ├── features/                                          │
-│       ├── api-contracts/                                     │
-│       └── integrations/                                      │
-└─────────────────────────────────────────────────────────────┘
-                         │
-                         │ Guides
-                         ▼
-┌─────────────────────────────────────────────────────────────┐
-│   Project Codebase                                           │
-│   project-name/                                              │
-│   - Implementation (references spec IDs in code comments)    │
-│   - Tests (mapped to spec acceptance criteria)               │
-└─────────────────────────────────────────────────────────────┘
-```
-
-## Specification Tiers
-
-Choose the appropriate tier based on feature complexity and risk:
-
-| Tier | Name | When to Use | Effort |
-|------|------|-------------|--------|
-| **1** | Full | Major features, architectural changes, cross-team coordination, high-risk changes | 4-8 hours |
-| **2** | Standard | Typical features, new API endpoints, moderate complexity | 1-4 hours |
-| **3** | Lightweight | Small features, enhancements, bug fixes with significant scope | 30-60 min |
-
-### Tier Selection Guide
-
-```
-Is this a major architectural change or new system component?
-├── Yes → Tier 1 (Full)
-└── No
-    ├── Does it span multiple services or require cross-team coordination?
-    │   ├── Yes → Tier 1 (Full)
-    │   └── No
-    │       ├── Is this a typical feature with frontend + backend changes?
-    │       │   ├── Yes → Tier 2 (Standard)
-    │       │   └── No
-    │       │       ├── Is this an API-only change?
-    │       │       │   ├── Yes → Tier 2 (API Contract)
-    │       │       │   └── No → Tier 3 (Lightweight)
-    │       └── Is this an external service integration?
-    │           ├── Yes → Tier 2 (Integration)
-    │           └── No → Tier 3 (Lightweight)
-```
-
-### Required Sections by Tier
-
-| Section | Tier 1 | Tier 2 | Tier 3 |
-|---------|--------|--------|--------|
-| Overview & Problem Statement | Required | Required | Required |
-| User Stories | Required | Required | Required |
-| Acceptance Criteria (BDD) | Required | Required | Required |
-| Functional Requirements | Required | Required | Optional |
-| **Assumptions & Ambiguities** | Required | Required | Simplified |
-| Non-Functional Requirements | Required | Required | Optional |
-| Data Requirements | Required | Required | If applicable |
-| API Contracts | Required | Required | If applicable |
-| UI/UX Specifications | Required | Simplified | Optional |
-| Edge Cases & Error Handling | Required | Required | Key cases only |
-| Test Scenarios | Required | Required | Key scenarios |
-| Dependencies | Required | Required | Required |
-| Rollout Plan | Required | Optional | Not required |
-| Monitoring | Required | Optional | Not required |
-| Approval Sign-off | Required | Required | Required |
-
-## Specification Types
-
-### 1. Feature Specification
-
-**Purpose**: Document end-to-end features spanning frontend and backend
-
-**When to Use**:
-- New user-facing functionality
-- Features requiring UI, API, and database changes
-- Cross-cutting concerns affecting multiple system areas
-
-**Template**: `feature-spec.md` (single tiered template with tier markers)
-
-### 2. API Contract Specification
-
-**Purpose**: Document backend API endpoints with detailed contracts
-
-**When to Use**:
-- New API endpoints without significant frontend work
-- API versioning or breaking changes
-- Internal service-to-service APIs
-- Public/partner API additions
-
-**Template**: `api-contract-spec.md`
-
-### 3. Integration Specification
-
-**Purpose**: Document external service integrations
-
-**When to Use**:
-- Third-party API integrations
-- Webhook implementations (inbound or outbound)
-- External service replacements
-- Message queue integrations
-
-**Template**: `integration-spec.md`
-
-### 4. Project Constitution
-
-**Purpose**: Define governing principles and constraints for a project
-
-**When to Use**:
-- New project initialization
-- When multiple teams work on the same project
-- When architectural constraints need documentation
-- When compliance requirements exist
-
-**Template**: `project-constitution.md`
-
-**Key Sections**:
-- Architectural Principles (non-negotiable patterns)
-- Performance Budgets (response times, resource limits)
-- Scalability Constraints (load requirements, geographic distribution)
-- Security Posture (authentication, data protection)
-- Compliance Requirements (GDPR, HIPAA, SOC2)
-- Testing Requirements (coverage targets, quality gates)
-- Exception Process (how to request deviations)
-
-**Usage**: Feature specifications should reference the project constitution. Deviations from constitutional requirements must follow the exception process documented in the constitution.
-
-## Specification ID Convention
-
-```
-SPEC-[TYPE]-[NUMBER]
-```
-
-**Types**:
-- `FEAT` - Feature specification
-- `API` - API contract specification
-- `INT` - Integration specification
-
-**Examples**:
-- `SPEC-FEAT-001` - User profile photo upload
-- `SPEC-API-012` - Orders API v2
-- `SPEC-INT-003` - Stripe payment integration
-
-**Numbering**: Sequential within each type, padded to 3 digits.
-
-## Core Sections
-
-### 1. Overview
-
-Every specification must start with:
-
-```markdown
-# [Feature Name] Specification
-
-**Spec ID**: SPEC-[TYPE]-[NUMBER]
-**Version**: 1.0.0
-**Created**: YYYY-MM-DD
-**Last Updated**: YYYY-MM-DD
-**Status**: Draft | Review | Approved | Implemented | Deprecated
-**Tier**: Full | Standard | Lightweight
-**Author**: [Name]
-**Reviewers**: [Names]
-
-## Related Documentation
-- **Architecture**: [Link to architecture doc]
-- **Parent Epic/Story**: [Link to ticket]
-- **Implementation PR**: [Link when available]
-- **Test Plan**: [Link when available]
-```
-
-### 2. Problem Statement
-
-Clearly articulate the problem being solved:
-
-```markdown
-## 1. Overview
-
-### 1.1 Problem Statement
-[2-3 sentences describing the problem from the user's perspective]
-
-### 1.2 Goals
-- [Goal 1 - what success looks like]
-- [Goal 2]
-
-### 1.3 Non-Goals
-- [Explicitly excluded scope item 1]
-- [Explicitly excluded scope item 2]
-
-### 1.4 Success Metrics
-| Metric | Target | Measurement |
-|--------|--------|-------------|
-| [Metric name] | [Target value] | [How it's measured] |
-```
-
-### 3. User Stories
-
-Use the standard user story format with INVEST criteria validation:
-
-```markdown
-## 2. User Stories
-
-### Story 1: [Title]
-**As a** [user type]
-**I want** [action/capability]
-**So that** [benefit/value]
-
-**Acceptance Criteria**:
-```gherkin
-Given [precondition]
-When [action]
-Then [expected result]
-And [additional result]
-```
-
-**INVEST Assessment**:
-- [ ] **I**ndependent - Can be developed separately
-- [ ] **N**egotiable - Details can be discussed
-- [ ] **V**aluable - Delivers user value
-- [ ] **E**stimable - Team can estimate effort
-- [ ] **S**mall - Fits in a sprint
-- [ ] **T**estable - Has clear acceptance criteria
-```
-
-### 4. Functional Requirements
-
-Number requirements and assign priority:
-
-```markdown
-## 3. Functional Requirements
-
-### 3.1 [Requirement Category]
-
-#### FR-001: [Requirement Title]
-**Priority**: Must Have | Should Have | Could Have | Won't Have
-**Description**: [Detailed description]
-**Business Rule**: [If applicable]
-**Validation**: [How to verify this requirement is met]
-```
-
-**Priority Levels (MoSCoW)**:
-- **Must Have**: Critical for release, non-negotiable
-- **Should Have**: Important but not critical, can be deferred
-- **Could Have**: Nice to have, low priority
-- **Won't Have**: Explicitly excluded from this release
-
-### 4.1 Assumptions & Ambiguities
-
-Track requirement confidence levels to prevent implementation of unvalidated requirements:
-
-```markdown
-### 3.x Assumptions & Ambiguities
-
-#### Confirmed Decisions (✓)
-| Decision | Rationale | Confirmed By | Date |
-|----------|-----------|--------------|------|
-| [Decision] | [Why] | [Stakeholder] | [Date] |
-
-#### Under Discussion (?)
-| Topic | Options | Stakeholder | ETA | Impact if Delayed |
-|-------|---------|-------------|-----|-------------------|
-| [Topic] | [Options] | [Who] | [When] | [Blocks what] |
-
-#### Blockers (⚠️)
-| Blocker | Impact | Mitigation | Owner | Status |
-|---------|--------|------------|-------|--------|
-| [Blocker] | [What can't proceed] | [Workaround] | [Owner] | [Status] |
-
-#### Key Assumptions
-- [ ] [Assumption that, if wrong, requires spec revision]
-```
-
-**Why This Section Matters**:
-- Prevents implementation of unconfirmed requirements
-- Tracks pending decisions with stakeholder ownership
-- Documents blockers for visibility
-- Records assumptions that may invalidate the spec if wrong
-
-**Confidence Markers**:
-- **✓ Confirmed**: Requirement is finalized, approved to implement
-- **? Under Discussion**: Options being considered, not yet decided
-- **⚠️ Blocked**: External dependency preventing progress
-
-### 5. Non-Functional Requirements
-
-```markdown
-## 4. Non-Functional Requirements
-
-### 4.1 Performance
-| Requirement | Target | Measurement |
-|-------------|--------|-------------|
-| Response time | < 200ms | API latency p95 |
-| Throughput | 100 req/s | Load test |
-
-### 4.2 Security
-- [ ] Authentication required (method: [Clerk/JWT/API Key])
-- [ ] Authorization rules: [Describe who can do what]
-- [ ] Data sensitivity: [Public/Internal/Confidential/Restricted]
-- [ ] Input validation: [Approach]
-
-### 4.3 Accessibility
-- WCAG 2.1 AA compliance
-- Screen reader support
-- Keyboard navigation
-
-### 4.4 Scalability
-- Expected load: [X users/day]
-- Data growth: [X records/month]
-```
-
-### 6. Data Requirements
-
-```markdown
-## 5. Data Requirements
-
-### 5.1 Data Model Changes
-
-#### New Tables
-```sql
-CREATE TABLE [table_name] (
-    id SERIAL PRIMARY KEY,
-    [column_name] [type] [constraints],
-    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMP NOT NULL DEFAULT NOW()
-);
-```
-
-#### Modified Tables
-| Table | Change | Migration Notes |
-|-------|--------|-----------------|
-| [table] | [change] | [notes] |
-
-### 5.2 Data Validation Rules
-| Field | Rule | Error Message |
-|-------|------|---------------|
-| [field] | [rule] | [message] |
-
-### 5.3 Data Relationships
-```mermaid
-erDiagram
-    ENTITY1 ||--o{ ENTITY2 : relationship
-```
-```
-
-### 7. API Contracts
-
-```markdown
-## 6. API Contracts
-
-### 6.1 New Endpoints
-
-#### POST /api/v1/[resource]
-**Purpose**: [Brief description]
-**Authentication**: Required (Bearer token)
-**Authorization**: [Role requirements]
-
-**Request**:
-```json
-{
-  "field1": "string (required, min: 2, max: 100)",
-  "field2": "integer (optional, min: 0)"
-}
-```
-
-**Response (201 Created)**:
-```json
-{
-  "id": 1,
-  "field1": "value",
-  "created_at": "2025-01-15T10:00:00Z"
-}
-```
-
-**Error Responses**:
-| Status | Condition | Response |
-|--------|-----------|----------|
-| 400 | Validation error | `{"error": "...", "field_errors": [...]}` |
-| 401 | Unauthenticated | `{"error": "Unauthorized"}` |
-| 403 | Unauthorized | `{"error": "Forbidden"}` |
-| 404 | Not found | `{"error": "Resource not found"}` |
-
-### 6.2 Server Actions
-
-```typescript
-// Action: create[Feature]
-// File: app/actions/[feature].ts
-
-interface Input {
-  field1: string;  // min: 2, max: 100
-  field2?: number; // optional, min: 0
-}
-
-interface Output {
-  success: boolean;
-  data?: { id: number; field1: string; };
-  error?: string;
-  errors?: Array<{ field: string; message: string; }>;
-}
-```
-```
-
-### 8. Test Scenarios
-
-```markdown
-## 9. Test Scenarios
-
-### 9.1 Unit Tests
-| ID | Scenario | Input | Expected Output |
-|----|----------|-------|-----------------|
-| UT-001 | [Scenario] | [Input] | [Output] |
-
-### 9.2 Integration Tests
-| ID | Scenario | Preconditions | Steps | Expected Result |
-|----|----------|---------------|-------|-----------------|
-| IT-001 | [Scenario] | [Preconditions] | [Steps] | [Result] |
-
-### 9.3 E2E Tests
-```gherkin
-Feature: [Feature Name]
-
-  Scenario: [Scenario Name]
-    Given [context]
-    When [action]
-    Then [expected result]
-```
-```
-
-### 9. Approval
-
-```markdown
-## Approval
-
-| Role | Name | Date | Status |
-|------|------|------|--------|
-| Product Owner | | | Pending |
-| Tech Lead | | | Pending |
-| QA Lead | | | Pending |
-```
-
-## Specification Workflow
-
-### Status Lifecycle
-
-```
-Draft → Review → Approved → Implemented → Deprecated
-          ↓
-       Revision (back to Draft)
-```
-
-**Status Definitions**:
-- **Draft**: Initial creation, incomplete
-- **Review**: Ready for stakeholder review
-- **Approved**: Signed off, ready for implementation
-- **Implemented**: Feature is live in production
-- **Deprecated**: Superseded or no longer applicable
-
-### Workflow Steps
-
-1. **Create Spec**
-   - Select appropriate tier and template
-   - Fill in all required sections
-   - Set status to "Draft"
-
-2. **Internal Review**
-   - Author self-reviews for completeness
-   - Peer developer reviews technical feasibility
-   - Update status to "Review"
-
-3. **Stakeholder Approval**
-   - Product Owner reviews requirements
-   - Tech Lead reviews technical approach
-   - QA Lead reviews testability
-   - All sign off in Approval section
-   - Update status to "Approved"
-
-4. **Implementation**
-   - Developer references spec during coding
-   - Code comments include spec ID
-   - PRs reference spec document
-   - Update spec with Implementation PR link
-
-5. **Verification**
-   - QA uses acceptance criteria for test cases
-   - Tests reference spec IDs
-   - Update status to "Implemented" when deployed
-
-6. **Maintenance**
-   - Update spec if requirements change
-   - Increment version number
-   - Add to revision history
-   - Set to "Deprecated" if superseded
-
-## Traceability
-
-### Requirements to Code
-
-Reference spec IDs in code comments:
-
-```python
-# Python (FastAPI)
-class PhotoUpload(Base):
-    """
-    Photo upload model.
-
-    Spec Reference:
-        - Spec: SPEC-FEAT-003 Section 5.1
-        - Requirements: FR-001, FR-002
-    """
-```
-
-```typescript
-// TypeScript (Server Actions)
-/**
- * Upload user profile photo
- *
- * @spec SPEC-FEAT-003
- * @requirements FR-001, FR-002, NFR-001
- * @acceptance AC-001, AC-002
- */
-export async function uploadProfilePhoto(...)
-```
-
-### Traceability Matrix
-
-Maintain in each spec:
-
-```markdown
-## Traceability Matrix
-
-| Requirement | Implementation | Test Case | Status |
-|-------------|----------------|-----------|--------|
-| FR-001 | app/models/photo.py | UT-001, IT-001 | Implemented |
-| FR-002 | app/actions/photos.ts | IT-002 | Implemented |
-```
-
-## File Organization
-
-### In Architecture Repository
-
-```
-project-name-architecture/
-├── specifications/
-│   ├── README.md                    # Index and status tracking
-│   ├── features/
-│   │   ├── SPEC-FEAT-001-user-registration.md
-│   │   ├── SPEC-FEAT-002-profile-management.md
-│   │   └── SPEC-FEAT-003-photo-upload.md
-│   ├── api-contracts/
-│   │   ├── SPEC-API-001-users-api.md
-│   │   └── SPEC-API-002-photos-api.md
-│   └── integrations/
-│       └── SPEC-INT-001-image-processing.md
-└── ... (other architecture folders)
-```
-
-### Spec File Naming
-
-```
-SPEC-[TYPE]-[NUMBER]-[kebab-case-name].md
-```
-
-Examples:
-- `SPEC-FEAT-001-user-registration.md`
-- `SPEC-API-012-orders-api-v2.md`
-- `SPEC-INT-003-stripe-payments.md`
-
-## Best Practices
-
-### Do
-
-- **Start with User Stories**: Begin every spec with who benefits and why
-- **Be Specific**: Include concrete examples, not vague descriptions
-- **Define Acceptance Criteria**: Every story needs testable criteria
-- **Number Requirements**: Enable traceability with FR-XXX numbering
-- **Include Error Cases**: Document what happens when things go wrong
-- **Show Data Contracts**: Explicit JSON schemas, not prose descriptions
-- **Version the Spec**: Track changes with semantic versioning
-- **Get Sign-off**: Don't implement without approval
-
-### Don't
-
-- **Don't Skip Non-Goals**: Explicitly state what's out of scope
-- **Don't Assume Context**: Write for someone unfamiliar with the project
-- **Don't Over-Specify UI**: Focus on behavior, not pixel-perfect layouts
-- **Don't Forget Performance**: Include NFRs from the start
-- **Don't Write Novels**: Be concise; use tables and lists
-- **Don't Delay Testing**: Write test scenarios during spec, not after
-- **Don't Ignore Edge Cases**: They always become production bugs
-- **Don't Gold-Plate**: Match spec detail to feature complexity (use tiers)
-
-## Examples
-
-### Good Example: User Story with Acceptance Criteria
-
-```markdown
-### Story 1: Upload Profile Photo
-**As a** registered user
-**I want** to upload my profile photo
-**So that** my account is personalized and recognizable
-
-**Acceptance Criteria**:
-```gherkin
-Given I am logged into my account
-And I am on my profile settings page
-When I click "Upload Photo" button
-And I select a valid image file (JPG, PNG, WebP under 5MB)
-Then the image is uploaded successfully
-And my profile displays the new photo
-And a success notification appears
-
-Given I am logged into my account
-When I try to upload a file larger than 5MB
-Then I see an error message "Image must be smaller than 5MB"
-And the file is not uploaded
-```
-
-**INVEST Assessment**:
-- [x] Independent - Can be developed without other profile features
-- [x] Negotiable - File types and size limits can be discussed
-- [x] Valuable - Users want personalized profiles
-- [x] Estimable - Team estimates 5 story points
-- [x] Small - Fits in one sprint
-- [x] Testable - Clear acceptance criteria above
-```
-
-### Bad Example: Vague Requirements
-
-```markdown
-### Story 1: Photo Upload
-**As a** user
-**I want** to upload photos
-**So that** they are saved
-
-**Acceptance Criteria**:
-- Photos should upload
-- Errors should be handled
-```
-
-**Why it's bad**:
-- User type is vague ("user" vs "registered user")
-- No specific file constraints
-- No testable acceptance criteria
-- No error scenarios defined
-- INVEST not assessed
-
-## Checklist
-
-Before marking a spec as "Review":
-
-- [ ] Spec ID assigned following convention
-- [ ] All required sections for tier are complete
-- [ ] User stories follow "As a... I want... So that..." format
-- [ ] Acceptance criteria use Given/When/Then format
-- [ ] INVEST criteria assessed for each story
-- [ ] Requirements numbered (FR-XXX)
-- [ ] Requirements prioritized (MoSCoW)
-- [ ] Non-functional requirements specified
-- [ ] Data model changes documented
-- [ ] API contracts include request/response schemas
-- [ ] Error cases documented
-- [ ] Test scenarios cover acceptance criteria
-- [ ] Dependencies identified
-- [ ] Related documentation linked
-- [ ] Version set to 1.0.0 (or incremented)
-
-## Related Standards
-
-- [Discovery Standard](./discovery-standard.md) - Stakeholder interview phase (precedes BRD/PRD)
-- [Business Requirements Standard](./business-requirements-standard.md) - BRD standard (precedes PRD/specs)
-- [Product Requirements Standard](./product-requirements-standard.md) - PRD standard (precedes specs)
-- [Agentic Coding Standard](./agentic-coding-standard.md) - AI agent constraints
-- [ADR Framework](../architecture/adr/README.md) - Architecture Decision Records
-- [Documentation Standard](./documentation-standard.md) - General documentation guidelines
-- [Architecture Definition Standard](./architecture-definition.md) - Project architecture documentation
-- [API Design](../backend/python.md) - Backend API patterns
-- [Server Actions](../frontend/server-actions.md) - Frontend data flow patterns
-- [Database Naming](../database/naming-conventions.md) - Database conventions
+Applies to every Markdown file named `README.md` that lives at the root of a repository, package, or runnable component. Does not apply to project-level documentation under `docs/`, which is governed by [`./documentation-standard.md`](./documentation-standard.md).
+
+## When to apply
+
+A `README.md` is **required** in each of the following locations:
+
+- The top level of every Git repository.
+- The root of every published package (npm, PyPI, Cargo, Go module, container image, Helm chart).
+- Every directory that contains a runnable component — service, application, CLI, worker, scheduled job, or notebook collection.
+- Every directory that exposes a public interface consumed from outside the repository (SDK, library, plugin, schema).
+
+A README is **not** required for purely internal subdirectories that contain no public surface and no runnable entry point. Reuse the parent README in that case.
+
+## Required sections
+
+Every README MUST contain the following sections, in this order. Section headings must match exactly so that automated checks can locate them.
+
+1. **Title** — `# {Project or Component Name}`.
+2. **One-line description** — a single sentence directly under the title; no marketing language.
+3. **Status badges** — build, test coverage, version, license, and (where applicable) container image. At least one CI status badge is required.
+4. **Quickstart** — fewer than five commands that take a fresh clone or install to a working state. Anything longer belongs in `docs/`.
+5. **Installation** — supported install methods, version requirements, and platform constraints.
+6. **Configuration** — a table of environment variables with columns: `Name`, `Required`, `Default`, `Description`. Secrets are referenced by name only; never include real values.
+7. **Usage examples** — at least one minimal end-to-end example. Examples must be copy-paste runnable.
+8. **API / CLI reference link** — link to the generated reference described in [`./api-reference-standard.md`](./api-reference-standard.md). Do not inline reference material.
+9. **Development setup** — how to install dev dependencies, run the linter, and start a local environment.
+10. **Testing** — the single command that runs the test suite, plus how to run a focused test.
+11. **Deployment** — pointer to the deployment runbook or pipeline; do not duplicate runbook content.
+12. **Contributing** — link to `CONTRIBUTING.md` or equivalent. Repos without that file must inline the contribution rules under this heading.
+13. **License** — SPDX identifier and link to `LICENSE`.
+14. **Maintainers** — named owners (people or team aliases) responsible for review and release.
+
+A README MAY include additional sections (e.g., Architecture, Security, FAQ) after Maintainers.
+
+## Required behaviors
+
+- **Length cap**: 500 lines. Content beyond the cap MUST be extracted to `docs/` and linked.
+- **Single source of truth**: README content MUST NOT contradict generated reference docs, the changelog, or the deployment runbook. When duplication is unavoidable, link to the canonical source.
+- **Configuration table**: every environment variable read by the component MUST appear in the Configuration table. New variables added in a PR require the table to be updated in the same PR.
+- **Quickstart parity**: the Quickstart commands MUST be exercised by CI on every merge to the default branch.
+- **Examples are tested**: code blocks marked as examples MUST be either copy-paste runnable or covered by a doc test (`pytest --doctest-modules`, `cargo test --doc`, or equivalent).
+- **Links are checked**: a link checker MUST run in CI; a broken link blocks merge.
+- **Badges are live**: each badge MUST point at a live source. Static SVGs that no longer reflect reality are forbidden.
+- **Refresh on release**: the README is reviewed on every minor and major release; the date of last review is implied by the most recent commit touching the file.
+- **Correlation ID references**: any reference to request tracing MUST use the canonical header and field names defined by [`../architecture/error-contract.md`](../architecture/error-contract.md) and [`../backend/request-middleware.md`](../backend/request-middleware.md); legacy alternatives are forbidden.
+
+## Anti-patterns
+
+- "Coming soon" sections, placeholder paragraphs, or empty headings.
+- `TODO` markers older than 30 days; convert to tracked issues or remove.
+- Dead links to private wikis, deleted pages, or unrouted URLs.
+- Marketing copy in place of a one-line description.
+- Inlined API reference tables that drift from the OpenAPI spec or generated CLI help.
+- Multi-page screenshots and architecture diagrams that bloat the file beyond the length cap.
+- Copy-pasted boilerplate from another project that still names the wrong service or owner.
+- Quickstart steps that require credentials, VPN access, or undocumented prerequisites.
 
 ## References
 
-- [IEEE 830-1998](https://standards.ieee.org/standard/830-1998.html) - Software Requirements Specification
-- [Behavior-Driven Development](https://cucumber.io/docs/bdd/) - BDD with Cucumber/Gherkin
-- [User Stories Applied](https://www.mountaingoatsoftware.com/books/user-stories-applied) - Mike Cohn
-- [INVEST Criteria](https://www.agilealliance.org/glossary/invest/) - Agile Alliance
-- [MoSCoW Prioritization](https://www.productplan.com/glossary/moscow-prioritization/) - ProductPlan
+- [`./documentation-standard.md`](./documentation-standard.md) — repository-wide documentation rules.
+- [`./agentic-coding-standard.md`](./agentic-coding-standard.md) — agent-readable structure expectations.
+- [`./changelog-standard.md`](./changelog-standard.md) — release notes referenced from README badges.
+- [`./api-reference-standard.md`](./api-reference-standard.md) — where the API/CLI reference link points.
+- [`./onboarding-standard.md`](./onboarding-standard.md) — relationship between README quickstart and onboarding day-1.
+- External: [Common Readme](https://common-readme.org/), [Standard Readme](https://github.com/RichardLitt/standard-readme).
 
-## Revision History
+## Acceptance
 
-| Version | Date | Author | Changes |
-|---------|------|--------|---------|
-| 1.2.0 | 2026-01-03 | Standards Team | Discovery phase integration, ADR cross-references, QA co-authorship, Agentic coding considerations |
-| 1.1.0 | 2025-12-30 | Standards Team | Added Project Constitution template, Assumptions & Ambiguities section |
-| 1.0.0 | 2025-12-30 | Standards Team | Initial specification standard |
+- File exists at every required location.
+- All required sections are present in the prescribed order with exact heading text.
+- Configuration table lists every environment variable read by the component.
+- CI link checker, doc test, and quickstart smoke test pass.
+- Reviewed in PR; updated whenever public API, configuration, or deployment behavior changes.
+
+---
+
+<!-- Source: standards/documentation/changelog-standard.md (v1.0.0) -->
+
+# Changelog Standard
+
+**Status**: Active
+
+## Purpose
+
+Defines the format, generation policy, and lifecycle rules for `CHANGELOG.md`. The changelog is the canonical, human-readable record of every released change; it is consumed by operators, integrators, and downstream maintainers.
+
+## Scope
+
+Applies to every repository that produces a versioned artifact — service image, library, CLI, schema, or infrastructure module. Does not apply to internal monorepo subdirectories whose changes are reflected in a parent changelog.
+
+## When to apply
+
+A `CHANGELOG.md` is **required** at the repository root (or at the package root inside a monorepo) when any of the following are true:
+
+- The repository publishes a versioned artifact consumed outside the team.
+- The repository tags releases.
+- The repository ships breaking changes that require migration notes.
+
+A changelog is **not** required for ephemeral demo repos, single-author scratch projects, or generated mirrors of an upstream source.
+
+## Required sections
+
+The changelog MUST follow [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.1.0/). Top-level structure:
+
+```markdown
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
+
+## [Unreleased]
+
+## [1.4.0] - 2026-05-24
+
+### Summary
+
+One paragraph describing the user-visible impact of this release.
+
+### Added
+- ...
+
+### Changed
+- ...
+
+### Deprecated
+- ...
+
+### Removed
+- ...
+
+### Fixed
+- ...
+
+### Security
+- ...
+```
+
+Each release entry MUST contain:
+
+1. A version header `## [MAJOR.MINOR.PATCH] - YYYY-MM-DD` using ISO-8601 dates.
+2. A `### Summary` paragraph in plain prose, describing user-visible impact.
+3. One or more of the six change-type subsections: `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`. Empty subsections MUST be omitted.
+
+An `## [Unreleased]` section MUST sit at the top of the file and accumulate pending changes between releases.
+
+## Required behaviors
+
+- **Versioning**: [Semantic Versioning 2.0.0](https://semver.org/). Pre-releases use `-rc.N` (release candidate) or `-alpha.N` / `-beta.N`. Build metadata (`+sha.abcdef`) is allowed but does not affect ordering.
+- **Auto-generation source**: changelog entries are derived from [Conventional Commits](https://www.conventionalcommits.org/). Tooling — [release-please](https://github.com/googleapis/release-please) (default) or [semantic-release](https://semantic-release.gitbook.io/) — opens a release PR that updates `CHANGELOG.md` and the version file.
+- **Hand edits**: maintainers MAY edit auto-generated entries before release for clarity, grouping, or to add the Summary paragraph. Hand edits MUST NOT remove or rewrite history of already-released entries.
+- **Breaking changes**: every breaking change MUST be prefixed `BREAKING:` in the bullet and MUST include a "Migration" sub-bullet or link to a migration note. A breaking change MUST trigger a major-version bump.
+- **Security entries**: vulnerabilities fixed MUST appear under `### Security` with a CVE identifier when one exists; embargoed details MAY be omitted but the entry itself MUST appear.
+- **Date integrity**: a release date MUST equal the date the artifact was published. Backdating is forbidden.
+- **Internal-only changes**: refactors, test-only changes, and CI changes that produce no user-visible effect MUST NOT appear in `CHANGELOG.md`. They live in commit history only.
+- **Linkage**: every release header SHOULD link to its tag and (where applicable) to the comparison range — Keep a Changelog footer-link style.
+- **Yanked releases**: a published release that is later withdrawn MUST be marked `[YANKED]` in its header with a one-line explanation; the original entries remain.
+- **CI enforcement**: a CI check MUST verify that any PR labeled `release-note` updates `CHANGELOG.md` (or its release-please equivalent).
+
+## Anti-patterns
+
+- Silently editing or deleting entries from a published release.
+- A single bullet reading "Various improvements" or "Bug fixes" with no detail.
+- Mixing user-facing changes with internal-only refactors in the same entry.
+- Using commit hashes as bullet points without human-readable text.
+- Skipping the Summary paragraph and shipping only a bullet list.
+- Omitting migration notes for breaking changes.
+- Maintaining the changelog in GitHub Releases UI only, with no `CHANGELOG.md` in the repo.
+- Using non-ISO date formats (`05/24/2026`, `May 24, 2026`).
+- Backdating release entries to align with sprint boundaries.
+
+## References
+
+- [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) — format specification.
+- [Semantic Versioning 2.0.0](https://semver.org/) — version-number rules.
+- [Conventional Commits](https://www.conventionalcommits.org/) — commit-message convention that drives auto-generation.
+- [`./readme-standard.md`](./readme-standard.md) — README badges that link to the changelog.
+- [`./documentation-standard.md`](./documentation-standard.md) — wider documentation rules.
+- `../../patterns/devops/` — release automation patterns (see `patterns/devops/`).
+- `../devops/git-workflow.md` — branch and tag workflow that drives releases (when present).
+
+## Acceptance
+
+- File exists at the repository or package root with the required structure.
+- The most recent release entry has Summary, dated header, and at least one populated change-type subsection.
+- Every breaking change in the file is marked `BREAKING:` and links to a migration note.
+- CI release-note check passes.
+- Reviewed in PR; updated whenever public API or behavior changes.
+
+---
+
+<!-- Source: standards/documentation/api-reference-standard.md (v1.0.0) -->
+
+# API Reference Standard
+
+**Status**: Active
+
+## Purpose
+
+Defines how API reference documentation is sourced, rendered, versioned, and published. Reference docs are derived artifacts; the OpenAPI contract is the single source of truth.
+
+## Scope
+
+Applies to every HTTP API a project exposes — public, partner, or internal. Does not apply to gRPC, GraphQL, or internal RPC contracts (separate standards govern those). Companion content (tutorials, conceptual guides) lives in `docs/` and is governed by [`./documentation-standard.md`](./documentation-standard.md).
+
+## When to apply
+
+API reference documentation is **required** when any of the following are true:
+
+- The repository ships an HTTP service consumed outside the owning team.
+- The repository publishes an OpenAPI specification.
+- The API is invoked from another repository, service, or external tenant.
+
+Reference docs are **not** required for purely intra-process function APIs, internal worker queues with no HTTP surface, or one-off scripts.
+
+## Required sections
+
+The published reference site MUST present, at minimum, the following surface:
+
+1. **Landing page** — API name, current version, environment URLs (dev / staging / prod), authentication summary, and a link to the OpenAPI source.
+2. **Authentication** — supported schemes, required scopes, token issuance and refresh.
+3. **Conventions** — pagination, filtering, sorting, idempotency keys, rate limits, and the canonical request-tracing identifier `X-Request-ID` (echoed in responses, logged as `request_id`).
+4. **Errors** — the shared `ProblemDetail` shape from [`../architecture/error-contract.md`](../architecture/error-contract.md), including the `request_id` field, with examples for every status class returned.
+5. **Endpoints** — grouped by resource or tag, alphabetized within a group.
+6. **Schemas** — every reusable component schema referenced by an endpoint.
+7. **Changelog link** — to `CHANGELOG.md` per [`./changelog-standard.md`](./changelog-standard.md).
+8. **Versioning policy** — link to [`../architecture/api-versioning.md`](../architecture/api-versioning.md).
+
+### Per-endpoint required content
+
+Each endpoint MUST document:
+
+- HTTP method and path, including version prefix (e.g., `GET /api/v2/orders/{id}`).
+- One-line summary and a longer description.
+- All path, query, header, and cookie parameters with type, required flag, default, and at least one example value.
+- Request body schema (when applicable) with at least one example payload.
+- All response shapes — every success status and every error status — using the `ProblemDetail` shape for errors.
+- Required authentication scheme(s) and scopes.
+- Rate-limit policy.
+- Idempotency behavior — whether the endpoint is safe, idempotent, or unsafe to retry; the idempotency-key header when supported.
+- Deprecation status — when deprecated, the sunset date and the replacement endpoint.
+
+## Required behaviors
+
+- **Source of truth**: an OpenAPI 3.1 document. Generated from FastAPI / equivalent framework annotations where supported, hand-authored otherwise. Hand-authored specs MUST be linted in CI ([Spectral](https://stoplight.io/open-source/spectral) or equivalent).
+- **Renderer**:
+  - **Default**: [Redocly](https://redocly.com/docs/cli/) for public and partner APIs.
+  - **Acceptable**: [Stoplight Elements](https://stoplight.io/open-source/elements) for embedded reference inside a docs site.
+  - **Internal-only**: [Swagger UI](https://swagger.io/tools/swagger-ui/) is acceptable when the API is gated behind internal auth.
+- **Build pipeline**: reference docs MUST be built in CI on every merge to the default branch and on every release tag. The build MUST fail when:
+  - the spec fails Spectral linting,
+  - any endpoint lacks a description, request example, or `ProblemDetail` error response,
+  - any referenced schema is undefined,
+  - the spec version does not match the published artifact version.
+- **Publishing**: docs MUST be published to a stable URL per environment, e.g. `docs.{env}.example.com/api/v{N}`. Old versions remain reachable; the latest version MUST be reachable at a versionless alias (e.g., `docs.example.com/api/latest`).
+- **Versioning**: the spec MUST be versioned alongside the code. The URL MUST include the major version (`/api/v2`). Deprecated endpoints retain their reference page, MUST be marked `deprecated: true` in the spec, and MUST emit the `Deprecation` and `Sunset` response headers.
+- **Examples**: every example payload MUST validate against its schema; CI MUST enforce this.
+- **Auth examples**: the reference MUST show a working authenticated call for each scheme; secrets in examples are placeholders only.
+- **Searchable**: the rendered site MUST expose full-text search across endpoints, parameters, and schemas.
+- **Downloadable spec**: the OpenAPI document MUST be downloadable from the rendered site at a stable path (`/openapi.json` or `/openapi.yaml`).
+- **Correlation ID**: header and log-field documentation MUST use the canonical names defined by [`../architecture/error-contract.md`](../architecture/error-contract.md) and [`../backend/request-middleware.md`](../backend/request-middleware.md). Legacy alternatives are forbidden.
+
+## Anti-patterns
+
+- Hand-written reference Markdown that drifts from the OpenAPI spec.
+- Reference docs published from a developer laptop instead of CI.
+- Missing error responses; only the happy path is documented.
+- Endpoints without examples or with placeholder `string` examples that do not validate.
+- A single "API" page with embedded `curl` snippets in place of a structured reference.
+- Versioning by query parameter (`?version=2`) or undocumented header.
+- Removing deprecated endpoints from the reference before the sunset date.
+- Embedding real tokens, account identifiers, or PII in example payloads.
+- Reference site that lags the deployed API by more than one release.
+
+## References
+
+- [`../architecture/error-contract.md`](../architecture/error-contract.md) — the `ProblemDetail` shape and `request_id` field.
+- [`../backend/openapi-contract.md`](../backend/openapi-contract.md) — how the spec is produced.
+- [`../architecture/api-versioning.md`](../architecture/api-versioning.md) — version negotiation, deprecation, and sunset rules.
+- [`./readme-standard.md`](./readme-standard.md) — README link to the reference site.
+- [`./changelog-standard.md`](./changelog-standard.md) — release notes that surface API changes.
+- External: [OpenAPI 3.1.0](https://spec.openapis.org/oas/v3.1.0), [Spectral](https://stoplight.io/open-source/spectral), [Redocly](https://redocly.com/docs/cli/), [Stoplight Elements](https://stoplight.io/open-source/elements).
+
+## Acceptance
+
+- An OpenAPI 3.1 document exists in the repository and is linted in CI.
+- Reference docs are built in CI and published at the documented stable URL.
+- Every endpoint has a description, at least one request and response example, and `ProblemDetail` error shapes.
+- Deprecated endpoints emit `Deprecation` and `Sunset` headers and remain in the reference until sunset.
+- Reviewed in PR; updated whenever the public API or behavior changes.
+
+---
+
+<!-- Source: standards/documentation/onboarding-standard.md (v1.0.0) -->
+
+# Onboarding Standard
+
+**Status**: Active
+
+## Purpose
+
+Defines the contents and lifecycle rules for the onboarding document a new contributor reads on their first day. The goal is a self-serve path from "account provisioned" to "first merged change" with no tribal knowledge.
+
+## Scope
+
+Applies to every repository that accepts contributions from people not on its founding team. Does not apply to throwaway scratch repos or generated mirrors.
+
+## When to apply
+
+An onboarding document is **required** when any of the following are true:
+
+- The repository has more than one regular contributor.
+- The repository accepts contributions from another team or external party.
+- New hires are expected to make changes here within their first month.
+
+The document MUST live at one of:
+
+- `ONBOARDING.md` at the repository root, or
+- `docs/onboarding.md`.
+
+A short pointer in `README.md` (under "Contributing") MUST link to it.
+
+## Required sections
+
+The onboarding document MUST contain the following sections, in this order:
+
+1. **Welcome** — one paragraph that names the project, its mission, and who the reader will be working with.
+2. **Prerequisites** — accounts (SSO, source-control, cloud), access groups, hardware, operating-system support, required local software (with minimum versions). Each prerequisite names the team or owner who provisions it.
+3. **Day-1** — the first eight working hours. MUST include:
+   - environment setup (clone, install, configure),
+   - run the application locally,
+   - run the test suite,
+   - open and merge a first PR (a typo, comment, or doc fix is acceptable),
+   - a measurable Day-1 success criterion (e.g., "your first PR is merged to `dev`").
+4. **Week-1** — the first five working days. MUST include:
+   - architecture overview reading list,
+   - walkthrough of the deployment pipeline,
+   - on-call shadowing or its equivalent,
+   - first non-trivial issue chosen from a curated `good-first-issue` list,
+   - one scheduled 1:1 with the named onboarding buddy.
+5. **Month-1** — the first four working weeks. MUST include:
+   - own a feature end-to-end (spec, design, develop, validate, deploy),
+   - present a short demo at the team review,
+   - update this onboarding document with at least one improvement.
+6. **Communication norms** — channels for sync vs async work, response-time expectations, meeting cadences, and where decisions are recorded.
+7. **Escalation map** — who to ping for production issues, security concerns, access requests, and HR matters. Names a primary and a backup for each lane.
+
+## Required behaviors
+
+- **Owners per section**: each required section MUST name an owner — a person or a team alias — accountable for keeping that section accurate.
+- **Onboarding buddy**: every new hire MUST be assigned a named buddy on day zero. The buddy is named in the new hire's welcome message and in the team roster.
+- **Day-1 success criterion**: the criterion MUST be measurable (a merged PR, a green test run, a recorded demo). "Felt comfortable" is not a criterion.
+- **Provisioning checklist**: the Prerequisites section MUST include a checkbox list that hiring managers complete before day one. Access requests filed only on day one are forbidden.
+- **Refresh cadence**: the document MUST be reviewed quarterly. The reviewer is the section owner; the review records the date in the document footer.
+- **New-hire feedback loop**: each new hire MUST file at least one PR that fixes friction they encountered. The Month-1 section enforces this.
+- **No dead links**: a link checker MUST run against this file in CI; broken links block merge.
+- **Environment parity**: the Day-1 setup MUST match what CI uses. Any divergence is documented in-line with a link to a tracked issue.
+- **Privacy**: phone numbers, home addresses, and personal contact details MUST NOT appear. Use team aliases and on-call rotation tools.
+- **Correlation ID references**: any local-dev guidance that mentions request tracing MUST use `X-Request-ID` and `request_id`.
+
+## Anti-patterns
+
+- "Ask your buddy" used in place of documented prerequisites.
+- A Day-1 plan that depends on a meeting that only happens twice a quarter.
+- Access requests buried in chat threads, screenshots, or DMs.
+- Stale prerequisites that name retired tools, EOL OS versions, or deprecated VPN clients.
+- Setup steps that work only on the maintainer's laptop.
+- "Read the codebase for a week" as the Week-1 plan.
+- Tribal-knowledge escalation ("Slack #help and someone will know") with no named owner.
+- Duplicate copies of the document in chat pinned messages, internal wiki, and the repo, all with different content.
+- Removing the onboarding document instead of updating it.
+
+## References
+
+- [`./readme-standard.md`](./readme-standard.md) — README link to onboarding.
+- [`./agentic-coding-standard.md`](./agentic-coding-standard.md) — expectations agents apply to a new contributor's environment.
+- [`./documentation-standard.md`](./documentation-standard.md) — wider documentation rules.
+- [`./changelog-standard.md`](./changelog-standard.md) — change history a new contributor reads.
+- `../../patterns/` — reference patterns that inform the Week-1 architecture overview.
+- `../devops/git-workflow.md` — branch and PR workflow new contributors follow (when present).
+
+## Acceptance
+
+- File exists at `ONBOARDING.md` or `docs/onboarding.md` and is linked from `README.md`.
+- All required sections are present in order with named owners.
+- Day-1 plan has a measurable success criterion.
+- Prerequisites section includes a provisioning checklist completed before day one.
+- Reviewed in PR; updated whenever public process, tooling, or escalation paths change, and at least quarterly.
+
+---
+
+<!-- Compilation Metadata
+  domain: documentation-standards
+  domain_version: 1.4.1
+  compiled_at: 2026-06-01 20:55
+  source: evolv-coder-standards
+  files_compiled: 17/17
+-->

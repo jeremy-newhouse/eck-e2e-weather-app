@@ -2,9 +2,9 @@
 
 > Swift development standards
 
-**Compiled**: 2026-03-25 13:07
+**Compiled**: 2026-06-01 20:55
 **Source**: evolv-coder-standards
-**Domain Version**: 1.0.0
+**Domain Version**: 1.1.0
 
 ---
 
@@ -14,12 +14,10 @@
 
 ---
 
-<!-- Source: standards/backend/swift.md (v1.0.0) -->
+<!-- Source: standards/backend/swift.md (v1.1.0) -->
 
 # Swift Coding Standards
 
-**Version**: 1.0.0
-**Last Updated**: 2026-02-28
 **Status**: Active
 
 ## Overview
@@ -27,7 +25,7 @@ This document outlines Swift coding standards and best practices for SwiftUI app
 
 ## Style Guide Foundation
 - **Swift API Design Guidelines**: Foundation for all Swift code
-- **Swift 5.9+**: Use modern features (macros, parameter packs, `if`/`switch` expressions)
+- **Swift 6.0+**: Use modern features (macros, parameter packs, `if`/`switch` expressions, strict concurrency)
 - **Line length**: 120 characters maximum
 - **SwiftLint**: Enforced via `.swiftlint.yml` in every project
 
@@ -265,6 +263,53 @@ actor UserCache {
 }
 ```
 
+### Strict Concurrency (Swift 6)
+Swift 6 enforces data-race safety at compile time. New code MUST be written under the Swift 6 language mode; legacy targets MAY use `-strict-concurrency=complete` during migration.
+
+```swift
+// Sendable conformance — value types are auto-Sendable when all members are Sendable
+struct User: Sendable, Codable {
+    let id: UUID
+    let email: String
+    let createdAt: Date
+}
+
+// Reference types must be explicitly Sendable; final classes with let-only stored
+// properties qualify
+final class ImmutableConfig: Sendable {
+    let apiURL: URL
+    let timeout: TimeInterval
+
+    init(apiURL: URL, timeout: TimeInterval) {
+        self.apiURL = apiURL
+        self.timeout = timeout
+    }
+}
+
+// @MainActor isolates UI-touching types to the main actor; calls from other
+// isolation domains MUST `await`
+@MainActor
+final class DashboardViewModel {
+    private(set) var dashboard: Dashboard?
+
+    func load(userId: UUID) async throws {
+        dashboard = try await repository.loadDashboard(userId: userId)
+    }
+}
+
+// Cross-actor calls require await; same-actor calls do not
+func refresh(viewModel: DashboardViewModel, userId: UUID) async throws {
+    try await viewModel.load(userId: userId)  // hops to MainActor
+}
+```
+
+**Rules:**
+- Mark value types `Sendable` when they cross actor boundaries; the compiler will infer it for plain structs/enums whose members are all `Sendable`.
+- Use `@MainActor` on view models and any type that touches UIKit/AppKit/SwiftUI state.
+- Prefer `actor` to manual locking for shared mutable state.
+- Avoid `@unchecked Sendable` — it disables the compiler's safety check. Justify every use in a code comment.
+- During migration, raise warnings to errors module-by-module rather than disabling strict concurrency globally.
+
 ### Repository Implementation
 ```swift
 struct APIUserRepository: UserRepository {
@@ -434,8 +479,8 @@ swift build && swift test && swiftlint lint --strict
 
 <!-- Compilation Metadata
   domain: swift-standards
-  domain_version: 1.0.0
-  compiled_at: 2026-03-25 13:07
+  domain_version: 1.1.0
+  compiled_at: 2026-06-01 20:55
   source: evolv-coder-standards
   files_compiled: 1/1
 -->

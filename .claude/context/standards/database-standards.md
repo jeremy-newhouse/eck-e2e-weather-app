@@ -1,28 +1,301 @@
 # Database Standards
 
-> Database standards: PostgreSQL, naming, migrations, performance
+> Database standards: PostgreSQL, Neo4j, TimescaleDB, naming, schema design, migrations, multi-tenancy, performance
 
-**Compiled**: 2026-03-25 13:07
+**Compiled**: 2026-06-01 20:55
 **Source**: evolv-coder-standards
-**Domain Version**: 1.0.0
+**Domain Version**: 1.4.3
 
 ---
 
 ## Contents
 
+- [Readme](#readme)
 - [Naming Conventions](#naming-conventions)
 - [Schema Design](#schema-design)
 - [Migrations](#migrations)
 - [Performance](#performance)
+- [Multi Tenancy](#multi-tenancy)
+- [Neo4J](#neo4j)
+- [Timescaledb](#timescaledb)
 
 ---
 
-<!-- Source: standards/database/naming-conventions.md (v1.0.0) -->
+<!-- Source: standards/database/README.md (v1.4.3) -->
+
+# Database Standards
+
+**Status**: Active
+
+## Overview
+This directory contains all standards related to PostgreSQL database design, migrations, and query optimization.
+
+## Stack Components
+- **Database**: PostgreSQL 16+ (prod runs `timescale/timescaledb-ha:pg16`)
+- **Time-series / vector**: TimescaleDB + pgvector (prod image `timescale/timescaledb-ha:pg16`)
+- **Graph**: Neo4j 5.26 LTS (+ APOC)
+- **ORM**: SQLAlchemy 2.0+ (async)
+- **Migration Tool**: Alembic
+- **In-DB scheduler**: pg_cron (bundled in the prod image)
+- **Connection Pooling**: PgBouncer (production)
+- **Monitoring**: pg_stat_statements
+
+## Standards in This Section
+
+### 📄 [naming-conventions.md](./naming-conventions.md)
+PostgreSQL naming standards:
+- Table names (plural, snake_case)
+- Column names (snake_case)
+- Foreign keys (_id suffix)
+- Indexes and constraints
+- Functions and triggers
+
+### 📄 [migrations.md](./migrations.md)
+Database migration patterns with Alembic:
+- Migration file organization
+- Auto-generation vs manual migrations
+- Data migrations
+- Rollback strategies
+- Production deployment patterns
+
+### 📄 [schema-design.md](./schema-design.md)
+PostgreSQL schema design best practices:
+- Table design principles
+- Relationship patterns (one-to-many, many-to-many)
+- JSONB usage patterns
+- Indexing strategies
+- Soft delete and audit patterns
+
+### 📄 [performance.md](./performance.md)
+Database performance optimization:
+- Query analysis with EXPLAIN ANALYZE
+- Indexing strategies (B-tree, GIN, partial)
+- N+1 query prevention
+- Connection pooling configuration
+- Table partitioning
+- Materialized views and caching
+
+### 📄 [multi-tenancy.md](./multi-tenancy.md)
+Tenant isolation patterns:
+- Strategy selection (row-level default, schema-per-tenant, database-per-tenant)
+- PostgreSQL Row-Level Security policies
+- SQLAlchemy session-level tenant scoping
+- Cross-tenant access semantics (403 vs 404)
+- Migration and testing rules
+
+### 📄 [timescaledb.md](./timescaledb.md)
+TimescaleDB time-series standard:
+- Hypertables and chunk-interval sizing
+- Continuous aggregates and refresh policies
+- Compression and retention policies
+- pg_cron vs Celery-beat scheduling
+
+### 📄 [neo4j.md](./neo4j.md)
+Neo4j graph database standard:
+- Async driver and connection lifecycle
+- Parameterized Cypher (injection safety)
+- Versioned graph migrations and APOC scope
+- Testcontainers integration testing
+
+## Quick Reference
+
+### Table Naming
+```sql
+-- Tables: plural, snake_case
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE user_roles (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id),
+    role_id INTEGER REFERENCES roles(id)
+);
+```
+
+### Column Naming
+```sql
+-- Columns: snake_case
+-- Timestamps: _at suffix
+-- Booleans: is_ or has_ prefix
+-- Foreign keys: _id suffix
+
+CREATE TABLE orders (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id),
+    total_amount DECIMAL(10, 2),
+    is_completed BOOLEAN DEFAULT FALSE,
+    has_shipped BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP NOT NULL,
+    completed_at TIMESTAMP
+);
+```
+
+### Index Naming
+```sql
+-- Pattern: idx_table_column(s)
+CREATE INDEX idx_users_email ON users(email);
+CREATE INDEX idx_orders_user_id ON orders(user_id);
+CREATE INDEX idx_orders_created_at ON orders(created_at);
+
+-- Unique constraints: unq_table_column(s)
+ALTER TABLE users ADD CONSTRAINT unq_users_email UNIQUE(email);
+```
+
+## Migration Patterns
+
+### Creating Migration
+```bash
+# Generate migration
+alembic revision --autogenerate -m "add users table"
+
+# Manual migration
+alembic revision -m "add custom index"
+
+# Apply migrations
+alembic upgrade head
+
+# Rollback
+alembic downgrade -1
+```
+
+### Migration Template
+```python
+"""add users table
+
+Revision ID: ${revision_id}
+Revises: ${revises}
+Create Date: ${create_date}
+
+"""
+from alembic import op
+import sqlalchemy as sa
+
+def upgrade() -> None:
+    op.create_table(
+        'users',
+        sa.Column('id', sa.Integer(), nullable=False),
+        sa.Column('email', sa.String(255), nullable=False),
+        sa.Column('created_at', sa.DateTime(), nullable=False),
+        sa.Column('updated_at', sa.DateTime(), nullable=False),
+        sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index('idx_users_email', 'users', ['email'])
+
+def downgrade() -> None:
+    op.drop_index('idx_users_email', 'users')
+    op.drop_table('users')
+```
+
+## SQLAlchemy Models
+
+### Base Model Pattern
+
+For the canonical Base/TimestampMixin pattern, see [Schema Design](schema-design.md).
+
+## Performance Guidelines
+
+### Index Strategy
+```sql
+-- Index foreign keys
+CREATE INDEX idx_orders_user_id ON orders(user_id);
+
+-- Index columns used in WHERE clauses
+CREATE INDEX idx_users_email ON users(email);
+
+-- Composite indexes for multiple columns
+CREATE INDEX idx_orders_user_id_created_at ON orders(user_id, created_at);
+
+-- Partial indexes for filtered queries
+CREATE INDEX idx_orders_pending ON orders(status) WHERE status = 'pending';
+```
+
+### Query Optimization
+```python
+# Avoid N+1 queries - use eager loading
+from sqlalchemy.orm import joinedload
+
+users = await db.execute(
+    select(User).options(joinedload(User.orders))
+)
+
+# Use bulk operations
+await db.execute(
+    insert(User),
+    [
+        {"email": "user1@example.com"},
+        {"email": "user2@example.com"},
+    ]
+)
+```
+
+## Common Patterns
+
+### Soft Deletes
+```python
+class SoftDeleteMixin:
+    deleted_at = Column(DateTime, nullable=True)
+    is_deleted = Column(Boolean, default=False, nullable=False)
+
+    @property
+    def is_active(self):
+        return not self.is_deleted
+```
+
+### Audit Trail
+```python
+class AuditMixin:
+    created_by = Column(Integer, ForeignKey('users.id'))
+    updated_by = Column(Integer, ForeignKey('users.id'))
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+```
+
+### JSON Fields
+```python
+from sqlalchemy.dialects.postgresql import JSONB, UUID as PG_UUID
+
+class Event(Base):
+    __tablename__ = 'events'
+
+    id = Column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    payload = Column(JSONB, nullable=False)
+    metadata = Column(JSONB, default={})
+```
+
+## Best Practices
+
+### ✅ DO
+- Use snake_case for all identifiers
+- Add indexes on foreign keys
+- Use appropriate data types
+- Include created_at/updated_at timestamps
+- Write reversible migrations
+- Test migrations on staging first
+- Use connection pooling
+
+### ❌ DON'T
+- Use reserved keywords as names
+- Create tables without primary keys
+- Store large blobs in main tables
+- Use SELECT * in production
+- Skip foreign key constraints
+- Ignore query performance
+- Mix naming conventions
+
+---
+
+*For ORM implementation, see [Backend/tech-stack.md](../backend/tech-stack.md)*
+
+---
+
+<!-- Source: standards/database/naming-conventions.md (v1.1.0) -->
 
 # PostgreSQL Naming Conventions
 
-**Version**: 1.0.0
-**Last Updated**: 2026-01-04
 **Status**: Active
 
 ## Overview
@@ -86,17 +359,17 @@ CREATE TABLE customer-address (...)  -- Hyphens
 ```
 
 ### Junction/Join Tables
-For many-to-many relationships, combine both table names (both plural):
+For many-to-many relationships, use singular-plural (`entity_related_entities`):
 
 ```sql
--- Pattern: tables1_tables2
-CREATE TABLE users_roles (
+-- Pattern: singular_plural
+CREATE TABLE user_roles (
     user_id INTEGER REFERENCES users(id),
     role_id INTEGER REFERENCES roles(id),
     PRIMARY KEY (user_id, role_id)
 );
 
-CREATE TABLE products_categories (
+CREATE TABLE product_categories (
     product_id INTEGER REFERENCES products(id),
     category_id INTEGER REFERENCES categories(id),
     PRIMARY KEY (product_id, category_id)
@@ -263,8 +536,8 @@ ALTER TABLE users
 ADD CONSTRAINT uq_users_email UNIQUE (email);
 
 -- Multiple columns
-ALTER TABLE users_roles
-ADD CONSTRAINT uq_users_roles_user_id_role_id
+ALTER TABLE user_roles
+ADD CONSTRAINT uq_user_roles_user_id_role_id
 UNIQUE (user_id, role_id);
 
 -- More readable for multiple columns
@@ -798,12 +1071,10 @@ EXECUTE FUNCTION update_updated_at_column();
 
 ---
 
-<!-- Source: standards/database/schema-design.md (v1.0.0) -->
+<!-- Source: standards/database/schema-design.md (v1.2.0) -->
 
 # Database Schema Design Standard
 
-**Version**: 1.0.0
-**Last Updated**: 2025-12-30
 **Status**: Active
 
 ## Purpose
@@ -839,7 +1110,7 @@ users (id, email, name, primary_address_city, primary_address_state)
 
 | Data | Preferred Type | Avoid |
 |------|---------------|-------|
-| Primary keys | `SERIAL` / `BIGSERIAL` | `UUID` (unless distributed) |
+| Primary keys | `UUID` (v4, `gen_random_uuid()`) | `SERIAL` for user-facing tables |
 | UUIDs | `UUID` native type | `VARCHAR(36)` |
 | Money | `NUMERIC(19,4)` | `FLOAT`, `REAL` |
 | Timestamps | `TIMESTAMPTZ` | `TIMESTAMP` (without TZ) |
@@ -885,8 +1156,11 @@ class TimestampMixin:
 ```python
 """Base model with common functionality."""
 
-from sqlalchemy import Column, Integer, DateTime, func
+from sqlalchemy import Column, DateTime, func
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import DeclarativeBase, declared_attr
+
+import uuid
 
 
 class Base(DeclarativeBase):
@@ -906,7 +1180,7 @@ class BaseModel(Base):
 
     __abstract__ = True
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     created_at = Column(
         DateTime(timezone=True),
         server_default=func.now(),
@@ -1496,57 +1770,6 @@ erDiagram
     USERS ||--o{ PROJECT_MEMBERS : "participates"
     PROJECTS ||--o{ PROJECT_MEMBERS : "has"
     CATEGORIES ||--o{ CATEGORIES : "parent of"
-
-    ORGANIZATIONS {
-        int id PK
-        string name
-        timestamp created_at
-        timestamp updated_at
-    }
-
-    USERS {
-        int id PK
-        string email UK
-        string hashed_password
-        string full_name
-        boolean is_active
-        int organization_id FK
-        timestamp created_at
-        timestamp updated_at
-    }
-
-    ROLES {
-        int id PK
-        string name UK
-    }
-
-    POSTS {
-        int id PK
-        string title
-        text content
-        int author_id FK
-        timestamp created_at
-        timestamp updated_at
-    }
-
-    PROJECTS {
-        int id PK
-        string name
-        timestamp created_at
-    }
-
-    PROJECT_MEMBERS {
-        int user_id PK,FK
-        int project_id PK,FK
-        string role
-        timestamp joined_at
-    }
-
-    CATEGORIES {
-        int id PK
-        string name
-        int parent_id FK
-    }
 ```
 
 ---
@@ -1622,12 +1845,10 @@ For implementation approaches and code examples:
 
 ---
 
-<!-- Source: standards/database/migrations.md (v1.0.0) -->
+<!-- Source: standards/database/migrations.md (v1.0.3) -->
 
 # Database Migrations Standard
 
-**Version**: 1.0.0
-**Last Updated**: 2025-12-30
 **Status**: Active
 
 ## Purpose
@@ -1685,10 +1906,10 @@ version_path_separator = os
 sqlalchemy.url = postgresql+asyncpg://user:password@localhost/dbname
 
 [post_write_hooks]
-hooks = black
-black.type = console_scripts
-black.entrypoint = black
-black.options = -q
+hooks = ruff_format
+ruff_format.type = exec
+ruff_format.executable = ruff
+ruff_format.options = format REVISION_SCRIPT_FILENAME
 
 [loggers]
 keys = root,sqlalchemy,alembic
@@ -2300,8 +2521,6 @@ def upgrade() -> None:
 
 # Database Performance Standards
 
-**Version**: 1.0.0
-**Last Updated**: 2025-12-30
 **Status**: Active
 
 ## Overview
@@ -2963,10 +3182,1053 @@ pg_stat_user_tables:
 
 ---
 
+<!-- Source: standards/database/multi-tenancy.md (v1.0.1) -->
+
+# Multi-Tenancy Isolation Standard
+
+**Status**: Active
+
+## Overview
+
+Multi-tenant applications serve multiple customers (tenants) from a single
+deployment. The most common — and most dangerous — failure mode is a
+single missing `WHERE tenant_id = :tid` clause that leaks data between
+tenants. This standard mandates the isolation strategy and the layered
+defenses that make such leaks structurally impossible rather than relying
+on developer discipline.
+
+This standard applies to every backend application that holds data for
+more than one customer. If the system serves a single organization with
+no tenant boundary, this standard does not apply.
+
+## Strategy Selection
+
+Three canonical strategies exist. Pick exactly one as the default and
+document deviations explicitly.
+
+| Strategy | Isolation | Ops complexity | Query overhead | Blast radius of bug | When to choose |
+|---|---|---|---|---|---|
+| **Row-level** (single shared DB, `tenant_id` column on every row) | Logical | Low | Low (indexed predicate) | One bad query → all tenants | **Default.** SaaS with many small/medium tenants and no regulatory hard-isolation requirement. |
+| **Schema-per-tenant** (one DB, one PostgreSQL schema per tenant) | Stronger logical | Medium (per-tenant migrations) | Low | One bad `search_path` → one tenant | Tenants with custom data models, mid-size enterprise SaaS. |
+| **Database-per-tenant** (one PostgreSQL database per tenant) | Physical | High (N migrations, N backups, N pools) | None | Catastrophic failure contained to one tenant | Regulated data (HIPAA/PCI), large enterprise customers, contractual hard-isolation. |
+
+**Default mandate:** row-level isolation. The remainder of this standard
+specifies the row-level pattern in normative detail. Schema- and
+database-per-tenant deployments inherit the same defense-in-depth
+principles and are documented as escape hatches in §Escape Hatches below.
+
+## Row-Level Isolation — Required Pattern
+
+The row-level pattern uses three layers, each of which independently
+enforces tenant scope. A bug in one layer must not allow cross-tenant
+reads or writes.
+
+### Layer 1 — Schema
+
+Every tenant-scoped table MUST have a non-null `tenant_id UUID` foreign
+key to the `tenants` table, indexed on `(tenant_id, ...)` for the most
+common query patterns.
+
+```python
+from sqlalchemy import ForeignKey, Index
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
+from sqlalchemy.orm import Mapped, mapped_column
+
+from app.db.base_class import Base
+
+
+class Order(Base):
+    __tablename__ = "orders"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True), primary_key=True, default=uuid4
+    )
+
+    # Tenant FK — required, non-null, indexed.
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("tenants.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+
+    # ... other columns ...
+
+    __table_args__ = (
+        # Composite index keyed on tenant_id first
+        Index("ix_orders_tenant_status", "tenant_id", "status"),
+    )
+```
+
+Rules:
+
+1. `tenant_id` is `nullable=False`. Never store global-tenant rows in
+   tenant-scoped tables.
+2. `ondelete="RESTRICT"` — deleting a tenant must require explicit
+   account-closure tooling, never cascade-delete a live tenant.
+3. The first column of any composite index on a tenant-scoped table is
+   `tenant_id`. The query planner needs the predicate available cheaply.
+4. The `tenants` table itself is NOT tenant-scoped (it is the registry).
+   Treat it as global; access is restricted to admin / control-plane code.
+
+### Layer 2 — PostgreSQL Row-Level Security
+
+Every tenant-scoped table MUST enable RLS and define policies for
+`SELECT`, `INSERT`, `UPDATE`, and `DELETE` keyed on a session-local
+`app.tenant_id` setting.
+
+```sql
+-- alembic migration
+ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
+ALTER TABLE orders FORCE ROW LEVEL SECURITY;  -- applies to table owner too
+
+CREATE POLICY orders_tenant_isolation ON orders
+  USING (tenant_id = current_setting('app.tenant_id')::uuid)
+  WITH CHECK (tenant_id = current_setting('app.tenant_id')::uuid);
+```
+
+Rules:
+
+1. `FORCE ROW LEVEL SECURITY` — without this, the table owner (often the
+   migration user) bypasses RLS, defeating the layer.
+2. Use `current_setting('app.tenant_id')::uuid` — the setting is set
+   per-transaction by Layer 3. Do NOT rely on `current_user`; the
+   application connects as a single role.
+3. Both `USING` (read filter) and `WITH CHECK` (write filter) clauses
+   are required so an `UPDATE` cannot move a row into another tenant.
+4. Privileged maintenance code (analytics jobs, support tooling) that
+   legitimately spans tenants connects with a separate role that has
+   `BYPASSRLS` and is audited. Application code MUST NOT use that role.
+
+### Layer 3 — Per-Request Tenant Scoping
+
+A FastAPI middleware reads the active tenant from the JWT, anchors it to
+`request.state.tenant_id` (parallel to `request.state.request_id` from
+[request-middleware.md](../backend/request-middleware.md)), and runs
+`SET LOCAL app.tenant_id` on the SQLAlchemy session at the start of each
+request.
+
+```python
+# app/middleware/tenancy.py
+from typing import Awaitable, Callable
+
+from fastapi import Request, Response
+from sqlalchemy import text
+from starlette.middleware.base import BaseHTTPMiddleware
+
+from app.core.auth import extract_tenant_id_from_token
+from app.core.exceptions import UnauthorizedException
+from app.db.session import async_session_factory
+
+
+class TenancyMiddleware(BaseHTTPMiddleware):
+    """Set app.tenant_id on the DB session for the lifetime of the request."""
+
+    async def dispatch(
+        self,
+        request: Request,
+        call_next: Callable[[Request], Awaitable[Response]],
+    ) -> Response:
+        # Public routes do not require a tenant scope.
+        if request.url.path.startswith(("/api/public", "/healthz", "/readyz")):
+            return await call_next(request)
+
+        tenant_id = extract_tenant_id_from_token(request)
+        if tenant_id is None:
+            raise UnauthorizedException("Missing tenant claim")
+
+        request.state.tenant_id = tenant_id
+
+        async with async_session_factory() as session:
+            # SET LOCAL is scoped to the current transaction; bind the
+            # session to the request so downstream code reuses it.
+            await session.execute(
+                text("SET LOCAL app.tenant_id = :tid"),
+                {"tid": str(tenant_id)},
+            )
+            request.state.db = session
+            return await call_next(request)
+```
+
+Rules:
+
+1. The middleware runs after authentication. The tenant claim MUST come
+   from a verified JWT, never from a request header or query parameter
+   that the client controls.
+2. `SET LOCAL` (not `SET`) — the value resets at end of transaction, so
+   a connection returned to the pool cannot leak tenant scope to the
+   next request.
+3. `request.state.tenant_id` is the canonical name for downstream
+   handlers and observability. Log it on every request alongside
+   `request_id` (see [observability.md](../architecture/observability.md)).
+4. The `CurrentUser` returned by `get_current_user` MUST also expose
+   `tenant_id` (see [auth-guard.md](../backend/auth-guard.md)) so
+   handlers and dependencies can use it without re-decoding the JWT.
+
+### Layer 4 — Application-Layer Defense in Depth
+
+Even with RLS, application queries SHOULD include an explicit
+`WHERE tenant_id = :tid` clause. RLS is the safety net; the explicit
+filter is the visible contract.
+
+```python
+# Explicit filter — preferred shape
+async def list_orders_for_user(
+    db: AsyncSession,
+    *,
+    tenant_id: uuid.UUID,
+    user_id: uuid.UUID,
+) -> list[Order]:
+    stmt = (
+        select(Order)
+        .where(Order.tenant_id == tenant_id)
+        .where(Order.created_by_id == user_id)
+    )
+    return list((await db.scalars(stmt)).all())
+```
+
+For codebases with many query sites, a SQLAlchemy ORM event hook MAY
+inject the predicate automatically. If used, the hook MUST be tested
+against every tenant-scoped table; opaque enforcement is acceptable only
+when paired with explicit tests that prove it fires.
+
+## Cross-Tenant Access Attempts
+
+When a request authenticated as tenant A attempts to read or mutate a
+resource belonging to tenant B (e.g., by guessing a UUID), the response
+MUST be `403 Forbidden` with the RFC 9457 problem type
+`/problems/forbidden`. This is the same response as a within-tenant
+authorization failure — do NOT return `404 Not Found` to obscure
+existence (existence is already obscured by the unguessable UUID; see
+[F-024 PK strategy](../database/schema-design.md)).
+
+```python
+from app.core.exceptions import ForbiddenException
+
+async def get_order(order_id: uuid.UUID, current_user: CurrentUser) -> Order:
+    order = await order_crud.get(db, id=order_id)
+    if order is None or order.tenant_id != current_user.tenant_id:
+        raise ForbiddenException("Order not found in this tenant")
+    return order
+```
+
+The `ForbiddenException` shape is defined in
+[error-handling.md](../backend/error-handling.md). Both the not-found
+and the cross-tenant case map to 403 because exposing the difference
+is itself a side-channel leak.
+
+## Migrations
+
+Alembic migrations that create a tenant-scoped table MUST include the
+RLS policy in the same revision. Splitting them across revisions opens
+a window during which the table exists without isolation.
+
+```python
+# alembic/versions/2026_05_19_add_orders.py
+def upgrade() -> None:
+    op.create_table(
+        "orders",
+        sa.Column("id", PG_UUID(as_uuid=True), primary_key=True),
+        sa.Column("tenant_id", PG_UUID(as_uuid=True), nullable=False),
+        sa.ForeignKeyConstraint(
+            ["tenant_id"], ["tenants.id"], ondelete="RESTRICT"
+        ),
+        # ... other columns ...
+    )
+    op.create_index("ix_orders_tenant_id", "orders", ["tenant_id"])
+
+    op.execute("ALTER TABLE orders ENABLE ROW LEVEL SECURITY")
+    op.execute("ALTER TABLE orders FORCE ROW LEVEL SECURITY")
+    op.execute(
+        "CREATE POLICY orders_tenant_isolation ON orders "
+        "USING (tenant_id = current_setting('app.tenant_id')::uuid) "
+        "WITH CHECK (tenant_id = current_setting('app.tenant_id')::uuid)"
+    )
+```
+
+A migration review check (CI guardrail) MUST refuse a migration that
+creates a tenant-scoped table without the matching RLS policy. The
+review can grep the diff for `nullable=False` on a `tenant_id` column
+and require a `CREATE POLICY` in the same revision.
+
+## Testing
+
+Every API integration test MUST run with at least two tenants and assert
+no cross-bleed. The minimum test for any new tenant-scoped endpoint:
+
+```python
+# tests/integration/test_orders.py
+async def test_order_endpoint_isolates_tenants(
+    client_factory,
+    seeded_orders_two_tenants,
+) -> None:
+    """A GET /orders as tenant A returns ONLY tenant A's orders."""
+    tenant_a, tenant_b, orders_a, orders_b = seeded_orders_two_tenants
+
+    async with client_factory(tenant=tenant_a) as client:
+        response = await client.get("/orders")
+        assert response.status_code == 200
+        ids = {o["id"] for o in response.json()["items"]}
+        assert ids == {str(o.id) for o in orders_a}
+        assert not any(str(o.id) in ids for o in orders_b)
+
+
+async def test_order_get_by_id_rejects_cross_tenant(
+    client_factory,
+    seeded_orders_two_tenants,
+) -> None:
+    """Tenant A asking for tenant B's order ID gets 403, not 200 or 404."""
+    tenant_a, _, _, orders_b = seeded_orders_two_tenants
+    cross_id = orders_b[0].id
+
+    async with client_factory(tenant=tenant_a) as client:
+        response = await client.get(f"/orders/{cross_id}")
+        assert response.status_code == 403
+        assert response.json()["type"] == "/problems/forbidden"
+```
+
+The `client_factory(tenant=...)` fixture is responsible for issuing a
+JWT with the requested tenant claim. See
+[testing.md](../backend/testing.md) for the test fixture pattern.
+
+## Observability
+
+Every log line and trace span emitted during a request MUST carry
+`tenant_id` as a structured field, alongside `request_id` from
+[request-middleware.md](../backend/request-middleware.md). This makes
+cross-tenant data-leak postmortems possible (a single grep on
+`tenant_id=<victim>` shows every operation that touched the victim
+tenant during the incident window).
+
+Do NOT log the full tenant name or any tenant-identifying string —
+`tenant_id` is the canonical, structured key.
+
+## Escape Hatches
+
+### Schema-per-tenant
+
+Use a per-request `SET search_path = tenant_<id>, public` in place of
+`SET LOCAL app.tenant_id`. Migrations apply to a template schema and
+are replayed per-tenant. Cross-tenant queries (analytics) require the
+control-plane role.
+
+### Database-per-tenant
+
+The application maintains a registry of per-tenant connection strings;
+the middleware swaps the SQLAlchemy engine based on the tenant claim.
+RLS becomes redundant within each database. This is the costliest
+strategy operationally; choose it only when contracts or regulation
+require it.
+
+### Hybrid
+
+A single product MAY use row-level for the long tail of small tenants
+and database-per-tenant for a small set of large tenants under
+hard-isolation contracts. The strategy choice MUST be a property of the
+tenant record (`tenants.isolation_strategy`), and the middleware
+selects accordingly. Do not let the choice become implicit.
+
+## Anti-Patterns
+
+```python
+# BAD — relies on the developer remembering the predicate every time
+async def list_orders(db: AsyncSession) -> list[Order]:
+    return list((await db.scalars(select(Order))).all())
+```
+
+Without the explicit `WHERE tenant_id = :tid` AND without RLS engaged,
+this returns every tenant's orders. Even with RLS, the missing filter
+is a code-review smell — the contract should be visible at the call
+site.
+
+```python
+# BAD — tenant_id from a request header the client controls
+tenant_id = request.headers.get("X-Tenant-ID")
+```
+
+Tenant scope MUST come from a verified JWT claim, never from a
+client-controlled header or query parameter. Anything else is a CSRF
+vector for cross-tenant access.
+
+```python
+# BAD — cross-tenant 404 instead of 403
+order = await order_crud.get(db, id=order_id)
+if order is None:
+    raise NotFoundException("Order not found")
+if order.tenant_id != current_user.tenant_id:
+    raise NotFoundException("Order not found")  # WRONG
+```
+
+Both branches return the same response shape (existence is hidden by
+unguessable UUIDs), but the contract is `403 Forbidden` —
+[error-contract.md](../architecture/error-contract.md) reserves 404
+for "not authoritative for this resource," and 403 for "not authorized
+for this resource."
+
+## Rules
+
+1. **Pick one default strategy.** Row-level is the default unless
+   regulation, contract, or scale forces an escape hatch.
+2. **Tenant-scoped tables have a non-null indexed `tenant_id`.**
+3. **PostgreSQL RLS is enabled with FORCE on every tenant-scoped table.**
+4. **`SET LOCAL app.tenant_id` per request** in middleware; never `SET`.
+5. **`CurrentUser.tenant_id` is non-null** for any authenticated route;
+   public routes bypass tenancy explicitly.
+6. **Every query is reviewable**: prefer explicit `WHERE tenant_id`
+   over invisible event hooks. If hooks are used, prove them with tests.
+7. **Cross-tenant access → `ForbiddenException` (403, /problems/forbidden).**
+   Not 404.
+8. **Migrations colocate table creation and RLS policy.** No window
+   without isolation.
+9. **Every integration test runs at least two tenants.**
+10. **`tenant_id` is logged with `request_id` on every request.**
+
+---
+
+## Related Standards
+
+- [Database Schema Design](./schema-design.md) — UUID primary keys,
+  tenant_id column shape.
+- [Backend Auth Guard](../backend/auth-guard.md) — `CurrentUser.tenant_id`.
+- [Backend Error Handling](../backend/error-handling.md) —
+  `ForbiddenException` shape.
+- [Architecture Authentication](../architecture/authentication.md) —
+  multi-tenant authentication (org membership). This standard governs
+  data isolation; that standard governs identity resolution.
+- [Architecture Security](../architecture/security.md) — adjacent
+  controls.
+- [Request Middleware](../backend/request-middleware.md) —
+  `request.state.request_id` precedent for `request.state.tenant_id`.
+- [Observability](../architecture/observability.md) — structured logging.
+
+---
+
+_Multi-tenancy bugs are silent and catastrophic. Defense in depth
+across schema, RLS, request scope, and explicit query predicates is
+the difference between a near-miss and a breach._
+
+---
+
+<!-- Source: standards/database/neo4j.md (v1.0.1) -->
+
+# Neo4j Standard
+
+**Status**: Active
+
+## Purpose
+
+Rules for using Neo4j as the graph database in a polyglot stack: how the
+async driver is wired and pooled, why all Cypher MUST be parameterized
+(Cypher injection is the graph analog of SQL injection), how schema and
+seed data are migrated, which APOC surface is sanctioned, and how queries
+are tested against a real engine. Postgres remains the relational system
+of record; Neo4j is for relationship- and traversal-heavy data only.
+
+## Scope
+
+- Driver version, connection lifecycle, and pooling
+- Parameterized Cypher and dynamic-label allow-lists (injection safety)
+- Managed transactions and retry semantics
+- Constraints, indexes, and versioned graph migrations
+- APOC scope (APOC Core only) and forbidden dynamic-Cypher procedures
+- Integration testing against a real Neo4j engine via testcontainers
+- When to reach for the graph, and Neo4j ops/security baseline
+
+---
+
+## Driver & connection lifecycle
+
+- Use the official Python **`neo4j` driver `>=6`**. The driver is versioned
+  independently of the server: the 6.x driver supports Neo4j **5.26 LTS** and
+  the current **CalVer** server lines (**2025.x / 2026.x**). Neo4j databases
+  moved to calendar versioning in 2025 — **5.26 is the last semver LTS, and
+  there is no Neo4j "6" server**; pin the engine to **5.26 LTS** (or a current
+  2025.x / 2026.x release), never a nonexistent "6". Use the **async** API —
+  the org is async end to end (SQLAlchemy 2.0 async / asyncpg / FastAPI).
+- **One `Driver` instance per process.** The driver owns a connection
+  pool; construct it once at application startup and `await driver.close()`
+  at shutdown. NEVER create a driver per request — that defeats pooling and
+  exhausts connections.
+- Open a **session per unit of work** and let it close promptly. Sessions
+  are cheap and NOT thread/task-safe; do not share one across concurrent
+  tasks.
+- Driver URI, scheme, and credentials come from config / the secrets
+  manager — NEVER hardcoded. See [`../architecture/security.md`](../architecture/security.md).
+
+```python
+# startup: one driver for the whole process
+from neo4j import AsyncGraphDatabase
+
+driver = AsyncGraphDatabase.driver(
+    settings.NEO4J_URI,                      # neo4j+s://… from config
+    auth=(settings.NEO4J_USER, settings.NEO4J_PASSWORD),
+    max_connection_pool_size=settings.NEO4J_POOL_SIZE,
+    connection_timeout=15.0,                 # seconds, fail fast
+    connection_acquisition_timeout=30.0,
+)
+
+# per unit of work
+async with driver.session(database="neo4j") as session:
+    ...
+
+# shutdown
+await driver.close()
+```
+
+- **Scheme selects routing and encryption:**
+
+| Scheme | Use when |
+|---|---|
+| `neo4j://` / `neo4j+s://` | cluster — routes reads/writes across members; `+s` = TLS |
+| `bolt://` / `bolt+s://` | a single instance only (no routing); `+s` = TLS |
+
+  Use a `neo4j://` scheme for clusters so routing works; reserve `bolt://`
+  for a single instance. Prefer the `+s` (TLS) variant; configure
+  encryption explicitly rather than relying on a default.
+
+## Parameterized Cypher (injection safety)
+
+This is the headline security rule for this standard.
+
+- **NEVER build Cypher by string-interpolating user input.** Concatenating
+  or f-stringing untrusted values into a query string is **Cypher
+  injection** — the graph analog of SQL injection.
+- **ALWAYS pass values as query parameters** (`$param`) via the driver's
+  parameter map. Parameters are never parsed as Cypher, so they cannot
+  alter query structure — and they let the server cache the query plan.
+
+```python
+# BAD — Cypher injection: user input becomes query text
+email = request_email  # e.g.  "x'}) DETACH DELETE n //"
+await session.run(
+    f"MATCH (u:User {{email: '{email}'}}) RETURN u"   # NEVER do this
+)
+
+# GOOD — value passed as a parameter, never parsed as Cypher
+await session.run(
+    "MATCH (u:User {email: $email}) RETURN u",
+    email=request_email,
+)
+```
+
+- **Labels and relationship types CANNOT be parameterized in Cypher.** When
+  they must be dynamic, validate the value against a server-side
+  **allow-list** of known labels/types and only then splice the *validated*
+  constant into the query — NEVER interpolate the raw user value.
+
+```python
+ALLOWED_LABELS = {"User", "Account", "Document"}   # server-side constant
+
+def node_count_query(label: str) -> str:
+    if label not in ALLOWED_LABELS:
+        raise ValueError(f"unknown label: {label!r}")
+    return f"MATCH (n:{label}) RETURN count(n) AS n"   # label now trusted
+```
+
+## Managed transactions & retry
+
+- Prefer **managed transactions**: `session.execute_read(...)` /
+  `session.execute_write(...)` with a transaction function. They
+  **auto-retry on transient errors** (e.g. a cluster leader switch,
+  deadlock) — `session.run(...)` / explicit `begin_transaction()` do not.
+- A transaction function MUST be **idempotent and side-effect-free outside
+  the transaction**: it can be invoked more than once by the retry logic,
+  so do not send emails, enqueue jobs, or mutate external state inside it.
+- **Do not run writes in a read transaction** (`execute_read`). Route writes
+  through `execute_write` so they reach the cluster leader.
+- Keep transactions **short** and **consume results inside the transaction
+  scope** — materialize the rows you need before the function returns; a
+  result cursor is not valid once its transaction closes.
+
+```python
+async def get_friends(tx, user_id: str) -> list[str]:
+    result = await tx.run(
+        "MATCH (u:User {id: $id})-[:FRIEND]->(f:User) RETURN f.id AS id",
+        id=user_id,
+    )
+    return [r["id"] async for r in result]          # consumed inside tx
+
+async with driver.session(database="neo4j") as session:
+    friends = await session.execute_read(get_friends, user_id)
+```
+
+## Constraints & indexes
+
+- Declare **uniqueness constraints** and **node-key constraints** for
+  identifying properties, and create **indexes** on properties used for
+  lookups or `MATCH` anchors. Constraints both enforce integrity and back a
+  supporting index.
+- Constraints and indexes are **schema** — create them in a **migration**
+  (next section), NEVER ad hoc at runtime from application code.
+
+```cypher
+// in a reviewed migration, not at app startup
+CREATE CONSTRAINT user_id_unique IF NOT EXISTS
+  FOR (u:User) REQUIRE u.id IS UNIQUE;
+
+CREATE INDEX user_email_idx IF NOT EXISTS
+  FOR (u:User) ON (u.email);
+```
+
+- Use `IF NOT EXISTS` so a migration is safe to re-apply. Naming follows
+  [`./naming-conventions.md`](./naming-conventions.md).
+
+## Schema & graph migrations
+
+- The graph schema — constraints, indexes, seed/reference data, and
+  structural reshapes — MUST be **versioned, reviewed, and applied by a
+  migration runner** (e.g. a Cypher migration tool such as
+  `neo4j-migrations`). It MUST NOT be auto-mutated on application startup in
+  production.
+- This mirrors the relational philosophy in [`./migrations.md`](./migrations.md):
+  migrations are **versioned**, **reviewed**, **reversible where possible**,
+  and **tested on staging before production**. Data reshapes that drop data
+  are irreversible — flag them explicitly, as relational migrations do.
+- Migrations run as a **deploy step**, separate from the app process, with
+  the same gating as relational migrations. See
+  [`./schema-design.md`](./schema-design.md) for modeling the schema a
+  migration creates.
+- Treat structural changes that affect lookup paths as a
+  [`./performance.md`](./performance.md) concern — add the supporting index
+  in the same migration that introduces the access pattern.
+
+## APOC scope
+
+- Use **APOC Core only** (bundled with the server); pin the APOC version to
+  the **server's release line** — APOC Core tracks the database version
+  (`5.26.x` for 5.26 LTS, or the matching 2025.x / 2026.x build). Do not
+  install APOC Extended / Full in production.
+- **NEVER pass untrusted input into dynamic-Cypher procedures** —
+  `apoc.cypher.run*`, `apoc.cypher.doIt`, and `apoc.cypher.runMany` execute
+  a Cypher string and re-open exactly the injection hole that parameters
+  close. If dynamic Cypher is unavoidable, the query body MUST be a trusted
+  server-side constant and all runtime values MUST be passed in the
+  procedure's parameter map.
+- **Document the sanctioned APOC procedures** for the project (e.g.
+  read-only graph utilities, path expansion, collection/map helpers).
+  Procedures that execute arbitrary code or reach the filesystem/network
+  with user-controlled arguments (`apoc.load.*`, `apoc.export.*`,
+  `apoc.periodic.submit` with dynamic Cypher) are **out of scope** unless an
+  ADR records the need and the inputs are fully trusted.
+
+## Testing
+
+- **Integration-test query correctness against a real Neo4j engine** via
+  testcontainers (`testcontainers[neo4j]`, `Neo4jContainer`). Spin up the
+  engine, seed a graph, run the **real Cypher**, and assert on results.
+- **Do NOT mock the driver for query-correctness tests.** A mock cannot
+  validate Cypher syntax, constraint behavior, or traversal semantics, so it
+  proves nothing about the query. Mocks are acceptable only to isolate
+  unrelated units, never to stand in for the database under test.
+- This is the graph equivalent of the relational posture: tests run against
+  a real engine, not a substitute. The async test toolchain (`pytest`,
+  `pytest-asyncio`) is defined in [`../backend/tech-stack.md`](../backend/tech-stack.md).
+
+```python
+import pytest
+from neo4j import AsyncGraphDatabase
+from testcontainers.neo4j import Neo4jContainer
+
+@pytest.fixture(scope="session")
+def neo4j_url():
+    with Neo4jContainer("neo4j:5.26") as container:
+        yield container.get_connection_url()
+
+@pytest.mark.asyncio
+async def test_friend_traversal(neo4j_url):
+    async with AsyncGraphDatabase.driver(neo4j_url) as driver:
+        async with driver.session(database="neo4j") as s:
+            await s.run(
+                "CREATE (a:User {id:$a})-[:FRIEND]->(b:User {id:$b})",
+                a="1", b="2",
+            )
+            result = await s.run(
+                "MATCH (:User {id:$a})-[:FRIEND]->(f) RETURN f.id AS id",
+                a="1",
+            )
+            ids = [r["id"] async for r in result]
+    assert ids == ["2"]
+```
+
+## Modeling & operations
+
+- **Reach for the graph** when the workload is relationship-centric: deep or
+  **variable-length traversals**, shortest-path / reachability, and queries
+  whose cost in relational terms is many recursive self-joins. For
+  set-oriented, tabular, or transactional data, stay relational.
+- **Keep the system of record explicit.** Polyglot persistence is
+  sanctioned — Neo4j runs **alongside** Postgres (TimescaleDB + pgvector)
+  and Redis. Postgres is the relational system of record; the graph holds
+  relationship/traversal data and references back to it. See
+  [`../architecture/reference-architecture.md`](../architecture/reference-architecture.md)
+  and the time-series sibling [`./timescaledb.md`](./timescaledb.md). When
+  the same entity lives in both stores, document which store owns each field.
+- **Security & ops baseline** — see [`../architecture/security.md`](../architecture/security.md):
+  - Connect as a **least-privilege Neo4j user** scoped to the database and
+    operations the service needs; do not use an admin account at runtime.
+  - **Require TLS on Bolt** (`+s` / `+ssc` schemes). NEVER expose the Bolt
+    or HTTP ports publicly — keep Neo4j on a private network.
+  - Secrets (URI, credentials) come from the **secrets manager**, never from
+    source or images.
+  - Emit query latency/error metrics and propagate request context per
+    [`../architecture/observability.md`](../architecture/observability.md)
+    and [`../backend/request-middleware.md`](../backend/request-middleware.md);
+    never log raw credentials or full parameter maps that may carry PII.
+
+---
+
+## Related Standards
+
+- [Database Migrations](./migrations.md) — versioned, reviewed, staged migrations
+- [Schema Design](./schema-design.md) — modeling the graph schema
+- [Database Performance](./performance.md) — indexing access patterns
+- [Naming Conventions](./naming-conventions.md) — constraint/index/label naming
+- [TimescaleDB](./timescaledb.md) — time-series sibling in the polyglot stack
+- [Database Standards Overview](./README.md)
+- [Security](../architecture/security.md) — least privilege, TLS, secrets
+- [Reference Architecture](../architecture/reference-architecture.md) — polyglot persistence
+- [Observability](../architecture/observability.md) — query metrics and tracing
+- [Backend Tech Stack](../backend/tech-stack.md) — async + test toolchain
+- [Request Middleware](../backend/request-middleware.md) — request context propagation
+- [RAG & Vector Stores](../ai/rag-vector-stores.md) — sibling persistence standard
+
+---
+
+<!-- Source: standards/database/timescaledb.md (v1.0.0) -->
+
+# TimescaleDB Standard
+
+**Status**: Active
+
+## Purpose
+
+Rules for time-series data on PostgreSQL via the **TimescaleDB** extension:
+how time-series tables become hypertables, how rollups are precomputed with
+continuous aggregates, how aged data is compressed and retired, and when an
+in-database `pg_cron` job is correct versus an application-level Celery-beat
+task.
+
+TimescaleDB is a **Postgres extension**, not a separate engine, so **every
+existing database standard still applies** — naming
+([`./naming-conventions.md`](./naming-conventions.md)), schema design
+([`./schema-design.md`](./schema-design.md)), query/index discipline
+([`./performance.md`](./performance.md)), and migrations
+([`./migrations.md`](./migrations.md)). This standard adds only the
+time-series-specific rules on top.
+
+## Scope
+
+- Blessed image and version parity
+- Converting tables to hypertables and sizing chunks
+- Indexing hypertables for time-series access
+- Continuous aggregates (CAGGs) for rollups
+- Columnar compression on aged chunks
+- Data retention and its governance constraints
+- `pg_cron` (in-database) vs Celery-beat (application) scheduling
+- pgvector coexistence in the same image
+- Where this DDL lives (migrations) and how it is tested
+
+---
+
+## Image and version
+
+- The **blessed production database image is
+  `timescale/timescaledb-ha:pg16`**, which bundles **TimescaleDB +
+  pgvector + pg_cron** in a single image on **PostgreSQL 16**. Do not pull
+  TimescaleDB as a separate sidecar or run a vanilla `postgres` image in
+  prod. See
+  [`../architecture/reference-architecture.md`](../architecture/reference-architecture.md).
+- **dev, CI, and test MUST run the same major (pg16) and the same image**
+  so hypertable, policy, and compression behavior is identical across
+  environments. See [`../devops/docker.md`](../devops/docker.md). Testing
+  Timescale features against stock `postgres` gives false confidence — the
+  extension is absent.
+- **Enable the extension in a migration, never ad hoc.** The first
+  Timescale migration runs:
+
+```sql
+CREATE EXTENSION IF NOT EXISTS timescaledb;
+-- only when the feature is actually used in that database:
+CREATE EXTENSION IF NOT EXISTS vector;     -- pgvector
+CREATE EXTENSION IF NOT EXISTS pg_cron;    -- in-DB scheduler
+```
+
+- `CREATE EXTENSION` is schema. It MUST live in version-controlled Alembic
+  migrations and MUST NOT be applied by hand on a running database.
+
+---
+
+## Hypertables
+
+- A **hypertable** is a regular table partitioned transparently into
+  time-based **chunks**. Convert a time-series table immediately after
+  creating it; the **partitioning column is the time column** (a
+  `TIMESTAMPTZ`).
+
+```python
+# inside an Alembic migration upgrade()
+op.create_table(
+    "events",
+    sa.Column("time", sa.DateTime(timezone=True), nullable=False),
+    sa.Column("device_id", sa.Integer(), nullable=False),
+    sa.Column("value", sa.Float(), nullable=False),
+)
+# new-style dimension builder (preferred)
+op.execute("SELECT create_hypertable('events', by_range('time'));")
+# classic form is equivalent:
+# op.execute("SELECT create_hypertable('events', 'time');")
+```
+
+- **Create hypertables in an Alembic migration via `op.execute` raw SQL** —
+  never at application runtime, never lazily on first write.
+- A hypertable's time column **cannot be a serial/auto-increment surrogate
+  key** standing in for time — partition on real event time.
+
+### Chunk-interval sizing
+
+- **Size a chunk to hold roughly the recent working set.** Rule of thumb:
+  the **active (recently written/queried) chunks across all hypertables
+  SHOULD fit in ≈ ≤25% of available RAM**, so indexes for the hot range stay
+  resident.
+- **Default to a ~7-day interval and tune by ingest rate.** High-volume
+  ingest → smaller intervals (hours/days); sparse ingest → larger. Set it
+  explicitly rather than relying on the install default:
+
+```sql
+SELECT set_chunk_time_interval('events', INTERVAL '1 day');
+```
+
+- **Add space (hash) partitioning only with a documented reason** (e.g.
+  multi-node distribution). A second partitioning dimension adds planning
+  cost; do not add it speculatively.
+
+---
+
+## Indexing hypertables
+
+- Indexes on a hypertable are created on **every chunk**, so each redundant
+  index multiplies storage and write cost. **Index deliberately.**
+- Build composite indexes **time-descending**, leading with the column you
+  filter/group by — typically the compression `segmentby` column:
+
+```sql
+CREATE INDEX ix_events_device_time ON events (device_id, time DESC);
+```
+
+- `(segmentby_col, time DESC)` matches both the common query shape
+  ("latest rows for this device") and the compression layout below, so the
+  same index serves reads on compressed and uncompressed chunks.
+- **Avoid redundant indexes.** Do not keep both `(time)` and
+  `(device_id, time DESC)` if the composite already serves the time-range
+  scans. Follow the general index rules in
+  [`./performance.md`](./performance.md).
+
+---
+
+## Continuous aggregates (CAGGs)
+
+- Precompute rollups (per-minute/hour/day summaries) as a **materialized
+  view declared `WITH (timescaledb.continuous)`** rather than aggregating the
+  raw hypertable on every read.
+
+```sql
+CREATE MATERIALIZED VIEW events_hourly
+WITH (timescaledb.continuous) AS
+SELECT time_bucket(INTERVAL '1 hour', time) AS bucket,
+       device_id,
+       avg(value)  AS avg_value,
+       max(value)  AS max_value
+FROM events
+GROUP BY bucket, device_id
+WITH NO DATA;
+```
+
+- **Attach a refresh policy** so the aggregate stays current; tune the
+  offsets to your latency tolerance and ingest lag:
+
+```sql
+SELECT add_continuous_aggregate_policy('events_hourly',
+    start_offset => INTERVAL '3 days',
+    end_offset   => INTERVAL '1 hour',
+    schedule_interval => INTERVAL '1 hour');
+```
+
+- **Query the CAGG for rollups, not the raw hypertable.** A dashboard
+  reading a month of hourly averages MUST hit `events_hourly`, not scan raw
+  `events`.
+- **Real-time aggregation** (enabled by default) transparently unions the
+  materialized buckets with not-yet-materialized recent raw rows, so reads
+  see fresh data between refreshes. Keep `end_offset` ≥ your acceptable
+  staleness if you disable it.
+- CAGG definitions and their policies **are schema and live in migrations.**
+
+---
+
+## Compression
+
+- **Enable native columnar compression on aged chunks** to cut storage and
+  speed up large analytical scans. Configure it on the table, then schedule
+  it with a policy:
+
+```sql
+ALTER TABLE events SET (
+    timescaledb.compress,
+    timescaledb.compress_segmentby = 'device_id',
+    timescaledb.compress_orderby   = 'time DESC'
+);
+SELECT add_compression_policy('events', INTERVAL '7 days');
+```
+
+- **Choose `segmentby` to match your filter columns** (e.g. `device_id`) and
+  `orderby` to match your sort (`time DESC`); these directly determine
+  compressed-scan performance. Mismatched settings force decompression.
+- **Compressed chunks are read-mostly.** Design ingest so writes land in the
+  recent, uncompressed window and **you do not routinely UPDATE/DELETE
+  inside compressed chunks** — mutating compressed data is expensive and
+  partly defeats the format. Backfill into compressed ranges is an explicit,
+  reviewed operation, not a hot path.
+- Pick the compression cutoff (`INTERVAL '7 days'` above) to sit safely
+  **outside the active write window** so live ingest is never compressing.
+
+---
+
+## Retention
+
+- **Drop aged-out chunks with a retention policy** rather than `DELETE` on a
+  large table:
+
+```sql
+SELECT add_retention_policy('events', INTERVAL '90 days');
+```
+
+- **Retention is a deliberate, documented decision per hypertable.** Record
+  the chosen window and its rationale (cost, query relevance, legal basis) —
+  it MUST NOT be a silent default.
+- **Retention MUST honor data-governance / GDPR requirements.** Do not drop
+  data a regulation requires you to keep (e.g. financial/audit records under
+  a statutory retention period), and do not retain personal data past its
+  lawful window. Reconcile every retention window with
+  [`../architecture/gdpr-data-rights.md`](../architecture/gdpr-data-rights.md).
+- Retention and erasure are different mechanisms: a retention policy ages
+  out **whole chunks by time**; per-subject erasure (RTBF) is a targeted
+  delete and is governed by the GDPR standard above, not by this policy.
+
+---
+
+## Scheduling: pg_cron vs Celery-beat (decision note)
+
+The prod image bundles **`pg_cron`**, an **in-database, SQL-only** scheduler.
+The platform also runs **Celery-beat** for **application-level** periodic
+tasks (see [`../backend/background-jobs.md`](../backend/background-jobs.md)).
+These solve different problems and **a given job belongs in exactly one of
+them.**
+
+| Dimension | `pg_cron` (in-DB) | Celery-beat (app) |
+|---|---|---|
+| Runs | SQL only (`cron.schedule(...)`) | Python tasks |
+| Lives with | the database | the application deployment |
+| External I/O | no | yes (HTTP, queues, S3, third-party APIs) |
+| App context (secrets, ORM, observability) | no | yes |
+| Survives app redeploy / scale-to-zero | yes | no (needs running workers) |
+| Use for | data-local maintenance, in-DB rollups, vacuum/analyze helpers, ad-hoc SQL housekeeping | business logic, anything calling external services, app-layer retries/metrics |
+
+- **Decision rule:** SQL-only **and** data-local **and** must-run-without-the-app
+  → **`pg_cron`**. Needs application logic, external I/O, or app context
+  (secrets, app-layer retries, app observability) → **Celery-beat**.
+- **Never schedule the same job in both schedulers** — duplicate runs cause
+  double-processing and contention.
+- **Prefer Timescale's built-in policy API over hand-rolled `pg_cron` for
+  Timescale concerns.** Retention, compression, and CAGG refresh are
+  themselves background jobs run by the **Timescale job scheduler**; use
+  `add_retention_policy` / `add_compression_policy` /
+  `add_continuous_aggregate_policy` rather than reimplementing them as cron
+  jobs. Reserve raw `pg_cron` for housekeeping those policies do not cover
+  (e.g. a periodic `ANALYZE`, a bespoke in-DB cleanup query).
+
+```sql
+-- pg_cron is appropriate here: SQL-only, data-local, app-independent
+SELECT cron.schedule('nightly-analyze-events', '17 3 * * *',
+                     $$ANALYZE events;$$);
+```
+
+- **Manage `pg_cron` schedules as migrations** — `cron.schedule(...)` /
+  `cron.unschedule(...)` are versioned in Alembic, reviewed, and reproducible.
+  Do **not** create or edit cron jobs ad hoc via `psql`; an unversioned
+  schedule cannot be reproduced in another environment.
+
+---
+
+## pgvector coexistence
+
+- The blessed image also bundles **pgvector**, so embedding/vector tables
+  live in the **same database** as hypertables — but they are **separate
+  tables**. Vector search and time-series ingest have different access
+  patterns and lifecycles.
+- **Do NOT make embedding tables hypertables.** Embeddings are not
+  partitioned by event time and gain nothing from chunking; making them
+  hypertables only adds overhead.
+- For all vector/embedding rules (index type, distance metric, embedding
+  pinning, retrieval-time authorization), follow
+  [`../ai/rag-vector-stores.md`](../ai/rag-vector-stores.md).
+
+---
+
+## Migrations
+
+- **All TimescaleDB DDL is schema and MUST live in Alembic migrations** as
+  raw SQL via `op.execute(...)`: extension creation, hypertable conversion,
+  chunk-interval settings, CAGG definitions and policies, compression
+  settings and policies, retention policies, and `pg_cron` schedules.
+- Migrations MUST be **reviewed and tested on staging before production**,
+  per [`./migrations.md`](./migrations.md). Provide a `downgrade()` where
+  reversible (`remove_retention_policy`, `remove_compression_policy`,
+  `remove_continuous_aggregate_policy`, `cron.unschedule`, `DROP MATERIALIZED
+  VIEW`); where dropping data is irreversible, mark it explicitly as the
+  migrations standard requires.
+- Never reach for ad-hoc `psql` to apply any of the above on a live
+  database — it bypasses review and drifts environments out of sync.
+
+---
+
+## Testing
+
+- **Integration-test against the `timescale/timescaledb-ha:pg16` image**
+  (e.g. via testcontainers), **not** a vanilla `postgres` container, so
+  hypertable creation, CAGG refresh, compression, and retention behavior is
+  actually exercised. Against stock `postgres` the extension is missing and
+  `create_hypertable` / policy calls fail or no-op — the tests would prove
+  nothing.
+- Pin the **same major (pg16)** in the test image as dev/CI/prod so behavior
+  matches what ships.
+- Cover, at minimum: a table converts to a hypertable and writes land in the
+  expected chunk; a CAGG materializes and a query reads from it; a
+  compression policy compresses a backdated chunk; a retention policy drops
+  an aged chunk.
+
+---
+
+## Related Standards
+
+- [Database Migrations](./migrations.md) — where all Timescale DDL lives
+- [Database Performance](./performance.md) — index/query discipline
+- [Database Schema Design](./schema-design.md) — table/column design
+- [Database Naming Conventions](./naming-conventions.md) — naming rules
+- [Neo4j](./neo4j.md) — sibling datastore standard
+- [Database Standards Index](./README.md)
+- [Background Jobs](../backend/background-jobs.md) — Celery-beat scheduling
+- [Backend Tech Stack](../backend/tech-stack.md)
+- [RAG & Vector Stores](../ai/rag-vector-stores.md) — pgvector usage rules
+- [Reference Architecture](../architecture/reference-architecture.md) — blessed image
+- [GDPR Data Rights](../architecture/gdpr-data-rights.md) — retention/erasure constraints
+- [Security](../architecture/security.md) — access-control baseline
+- [Docker](../devops/docker.md) — dev/CI image parity
+
+---
+
 <!-- Compilation Metadata
   domain: database-standards
-  domain_version: 1.0.0
-  compiled_at: 2026-03-25 13:07
+  domain_version: 1.4.3
+  compiled_at: 2026-06-01 20:55
   source: evolv-coder-standards
-  files_compiled: 4/4
+  files_compiled: 8/8
 -->

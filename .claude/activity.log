@@ -5,3 +5,6 @@
 {"ts":"2026-05-14T19:30:35.721Z","skill":"eck:deploy","feature":"WA-2","outcome":"success","duration_sec":1256,"summary":"Deployed WA-2 v0.2.0: promoted dev→main, tagged v0.2.0, updated tracker issue #8","step":"deploy"}
 {"ts":"2026-05-14T21:17:46.112Z","skill":"create-feature","feature":"WA-3","outcome":"success","duration_sec":0,"summary":"Created WA-3","step":"activate"}
 {"ts":"2026-05-14T21:49:54.571Z","skill":"eck:design","feature":"WA-3","outcome":"success","duration_sec":0,"summary":"Full design pipeline complete: 9 sub-skills run, 8 artifacts written, PASS verdict","step":"design"}
+{"ts":"2026-06-01T21:00:09.993Z","skill":"create-feature","feature":"WA-4","outcome":"success","duration_sec":0,"summary":"Created WA-4","step":"activate"}
+{"ts":"2026-06-01T21:09:45.986Z","skill":"eck:spec","feature":"WA-4","outcome":"success","duration_sec":1780348185,"summary":"Full spec pipeline: research, scope, discovery, criteria, questions. 7 ACs locked (AC-01 to AC-07). 3 non-blocking open questions. SPEC-REVIEW PASS.","step":"spec"}
+{"ts":"2026-06-01T21:31:31.801Z","skill":"eck:design","feature":"WA-4","outcome":"success","duration_sec":1121,"summary":"Full design pipeline: architecture, solution, specs (API/data/NFR), QA plan, risk (GO), BRD, tasks, ADR assessment. 27/27 review checklist items. DESIGN-REVIEW PASS.","step":"design"}

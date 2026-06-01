@@ -1,8 +1,8 @@
-# Cpp Standards
+# C++ Standards
 
 > C++ development standards
 
-**Compiled**: 2026-03-25 13:07
+**Compiled**: 2026-06-01 20:55
 **Source**: evolv-coder-standards
 **Domain Version**: 1.0.0
 
@@ -18,8 +18,6 @@
 
 # C/C++ Coding Standards
 
-**Version**: 1.0.0
-**Last Updated**: 2026-02-28
 **Status**: Active
 
 ## Overview
@@ -341,7 +339,7 @@ clang-format --dry-run --Werror src/**/*.cpp include/**/*.h
 <!-- Compilation Metadata
   domain: cpp-standards
   domain_version: 1.0.0
-  compiled_at: 2026-03-25 13:07
+  compiled_at: 2026-06-01 20:55
   source: evolv-coder-standards
   files_compiled: 1/1
 -->

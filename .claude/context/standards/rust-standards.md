@@ -2,9 +2,9 @@
 
 > Rust development standards
 
-**Compiled**: 2026-03-25 13:07
+**Compiled**: 2026-06-01 20:55
 **Source**: evolv-coder-standards
-**Domain Version**: 1.0.0
+**Domain Version**: 1.3.0
 
 ---
 
@@ -14,20 +14,18 @@
 
 ---
 
-<!-- Source: standards/backend/rust.md (v1.0.0) -->
+<!-- Source: standards/backend/rust.md (v1.3.0) -->
 
 # Rust Coding Standards
 
-**Version**: 1.0.0
-**Last Updated**: 2026-02-28
 **Status**: Active
 
 ## Overview
-This document outlines Rust coding standards and best practices for backend services using Actix Web and Axum, covering style, patterns, error handling, testing, and security.
+This document outlines Rust coding standards and best practices for backend services using Axum, covering style, patterns, error handling, testing, and security. This standard is Axum-focused; Actix Web is out of scope.
 
 ## Style Guide Foundation
 - **Rust API Guidelines** and **rustfmt**: Foundation for all Rust code
-- **Rust 2021 Edition**: Use stable features (async/await, `let-else`, `if let` chains)
+- **Rust 2024 Edition**: Use Edition 2024 for new projects (Rust 1.85+); enables `unsafe_op_in_unsafe_fn` by default and tightens RPIT lifetime capture. Existing crates SHOULD migrate via `cargo fix --edition`.
 - **Line length**: 100 characters maximum (configured in `rustfmt.toml`)
 - **Clippy**: All code must pass `cargo clippy` with no warnings
 
@@ -130,6 +128,35 @@ fn get_status_label(&self) -> &str {
 }
 ```
 
+## Async Runtime
+
+All services use Tokio as the async runtime. Default to the multi-thread flavor via `#[tokio::main]`; only switch to `current_thread` for short-lived CLIs or when measurement justifies it.
+
+```rust
+#[tokio::main]
+async fn main() -> Result<(), AppError> {
+    let app = create_router(state);
+    let listener = tokio::net::TcpListener::bind("0.0.0.0:8080").await?;
+
+    axum::serve(listener, app)
+        .with_graceful_shutdown(shutdown_signal())
+        .await?;
+
+    Ok(())
+}
+
+async fn shutdown_signal() {
+    tokio::signal::ctrl_c()
+        .await
+        .expect("failed to install Ctrl+C handler");
+    tracing::info!("shutdown signal received");
+}
+```
+
+- **`worker_threads`**: defaults to the number of logical CPUs. Do not override without a benchmark; if you must, use `#[tokio::main(flavor = "multi_thread", worker_threads = N)]`.
+- **CPU-bound or sync I/O work**: never block the runtime. Wrap sync work in `tokio::task::spawn_blocking` (long-running) or `tokio::task::block_in_place` (short, inline) so async workers stay free.
+- **Graceful shutdown**: drive shutdown from `tokio::signal::ctrl_c()` (and `SIGTERM` on Unix); pass the future to `axum::serve(...).with_graceful_shutdown(...)` so in-flight requests drain before the listener closes.
+
 ## Framework Patterns
 
 ### Axum Handler Pattern
@@ -216,7 +243,7 @@ impl UserService {
 
 ### Request / Response Types
 ```rust
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct CreateUserRequest {
     pub name: String,
     pub email: String,
@@ -247,8 +274,9 @@ impl From<User> for UserResponse {
 
 ### Error Type with thiserror
 ```rust
-use axum::http::StatusCode;
+use axum::http::{header, HeaderValue, StatusCode};
 use axum::response::{IntoResponse, Response};
+use serde::Serialize;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -272,31 +300,83 @@ pub enum AppError {
     Internal(#[from] anyhow::Error),
 }
 
+// ProblemDetail is the RFC 9457 error response body. See
+// standards/architecture/error-contract.md for the authoritative shape.
+#[derive(Debug, Serialize)]
+pub struct ProblemDetail {
+    #[serde(rename = "type")]
+    pub problem_type: String,
+    pub title: String,
+    pub status: u16,
+    pub detail: String,
+    pub instance: String,
+    pub request_id: String,
+    pub timestamp: String,
+}
+
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
-        let (status, message) = match &self {
-            AppError::NotFound(msg) => (StatusCode::NOT_FOUND, msg.clone()),
-            AppError::Conflict(msg) => (StatusCode::CONFLICT, msg.clone()),
-            AppError::Validation(msg) => {
-                (StatusCode::BAD_REQUEST, msg.clone())
-            }
-            AppError::Unauthorized => {
-                (StatusCode::UNAUTHORIZED, "Unauthorized".to_string())
-            }
+        let (status, problem_type, title, detail) = match &self {
+            AppError::NotFound(msg) => (
+                StatusCode::NOT_FOUND,
+                "/problems/resource-not-found",
+                "Resource Not Found",
+                msg.clone(),
+            ),
+            AppError::Conflict(msg) => (
+                StatusCode::CONFLICT,
+                "/problems/conflict",
+                "Conflict",
+                msg.clone(),
+            ),
+            AppError::Validation(msg) => (
+                StatusCode::UNPROCESSABLE_ENTITY,
+                "/problems/validation-error",
+                "Validation Error",
+                msg.clone(),
+            ),
+            AppError::Unauthorized => (
+                StatusCode::UNAUTHORIZED,
+                "/problems/unauthorized",
+                "Unauthorized",
+                "Unauthorized".to_string(),
+            ),
             AppError::Database(e) => {
                 tracing::error!("Database error: {e:?}");
-                (StatusCode::INTERNAL_SERVER_ERROR,
-                    "Internal server error".to_string())
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "/problems/internal-error",
+                    "Internal Server Error",
+                    "Internal server error".to_string(),
+                )
             }
             AppError::Internal(e) => {
                 tracing::error!("Internal error: {e:?}");
-                (StatusCode::INTERNAL_SERVER_ERROR,
-                    "Internal server error".to_string())
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "/problems/internal-error",
+                    "Internal Server Error",
+                    "Internal server error".to_string(),
+                )
             }
         };
 
-        let body = serde_json::json!({ "error": message });
-        (status, axum::Json(body)).into_response()
+        let body = ProblemDetail {
+            problem_type: problem_type.to_string(),
+            title: title.to_string(),
+            status: status.as_u16(),
+            detail,
+            instance: String::new(), // populated by middleware from request URI
+            request_id: String::new(), // populated by middleware from X-Request-ID
+            timestamp: chrono::Utc::now().to_rfc3339(),
+        };
+
+        let mut response = (status, axum::Json(body)).into_response();
+        response.headers_mut().insert(
+            header::CONTENT_TYPE,
+            HeaderValue::from_static("application/problem+json"),
+        );
+        response
     }
 }
 ```
@@ -308,6 +388,7 @@ impl IntoResponse for AppError {
 - Pattern match exhaustively on enums -- do not use wildcard `_` catch-all
 - Never use `unwrap()` or `expect()` in production code paths
 - No `unsafe` blocks unless absolutely necessary and thoroughly audited
+- Serialize HTTP error responses as RFC 9457 ProblemDetail with `Content-Type: application/problem+json`. See [`architecture/error-contract.md`](../architecture/error-contract.md) for the authoritative shape.
 
 ## Testing Standards
 
@@ -444,7 +525,6 @@ cargo machete
 - [Rust API Guidelines](https://rust-lang.github.io/api-guidelines/)
 - [The Rust Programming Language](https://doc.rust-lang.org/book/)
 - [Axum Documentation](https://docs.rs/axum/latest/axum/)
-- [Actix Web Documentation](https://actix.rs/docs/)
 
 ---
 
@@ -454,8 +534,8 @@ cargo machete
 
 <!-- Compilation Metadata
   domain: rust-standards
-  domain_version: 1.0.0
-  compiled_at: 2026-03-25 13:07
+  domain_version: 1.3.0
+  compiled_at: 2026-06-01 20:55
   source: evolv-coder-standards
   files_compiled: 1/1
 -->

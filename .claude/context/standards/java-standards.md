@@ -2,9 +2,9 @@
 
 > Java development standards
 
-**Compiled**: 2026-03-25 13:07
+**Compiled**: 2026-06-01 20:55
 **Source**: evolv-coder-standards
-**Domain Version**: 1.0.0
+**Domain Version**: 1.2.0
 
 ---
 
@@ -14,12 +14,10 @@
 
 ---
 
-<!-- Source: standards/backend/java.md (v1.0.0) -->
+<!-- Source: standards/backend/java.md (v1.2.0) -->
 
 # Java Coding Standards
 
-**Version**: 1.0.0
-**Last Updated**: 2026-02-28
 **Status**: Active
 
 ## Overview
@@ -27,7 +25,7 @@ This document outlines Java coding standards and best practices for Spring Boot 
 
 ## Style Guide Foundation
 - **Google Java Style Guide**: Foundation for all Java code
-- **Java 17+**: Use modern features (records, sealed classes, pattern matching, text blocks)
+- **Java 25+**: Use modern features (records, sealed classes, pattern matching, text blocks)
 - **Line length**: 100 characters maximum
 
 ## Code Formatting
@@ -195,20 +193,27 @@ spring:
 ### Exception Hierarchy
 ```java
 public abstract class ApplicationException extends RuntimeException {
-    private final ErrorCode errorCode;
+    private final String problemType;  // RFC 9457 type URI, e.g. "/problems/resource-not-found"
+    private final String title;        // Stable human-readable summary
     private final HttpStatus status;
 
-    protected ApplicationException(String message, ErrorCode errorCode,
-            HttpStatus status) {
+    protected ApplicationException(String message, String problemType,
+            String title, HttpStatus status) {
         super(message);
-        this.errorCode = errorCode;
+        this.problemType = problemType;
+        this.title = title;
         this.status = status;
     }
+
+    public String getProblemType() { return problemType; }
+    public String getTitle() { return title; }
+    public HttpStatus getStatus() { return status; }
 }
 
 public class UserNotFoundException extends ApplicationException {
     public UserNotFoundException(Long id) {
-        super("User not found: " + id, ErrorCode.USER_NOT_FOUND,
+        super("User not found: " + id,
+            "/problems/resource-not-found", "Resource Not Found",
             HttpStatus.NOT_FOUND);
     }
 }
@@ -216,26 +221,69 @@ public class UserNotFoundException extends ApplicationException {
 
 ### Global Exception Handler
 ```java
+// ProblemDetail is the RFC 9457 error response body. See
+// standards/architecture/error-contract.md for the authoritative shape.
+public record ProblemDetail(
+    String type,
+    String title,
+    int status,
+    String detail,
+    String instance,
+    String requestId,
+    Instant timestamp,
+    List<FieldError> errors
+) {
+    public ProblemDetail(String type, String title, int status, String detail,
+            String instance, String requestId, Instant timestamp) {
+        this(type, title, status, detail, instance, requestId, timestamp, null);
+    }
+}
+
+public record FieldError(String field, String message, Object value) {}
+
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+    private static final MediaType PROBLEM_JSON =
+        MediaType.valueOf("application/problem+json");
+
     @ExceptionHandler(ApplicationException.class)
-    public ResponseEntity<ErrorResponse> handleApplicationException(
-            ApplicationException ex) {
-        ErrorResponse error = new ErrorResponse(
-            ex.getErrorCode(), ex.getMessage(), Instant.now());
-        return ResponseEntity.status(ex.getStatus()).body(error);
+    public ResponseEntity<ProblemDetail> handleApplicationException(
+            ApplicationException ex, HttpServletRequest req) {
+        ProblemDetail body = new ProblemDetail(
+            ex.getProblemType(),
+            ex.getTitle(),
+            ex.getStatus().value(),
+            ex.getMessage(),
+            req.getRequestURI(),
+            (String) req.getAttribute("requestId"),
+            Instant.now()
+        );
+        return ResponseEntity.status(ex.getStatus())
+            .contentType(PROBLEM_JSON)
+            .body(body);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ErrorResponse> handleValidation(
-            MethodArgumentNotValidException ex) {
-        List<String> errors = ex.getBindingResult()
+    public ResponseEntity<ProblemDetail> handleValidation(
+            MethodArgumentNotValidException ex, HttpServletRequest req) {
+        List<FieldError> errors = ex.getBindingResult()
             .getFieldErrors().stream()
-            .map(e -> e.getField() + ": " + e.getDefaultMessage())
+            .map(e -> new FieldError(
+                e.getField(), e.getDefaultMessage(), e.getRejectedValue()))
             .toList();
-        return ResponseEntity.badRequest()
-            .body(new ErrorResponse(ErrorCode.VALIDATION_FAILED,
-                "Validation failed", errors, Instant.now()));
+        ProblemDetail body = new ProblemDetail(
+            "/problems/validation-error",
+            "Validation Error",
+            HttpStatus.UNPROCESSABLE_ENTITY.value(),
+            "Request validation failed",
+            req.getRequestURI(),
+            (String) req.getAttribute("requestId"),
+            Instant.now(),
+            errors
+        );
+        return ResponseEntity.unprocessableEntity()
+            .contentType(PROBLEM_JSON)
+            .body(body);
     }
 }
 ```
@@ -245,6 +293,7 @@ public class GlobalExceptionHandler {
 - Never catch `Exception` or `Throwable` without rethrowing
 - Always include context in exception messages
 - Use `@Transactional` rollback on checked exceptions explicitly
+- Serialize HTTP error responses as RFC 9457 ProblemDetail with `Content-Type: application/problem+json`. See [`architecture/error-contract.md`](../architecture/error-contract.md) for the authoritative shape.
 
 ## Testing Standards
 
@@ -372,8 +421,8 @@ mvn dependency-check:check
 
 <!-- Compilation Metadata
   domain: java-standards
-  domain_version: 1.0.0
-  compiled_at: 2026-03-25 13:07
+  domain_version: 1.2.0
+  compiled_at: 2026-06-01 20:55
   source: evolv-coder-standards
   files_compiled: 1/1
 -->
