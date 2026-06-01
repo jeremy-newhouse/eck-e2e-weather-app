@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.3.1] — 2026-06-01
+
+### Refactors
+
+- refactor(WA-4): simplify app.js field rendering and parameterize city tests (c94b531)
+
+### Documentation
+
+- docs(WA-4): add DEVELOP-REVIEW.md — gate PASS (f44b4a0)
+- docs(WA-4): add design artifacts, TASKS.md, and lifecycle state (14461ef)
+- docs: seed FRD for WA-4 (c0f2602, 6953b03)
+
+---
+
 ## [v0.2.0] — 2026-05-14
 
 This release delivers the WA-2 Weather Lookup full-stack implementation, introducing the complete Express.js REST API and plain HTML/CSS/JS frontend for city-based weather lookups. It also brings in the ECK project infrastructure and all associated design, development, and validation artifacts.
