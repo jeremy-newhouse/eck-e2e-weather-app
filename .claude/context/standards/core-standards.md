@@ -1,14 +1,37 @@
-# Core / Architecture Standards
-<!-- Compiled: 2026-05-14T21:13:13Z from evolv-coder-standards -->
+# Core Standards
 
+> Core standards applied by all agents: reference architecture, security, authentication, data flow, caching, observability, API versioning, threat modeling, ADR format
+
+**Compiled**: 2026-06-01 20:55
+**Source**: evolv-coder-standards
+**Domain Version**: 2.0.1
 
 ---
-<!-- Source: /home/tester/.claude/evolv-coder-standards/standards/architecture/README.md -->
+
+## Contents
+
+- [Readme](#readme)
+- [Reference Architecture](#reference-architecture)
+- [Data Flow](#data-flow)
+- [Security](#security)
+- [Authentication](#authentication)
+- [Caching](#caching)
+- [Error Contract](#error-contract)
+- [Observability](#observability)
+- [Testing Strategy](#testing-strategy)
+- [Api Versioning](#api-versioning)
+- [Adr Template](#adr-template)
+- [Adr 000 Template Example](#adr-000-template-example)
+- [Readme](#readme)
+- [Threat Modeling](#threat-modeling)
+- [Gdpr Data Rights](#gdpr-data-rights)
+
+---
+
+<!-- Source: standards/architecture/README.md (v1.2.0) -->
 
 # Architecture Standards
 
-**Version**: 1.1.0
-**Last Updated**: 2026-01-03
 **Status**: Active
 
 ## Overview
@@ -291,6 +314,12 @@ async def get_user(user_id: int):
 
 ## Error Handling Flow
 
+All API error responses MUST conform to RFC 9457 Problem Details.
+See [`error-contract.md`](./error-contract.md) for the canonical shape;
+[`backend/error-handling.md`](../backend/error-handling.md) provides the
+reference `_problem_response()` builder and `setup_exception_handlers()`
+registration used below.
+
 ### Frontend Error Boundary
 
 ```typescript
@@ -316,23 +345,12 @@ export default function Error({
 ### Backend Error Handler
 
 ```python
-from fastapi import HTTPException
-from fastapi.responses import JSONResponse
+# Register the canonical RFC 9457 handlers from backend/error-handling.md.
+# Do not return ad-hoc {"error": ...}, {"detail": ...}, or {"message": ...}
+# shapes — every error must be a ProblemDetail.
+from app.errors import setup_exception_handlers
 
-@app.exception_handler(HTTPException)
-async def http_exception_handler(request, exc):
-    return JSONResponse(
-        status_code=exc.status_code,
-        content={"error": exc.detail}
-    )
-
-@app.exception_handler(Exception)
-async def general_exception_handler(request, exc):
-    logger.error(f"Unhandled exception: {exc}")
-    return JSONResponse(
-        status_code=500,
-        content={"error": "Internal server error"}
-    )
+setup_exception_handlers(app)
 ```
 
 ## Performance Considerations
@@ -390,1823 +408,226 @@ async def general_exception_handler(request, exc):
 _This architecture ensures scalability, security, and maintainability across all layers of the application._
 
 ---
-<!-- Source: /home/tester/.claude/evolv-coder-standards/standards/architecture/api-versioning.md -->
 
-# API Versioning Standard
+<!-- Source: standards/architecture/reference-architecture.md (v1.1.3) -->
 
-**Version**: 1.0.0
-**Last Updated**: 2026-03-25
-**Status**: Active
+# Reference Architecture Standard
 
-## Overview
-
-The API uses URL path versioning. Breaking changes require a new version prefix. Non-breaking changes go into the current version. A schema-first workflow using OpenAPI snapshot testing enforces contract discipline.
-
-## URL Versioning Pattern
-
-```
-/api/v1/companies
-/api/v1/deals
-/api/v2/companies     (future breaking change)
-```
-
-- Version is in the URL path, not a header or query parameter
-- All routers mount under the versioned prefix
-- Multiple versions can coexist during deprecation periods
-
-## Breaking vs. Non-Breaking Changes
-
-### Breaking (requires new version)
-
-- Removing an endpoint or response field
-- Changing a field's type
-- Renaming a path parameter
-- Adding a required field to a request body
-- Changing an HTTP status code for an existing outcome
-- Changing a problem `type` URI
-
-### Non-breaking (current version)
-
-- New endpoints
-- New optional fields in request/response bodies
-- New optional query parameters
-- New problem types that didn't previously exist
-
-**When in doubt, treat it as breaking.**
-
-## Deprecation Policy
-
-**Minimum period**: 6 months from new version release.
-
-During deprecation:
-
-1. Old version continues functioning unchanged
-2. Deprecated endpoints return headers:
-   ```
-   Deprecation: true
-   Sunset: 2027-09-22
-   ```
-3. Deprecation announced in release notes
-4. After sunset date: `410 Gone`
-
-## Schema-First Workflow
-
-1. Modify the API contract (endpoint, schema, response model)
-2. Implement the change in code
-3. Run `make openapi-export` to regenerate `openapi.json`
-4. Commit both implementation and updated spec together
-5. CI validates spec matches runtime — build fails on drift
-
-See [OpenAPI Contract Enforcement](../backend/openapi-contract.md) for implementation details.
-
-## Migration Guidance
-
-For each version bump:
-
-1. Create a migration guide documenting every breaking change
-2. Update `openapi.json`
-3. Update FE API client base paths
-4. Remove old version mounts only after sunset date
-
-## Route Deduplication Rules
-
-- **One canonical URL per resource**: No duplicate route hierarchies
-- **Sub-resources use scoped auth**: Use dependency-based access checks instead of manual assertions
-- **Verify FE uses canonical paths** before removing duplicates
-
-## Quick Reference
-
-| Scenario                       | Action                                         |
-| ------------------------------ | ---------------------------------------------- |
-| New optional endpoint or field | Add to current version, update spec            |
-| Breaking change                | New version prefix, deprecation headers on old |
-| Removing an endpoint           | Wait for 6-month deprecation period            |
-| Forgot `make openapi-export`   | CI fails — run it, commit                      |
-| Not sure if breaking           | Treat as breaking                              |
-
----
-
-## Related Standards
-
-- [OpenAPI Contract Enforcement](../backend/openapi-contract.md)
-- [Error Response Contract](./error-contract.md)
-
----
-<!-- Source: /home/tester/.claude/evolv-coder-standards/standards/architecture/authentication.md -->
-# Authentication Architecture Standard
-
-**Version**: 1.0.0
-**Last Updated**: 2025-12-30
 **Status**: Active
 
 ## Purpose
 
-This standard defines the authentication architecture using Clerk for full-stack applications with Next.js frontend and FastAPI backend.
+This standard is the **single blessed source of version truth** — the anti-drift
+anchor for the whole catalog. It pins one recommended choice (with a current
+version) per stack layer, and assigns the supported languages to depth tiers.
 
-## Scope
+Other standards **link here instead of restating versions**. When a version must
+change, it changes here first. This is the structural fix for version drift: the
+Clerk `^6`→`^7` skew (SCA-254), the TypeScript/Zod prod-adoption lag (SCA-255),
+and the scattered-pins root cause (SCA-205) all trace back to versions living as
+prose in many files with no canonical home.
 
-- Clerk integration architecture
-- JWT token flow
-- Session management
-- Cross-service authentication
-- API key management
-- OAuth2 patterns
+## How to use this file
 
----
+- **Authoring a standard?** Reference a layer's pin by linking to this file
+  rather than copying a version number into your prose.
+- **Bumping a version?** Edit the blessed pin here, bump this file's
+  `version`/`last_updated`, then update the dependent standard's prose to point
+  here. Keep `scripts/version-pins.tsv` (the machine-readable drift snapshot) in
+  sync at major granularity.
+- **Pin semantics:** caret (`^x.y`) for libraries (minors/patches float), floor
+  (`>=x.y`) for runtimes/services, image tag for containers.
 
-## Authentication Flow Overview
-
-```mermaid
-sequenceDiagram
-    participant U as User
-    participant B as Browser
-    participant C as Clerk
-    participant N as Next.js
-    participant SA as Server Action
-    participant F as FastAPI
-    participant DB as PostgreSQL
-
-    U->>B: Visit protected page
-    B->>C: Redirect to Clerk
-    U->>C: Enter credentials
-    C->>C: Verify credentials
-    C->>B: Return JWT + session
-    B->>N: Request with session
-    N->>SA: Call server action
-    SA->>SA: Get JWT from Clerk
-    SA->>F: API call with JWT
-    F->>F: Verify JWT
-    F->>DB: Query with user context
-    DB->>F: Return data
-    F->>SA: Return response
-    SA->>N: Update UI
-    N->>B: Render page
-```
+> Versions below are the recommendation as of `last_updated`. "Prod adoption"
+> notes record where the shipping reality differs; a divergence where the
+> standard is correct and prod lags is **adoption debt**, not a standards defect
+> (see [Adoption deltas](#adoption-deltas)).
 
 ---
 
-## Clerk Integration
+## Blessed stack
 
-### Frontend Setup
+### Frontend
 
-```typescript
-// app/layout.tsx
-import { ClerkProvider } from '@clerk/nextjs';
+| Layer | Blessed choice | Pin | Notes |
+|---|---|---|---|
+| Framework | Next.js | `^16.2` | App Router |
+| UI runtime | React | `^19.2` | |
+| Language | TypeScript | `^6.0` | TS 6 GA'd 2026-04; **prod lags at `^5.7`** |
+| Runtime | Node.js | `>=22` (LTS) | floor 22 everywhere |
+| Auth | `@clerk/nextjs` | `^7` | v7 GA + in prod (`^7.4.1`); was the drift exemplar (SCA-254) |
+| Validation | Zod | `^4` | **prod lags at `^3`** |
+| State | Zustand | `^5.0` | |
+| Server cache | `@tanstack/react-query` | `^5.99` | |
+| Styling | Tailwind CSS | `^4.2` | CSS-first config |
+| Component kit | Radix + shadcn/ui | — | composition + a11y primitives |
+| Sanitization | DOMPurify | `^3.3` | mandatory on any HTML/markdown render sink |
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  return (
-    <ClerkProvider>
-      <html lang="en">
-        <body>{children}</body>
-      </html>
-    </ClerkProvider>
-  );
-}
-```
+### Visualization (frontend)
 
-### Middleware Configuration
+| Concern | Blessed | Pin |
+|---|---|---|
+| BPMN / process diagrams | bpmn-js | `^18.14` |
+| Diagrams-as-text (runtime render) | mermaid | `^11.14` |
+| Charts | recharts | `^3.8` |
+| Animation | motion (formerly `framer-motion`) | `^12.38` |
 
-```typescript
-// middleware.ts
-import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
+### Backend
 
-const isPublicRoute = createRouteMatcher([
-  '/',
-  '/sign-in(.*)',
-  '/sign-up(.*)',
-  '/api/webhooks(.*)',
-  '/api/public(.*)',
-]);
+| Layer | Blessed choice | Pin | Notes |
+|---|---|---|---|
+| Language | Python | `>=3.12` | deep tier |
+| Web framework | FastAPI | `>=0.115` | |
+| Models/validation | Pydantic | `>=2.10` | v2 API |
+| ORM | SQLAlchemy | `>=2.0.36` | 2.0 async |
+| DB driver | asyncpg | — | |
+| Migrations | Alembic | — | |
+| Task queue | `celery[redis]` + flower | `>=5.4` | flower = ops UI |
+| Cache/broker client | redis | `>=5.2` | |
+| Packaging | uv | — | |
+| Lint / type / test | ruff / mypy / pytest | — | ruff format (not Black) |
+| Auth tokens | `PyJWT[crypto]` | — | |
+| Logging | **loguru** | — | std + prod agree; canonical |
+| Resilience | tenacity + circuitbreaker | `^9` / `^2` | retry + circuit breaker; `circuitbreaker` (fabfuel) is async-aware + maintained, in-process state (pybreaker has no native asyncio; aiobreaker's fork is unmaintained) |
+| Rate limiting | slowapi | — | |
+| Metrics | prometheus-client | — | |
+| HTTP client | httpx | — | |
+| AWS SDK | boto3 / aioboto3 | — | aioboto3 for async paths |
 
-const isApiRoute = createRouteMatcher(['/api(.*)']);
+### Document pipeline (backend)
 
-export default clerkMiddleware((auth, req) => {
-  // Protect all non-public routes
-  if (!isPublicRoute(req)) {
-    auth().protect();
-  }
-});
+| Concern | Blessed |
+|---|---|
+| Doc → markdown ingest | `markitdown` (untrusted-input hardening required) |
+| PDF generation | `reportlab` |
+| PPTX generation | `python-pptx` |
+| XLSX generation | `openpyxl` (server-side; prefer over client `xlsx`) |
 
-export const config = {
-  matcher: [
-    // Skip static files and Next.js internals
-    '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
-    // Always run for API routes
-    '/(api|trpc)(.*)',
-  ],
-};
-```
+### Data stores
 
-### Authentication Components
+| Concern | Blessed | Notes |
+|---|---|---|
+| Relational + time-series + vector | `timescale/timescaledb-ha:pg16` | TimescaleDB + pgvector + pg_cron, one image — see [`../database/timescaledb.md`](../database/timescaledb.md) |
+| Graph | Neo4j 5.26 LTS | + APOC; driver `neo4j` 6.x (DB on CalVer since 2025 — 2025.x/2026.x) — see [`../database/neo4j.md`](../database/neo4j.md) |
+| Cache / broker | Redis 7 | |
 
-```typescript
-// components/auth/user-button.tsx
-'use client';
+> Document store (MongoDB) is deferred per ADR-003; a warehouse layer
+> (Snowflake/dbt) is out of scope for the flagship. Do not add either.
 
-import { UserButton, SignedIn, SignedOut, SignInButton } from '@clerk/nextjs';
-import { Button } from '@/components/ui/button';
+### AI / LLM layer
 
-export function AuthButton() {
-  return (
-    <>
-      <SignedIn>
-        <UserButton
-          afterSignOutUrl="/"
-          appearance={{
-            elements: {
-              avatarBox: 'h-8 w-8',
-            },
-          }}
-        />
-      </SignedIn>
-      <SignedOut>
-        <SignInButton mode="modal">
-          <Button variant="outline" size="sm">
-            Sign In
-          </Button>
-        </SignInButton>
-      </SignedOut>
-    </>
-  );
-}
-```
+| Concern | Blessed |
+|---|---|
+| Inference (tri-provider) | in-house **Bedrock Converse** tool-loop + **OpenAI SDK** + Anthropic **`claude-agent-sdk`** |
+| Embeddings | Titan `titan-embed-text-v1` + OpenAI `text-embedding-3-small` |
+| Orchestration | **LangChain** LCEL/LangServe where used (salient-data); Bedrock Converse loop / `claude-agent-sdk` elsewhere — **no LangGraph** in any repo |
+| Observability | **Langfuse** (confirmed, evolv-rpe) |
+| Voice / multimodal | **Pipecat** (flagship — elevenlabs/silero/webrtc) |
 
----
+> The dedicated [`standards/ai/`](../ai/README.md) domain (16 files, audit Wave 2)
+> is the authoritative source for the AI/LLM stack; this table is a summary. Bless
+> **direct multi-provider** (Bedrock Converse + OpenAI SDK + `claude-agent-sdk`)
+> as the prod default — **not** LangGraph (zero repos org-wide).
 
-## Server Action Authentication
+### Infrastructure & observability
 
-### Getting User Context
+| Concern | Blessed | Notes |
+|---|---|---|
+| Prod compute | AWS ECS Fargate | JSON task-defs + AWS OIDC deploy |
+| Demo compute | GCP Cloud Run | |
+| Local dev | Docker + Compose + LocalStack | |
+| Reverse proxy | Caddy | |
+| Metrics | Prometheus + CloudWatch | |
+| App logging | loguru → CloudWatch | |
+| Error tracking / APM | CloudWatch + prometheus-client | Sentry/Datadog optional — in 0 product repos today (SCA-014) |
+| Task monitoring | flower | with celery (do not expose publicly) |
 
-```typescript
-// app/actions/user.ts
-'use server';
-
-import { auth, currentUser } from '@clerk/nextjs/server';
-
-export async function getCurrentUserProfile() {
-  const { userId } = auth();
-
-  if (!userId) {
-    return { success: false, error: 'Unauthorized' };
-  }
-
-  // Get full user object from Clerk
-  const user = await currentUser();
-
-  if (!user) {
-    return { success: false, error: 'User not found' };
-  }
-
-  return {
-    success: true,
-    data: {
-      id: user.id,
-      email: user.emailAddresses[0]?.emailAddress,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      imageUrl: user.imageUrl,
-    },
-  };
-}
-```
-
-### Passing Token to Backend
-
-```typescript
-// app/actions/api.ts
-'use server';
-
-import { auth } from '@clerk/nextjs/server';
-
-const API_URL = process.env.BACKEND_URL;
-
-export async function fetchFromBackend<T>(
-  endpoint: string,
-  options: RequestInit = {}
-): Promise<T> {
-  const { getToken } = auth();
-
-  // Get JWT token from Clerk
-  const token = await getToken();
-
-  if (!token) {
-    throw new Error('No authentication token available');
-  }
-
-  const response = await fetch(`${API_URL}${endpoint}`, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-      ...options.headers,
-    },
-  });
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-    throw new Error(error.detail || `API error: ${response.status}`);
-  }
-
-  return response.json();
-}
-
-// Usage in other server actions
-export async function getProjects() {
-  return fetchFromBackend<Project[]>('/api/v1/projects');
-}
-
-export async function createProject(data: CreateProjectInput) {
-  return fetchFromBackend<Project>('/api/v1/projects', {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
-}
-```
+> ECS/Fargate, keyless deploy, and the Caddy/LocalStack guidance now have
+> standards (audit Wave 3): [`../devops/ecs-fargate.md`](../devops/ecs-fargate.md),
+> [`../devops/aws-oidc.md`](../devops/aws-oidc.md), and
+> [`../devops/docker.md`](../devops/docker.md) (Caddy reverse proxy + LocalStack
+> dev emulation) — under the
+> [`../devops/infrastructure-as-code.md`](../devops/infrastructure-as-code.md)
+> baseline, where JSON ECS task-defs are now a first-class path.
 
 ---
 
-## Backend JWT Validation
+## Adoption deltas
 
-### Clerk JWT Verification
+Where the **standard is correct and prod lags**, the gap is upgrade scheduling
+(org adoption debt), not a standards defect. These are surfaced automatically by
+the pin-drift layer of `scripts/check-stale-versions.sh` (data in
+`scripts/version-pins.tsv`):
 
-```python
-# app/core/auth.py
-from fastapi import Depends, HTTPException, status, Request
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from jose import jwt, JWTError
-from pydantic import BaseModel
-import httpx
+| Tech | Blessed (std) | Prod adoption | Action |
+|---|---|---|---|
+| TypeScript | `^6` | `^5.7` | schedule prod 5.7 → 6 upgrade |
+| Zod | `^4` | `^3` | schedule prod 3 → 4 upgrade |
+| Vitest | `^4` | `^3` | schedule prod 3 → 4 upgrade |
 
-from app.core.config import settings
-
-security = HTTPBearer()
-
-
-class ClerkUser(BaseModel):
-    """Clerk user from JWT."""
-    id: str
-    email: str | None = None
-    first_name: str | None = None
-    last_name: str | None = None
-
-
-class JWTPayload(BaseModel):
-    """JWT payload structure."""
-    sub: str  # User ID
-    exp: int
-    iat: int
-    nbf: int | None = None
-    iss: str | None = None
-    azp: str | None = None  # Authorized party
-
-
-async def get_clerk_jwks() -> dict:
-    """Fetch Clerk's JWKS for token verification."""
-    async with httpx.AsyncClient() as client:
-        response = await client.get(
-            f"https://{settings.CLERK_FRONTEND_API}/.well-known/jwks.json"
-        )
-        response.raise_for_status()
-        return response.json()
-
-
-async def verify_jwt_token(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
-) -> JWTPayload:
-    """Verify JWT token from Clerk."""
-    token = credentials.credentials
-
-    try:
-        # Option 1: Use Clerk's PEM public key (faster)
-        if settings.CLERK_PEM_PUBLIC_KEY:
-            payload = jwt.decode(
-                token,
-                settings.CLERK_PEM_PUBLIC_KEY,
-                algorithms=["RS256"],
-                options={"verify_aud": False},
-            )
-        # Option 2: Fetch JWKS dynamically
-        else:
-            jwks = await get_clerk_jwks()
-            header = jwt.get_unverified_header(token)
-            key = next(
-                (k for k in jwks["keys"] if k["kid"] == header["kid"]),
-                None
-            )
-            if not key:
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Invalid token key"
-                )
-            payload = jwt.decode(
-                token,
-                key,
-                algorithms=["RS256"],
-                options={"verify_aud": False},
-            )
-
-        return JWTPayload(**payload)
-
-    except JWTError as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Invalid token: {str(e)}",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-
-async def get_current_user_id(
-    payload: JWTPayload = Depends(verify_jwt_token),
-) -> str:
-    """Extract user ID from verified JWT."""
-    return payload.sub
-
-
-async def get_current_user(
-    user_id: str = Depends(get_current_user_id),
-) -> ClerkUser:
-    """Get full user details from Clerk."""
-    async with httpx.AsyncClient() as client:
-        response = await client.get(
-            f"https://api.clerk.com/v1/users/{user_id}",
-            headers={"Authorization": f"Bearer {settings.CLERK_SECRET_KEY}"},
-        )
-
-        if response.status_code == 404:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found"
-            )
-
-        response.raise_for_status()
-        data = response.json()
-
-        return ClerkUser(
-            id=data["id"],
-            email=data.get("email_addresses", [{}])[0].get("email_address"),
-            first_name=data.get("first_name"),
-            last_name=data.get("last_name"),
-        )
-```
-
-### Protecting Routes
-
-```python
-# app/api/routers/projects.py
-from fastapi import APIRouter, Depends
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.core.auth import get_current_user_id, get_current_user, ClerkUser
-from app.api.deps import get_db
-from app.schemas.project import ProjectResponse, ProjectCreate
-from app.crud import project_crud
-
-router = APIRouter()
-
-
-@router.get("/", response_model=list[ProjectResponse])
-async def list_projects(
-    db: AsyncSession = Depends(get_db),
-    user_id: str = Depends(get_current_user_id),  # Just need ID
-):
-    """List projects for current user."""
-    return await project_crud.get_by_owner(db, owner_id=user_id)
-
-
-@router.post("/", response_model=ProjectResponse)
-async def create_project(
-    project_in: ProjectCreate,
-    db: AsyncSession = Depends(get_db),
-    user: ClerkUser = Depends(get_current_user),  # Need full user
-):
-    """Create a new project."""
-    return await project_crud.create(
-        db,
-        obj_in=project_in,
-        owner_id=user.id,
-        owner_email=user.email,
-    )
-```
+The opposite direction — **standard behind a GA major that prod already runs** —
+is a real currency defect; that was the Clerk case (SCA-254), now resolved
+(`@clerk/nextjs ^7`).
 
 ---
 
-## User Synchronization
+## Anti-drift mechanism
 
-### Webhook Handler
+Version drift recurs when pins live as scattered prose with no canonical source
+and no automated divergence check. The mechanism:
 
-```typescript
-// app/api/webhooks/clerk/route.ts
-import { Webhook } from 'svix';
-import { headers } from 'next/headers';
-import { WebhookEvent } from '@clerk/nextjs/server';
+1. **This file is the canonical pin source.** Standards prose links here.
+2. **Drift snapshot.** `scripts/version-pins.tsv` records `blessed` vs confirmed
+   `prod` majors; `scripts/check-stale-versions.sh` diffs them and reports skew
+   as a non-failing warning (the [adoption deltas](#adoption-deltas) above).
+3. **Content currency.** The same guard hard-fails on superseded compliance
+   editions (ASVS 5.0 / SLSA v1.2 baselines), with an acknowledged-migration
+   allowlist so scheduled migrations are surfaced, not hidden (SCA-256).
+4. **Cadence.** Re-run recon and diff against this file on a fixed cadence so
+   "std ahead/behind reality" is caught within one cycle, not at the next audit.
 
-const webhookSecret = process.env.CLERK_WEBHOOK_SECRET!;
-
-export async function POST(req: Request) {
-  const headerPayload = headers();
-  const svixId = headerPayload.get('svix-id');
-  const svixTimestamp = headerPayload.get('svix-timestamp');
-  const svixSignature = headerPayload.get('svix-signature');
-
-  if (!svixId || !svixTimestamp || !svixSignature) {
-    return new Response('Missing svix headers', { status: 400 });
-  }
-
-  const payload = await req.json();
-  const body = JSON.stringify(payload);
-
-  const wh = new Webhook(webhookSecret);
-  let evt: WebhookEvent;
-
-  try {
-    evt = wh.verify(body, {
-      'svix-id': svixId,
-      'svix-timestamp': svixTimestamp,
-      'svix-signature': svixSignature,
-    }) as WebhookEvent;
-  } catch (err) {
-    console.error('Webhook verification failed:', err);
-    return new Response('Webhook verification failed', { status: 400 });
-  }
-
-  // Handle webhook events
-  switch (evt.type) {
-    case 'user.created':
-      await syncUserToBackend(evt.data);
-      break;
-    case 'user.updated':
-      await updateUserInBackend(evt.data);
-      break;
-    case 'user.deleted':
-      await deleteUserFromBackend(evt.data.id);
-      break;
-  }
-
-  return new Response('Webhook processed', { status: 200 });
-}
-
-async function syncUserToBackend(userData: any) {
-  await fetch(`${process.env.BACKEND_URL}/api/v1/users/sync`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Webhook-Secret': process.env.INTERNAL_WEBHOOK_SECRET!,
-    },
-    body: JSON.stringify({
-      clerk_id: userData.id,
-      email: userData.email_addresses[0]?.email_address,
-      first_name: userData.first_name,
-      last_name: userData.last_name,
-    }),
-  });
-}
-```
-
-### Backend User Sync Endpoint
-
-```python
-# app/api/routers/users.py
-from fastapi import APIRouter, Depends, HTTPException, Header
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.core.config import settings
-from app.api.deps import get_db
-from app.schemas.user import UserSync
-from app.crud import user_crud
-
-router = APIRouter()
-
-
-@router.post("/sync")
-async def sync_user(
-    user_in: UserSync,
-    db: AsyncSession = Depends(get_db),
-    x_webhook_secret: str = Header(...),
-):
-    """Sync user from Clerk webhook."""
-    # Verify internal webhook secret
-    if x_webhook_secret != settings.INTERNAL_WEBHOOK_SECRET:
-        raise HTTPException(status_code=403, detail="Invalid webhook secret")
-
-    # Upsert user
-    user = await user_crud.get_by_clerk_id(db, clerk_id=user_in.clerk_id)
-
-    if user:
-        user = await user_crud.update(db, db_obj=user, obj_in=user_in)
-    else:
-        user = await user_crud.create(db, obj_in=user_in)
-
-    return {"status": "synced", "user_id": user.id}
-```
+A dedicated `scripts/check-version-pins` guard that asserts every version string
+in standards prose matches this file is tracked future work (see `BACKLOG.md`).
 
 ---
 
-## API Key Authentication
+## Language depth tiers
 
-### For Machine-to-Machine Communication
+All supported backend languages are **kept** — this scheme assigns review depth,
+it does not prune. Tiers reflect 2026 language rankings (TIOBE, RedMonk,
+GitHub Octoverse, Stack Overflow).
 
-```python
-# app/core/api_keys.py
-from fastapi import Depends, HTTPException, status, Security
-from fastapi.security import APIKeyHeader
-from sqlalchemy.ext.asyncio import AsyncSession
-import secrets
-import hashlib
+| Tier | Languages | Treatment |
+|---|---|---|
+| **Deep** | Python, TypeScript | Full standard + patterns + examples; the org's primary stacks |
+| **Baseline** | Java, C#, C++, C, Go, PHP, Rust | Single-file standard, kept current (2026 top-10) |
+| **Long-tail** | Ruby, Kotlin, Swift, Dart | Single-file standard, lower review cadence |
 
-from app.api.deps import get_db
-from app.models.api_key import APIKey
-
-api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
-
-
-def hash_api_key(key: str) -> str:
-    """Hash API key for storage."""
-    return hashlib.sha256(key.encode()).hexdigest()
-
-
-def generate_api_key() -> tuple[str, str]:
-    """Generate API key and its hash."""
-    key = secrets.token_urlsafe(32)
-    key_hash = hash_api_key(key)
-    return key, key_hash
-
-
-async def verify_api_key(
-    api_key: str = Security(api_key_header),
-    db: AsyncSession = Depends(get_db),
-) -> APIKey:
-    """Verify API key and return associated record."""
-    if not api_key:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="API key required",
-        )
-
-    key_hash = hash_api_key(api_key)
-
-    # Look up API key
-    api_key_record = await db.execute(
-        select(APIKey)
-        .where(APIKey.key_hash == key_hash)
-        .where(APIKey.is_active == True)
-    )
-    api_key_obj = api_key_record.scalar_one_or_none()
-
-    if not api_key_obj:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid API key",
-        )
-
-    # Update last used timestamp
-    api_key_obj.last_used_at = func.now()
-    await db.commit()
-
-    return api_key_obj
-
-
-# Usage in routes
-@router.get("/data", dependencies=[Depends(verify_api_key)])
-async def get_data():
-    """Endpoint protected by API key."""
-    pass
-```
-
-### API Key Model
-
-```python
-# app/models/api_key.py
-from sqlalchemy import Column, String, Boolean, DateTime, Integer, ForeignKey
-from sqlalchemy.sql import func
-
-from app.db.base import BaseModel
-
-
-class APIKey(BaseModel):
-    """API key for machine-to-machine auth."""
-
-    __tablename__ = "api_keys"
-
-    name = Column(String(255), nullable=False)
-    key_hash = Column(String(64), unique=True, nullable=False, index=True)
-    key_prefix = Column(String(8), nullable=False)  # For identification
-
-    # Ownership
-    user_id = Column(String(255), ForeignKey("users.clerk_id"), nullable=False)
-
-    # Status
-    is_active = Column(Boolean, default=True, nullable=False)
-    expires_at = Column(DateTime(timezone=True), nullable=True)
-    last_used_at = Column(DateTime(timezone=True), nullable=True)
-
-    # Permissions
-    scopes = Column(ARRAY(String), nullable=False, server_default='{}')
-```
+> **TypeScript is a deep-tier language with both frontend and backend
+> standards.** The backend/general TypeScript standard (Node/server idioms,
+> strict tsconfig baseline) is
+> [`../backend/typescript.md`](../backend/typescript.md) (audit Wave 5,
+> SCA-200), closing the one top-10 language that was missing from the
+> per-language backend set.
 
 ---
 
-## Session Management
+## Cross-references
 
-### Clerk Session Tokens
-
-```typescript
-// lib/session.ts
-import { auth } from '@clerk/nextjs/server';
-
-export async function getSessionToken(): Promise<string | null> {
-  const { getToken } = auth();
-  return getToken();
-}
-
-export async function getSessionWithTemplate(template: string): Promise<string | null> {
-  const { getToken } = auth();
-  // Use custom JWT template for specific claims
-  return getToken({ template });
-}
-```
-
-### Session Verification Middleware
-
-```python
-# app/middleware/session.py
-from fastapi import Request
-from starlette.middleware.base import BaseHTTPMiddleware
-
-from app.core.auth import verify_jwt_token
-
-
-class SessionMiddleware(BaseHTTPMiddleware):
-    """Middleware to attach user context to request."""
-
-    async def dispatch(self, request: Request, call_next):
-        # Skip for public routes
-        if request.url.path.startswith("/api/public"):
-            return await call_next(request)
-
-        # Try to extract user from token
-        auth_header = request.headers.get("Authorization")
-        if auth_header and auth_header.startswith("Bearer "):
-            try:
-                token = auth_header.split(" ")[1]
-                payload = await verify_jwt_token_from_string(token)
-                request.state.user_id = payload.sub
-            except Exception:
-                request.state.user_id = None
-        else:
-            request.state.user_id = None
-
-        return await call_next(request)
-```
+- [`./error-contract.md`](./error-contract.md) — RFC 9457 error contract.
+- [`./security.md`](./security.md) — security baseline.
+- [`./observability.md`](./observability.md) — logging/tracing; loguru + the
+  `request_id` correlation triple.
+- [`../frontend/tech-stack.md`](../frontend/tech-stack.md) — frontend pins detail.
+- [`../backend/tech-stack.md`](../backend/tech-stack.md) — backend pins detail.
+- CLAUDE.md — correlation-ID, kebab-case, and snake_case conventions.
 
 ---
 
-## Multi-Tenant Authentication
+<!-- Source: standards/architecture/data-flow.md (v1.2.0) -->
 
-### Organization-Based Access
-
-```python
-# app/core/tenant.py
-from fastapi import Depends, HTTPException, status
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.core.auth import get_current_user_id
-from app.api.deps import get_db
-from app.crud import organization_member_crud
-
-
-async def get_current_organization(
-    org_id: str,
-    user_id: str = Depends(get_current_user_id),
-    db: AsyncSession = Depends(get_db),
-):
-    """Verify user belongs to organization."""
-    membership = await organization_member_crud.get_by_user_and_org(
-        db, user_id=user_id, org_id=org_id
-    )
-
-    if not membership:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not a member of this organization"
-        )
-
-    return membership
-
-
-# Usage
-@router.get("/orgs/{org_id}/projects")
-async def list_org_projects(
-    org_id: str,
-    membership = Depends(get_current_organization),
-    db: AsyncSession = Depends(get_db),
-):
-    """List projects for organization."""
-    return await project_crud.get_by_organization(db, org_id=org_id)
-```
-
----
-
-## Security Considerations
-
-### Token Storage
-
-```typescript
-// Clerk handles token storage securely
-// - HttpOnly cookies for session
-// - In-memory for short-lived JWTs
-// - No localStorage for sensitive tokens
-```
-
-### Token Refresh
-
-```typescript
-// Clerk automatically handles token refresh
-// Server actions get fresh tokens on each call
-const token = await getToken(); // Always fresh
-```
-
-### Logout Flow
-
-```typescript
-// components/auth/logout-button.tsx
-'use client';
-
-import { useClerk } from '@clerk/nextjs';
-import { useRouter } from 'next/navigation';
-
-export function LogoutButton() {
-  const { signOut } = useClerk();
-  const router = useRouter();
-
-  const handleLogout = async () => {
-    await signOut();
-    router.push('/');
-  };
-
-  return (
-    <button onClick={handleLogout}>
-      Sign Out
-    </button>
-  );
-}
-```
-
----
-
-## Environment Configuration
-
-```bash
-# Frontend (.env.local)
-NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_xxx
-CLERK_SECRET_KEY=sk_test_xxx
-NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
-NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up
-NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL=/dashboard
-NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL=/onboarding
-
-# Backend (.env)
-CLERK_SECRET_KEY=sk_test_xxx
-CLERK_FRONTEND_API=clerk.your-app.com
-CLERK_PEM_PUBLIC_KEY="-----BEGIN PUBLIC KEY-----\n...\n-----END PUBLIC KEY-----"
-```
-
----
-
-## Related Standards
-
-- [Security Architecture](./security.md)
-- [Data Flow Patterns](./data-flow.md)
-- [Frontend Server Actions](../frontend/server-actions.md)
-- [Backend Tech Stack](../backend/tech-stack.md)
-
----
-
-*Proper authentication architecture ensures secure, seamless user experiences across your entire application stack.*
-
----
-<!-- Source: /home/tester/.claude/evolv-coder-standards/standards/architecture/caching.md -->
-# Caching Architecture Standard
-
-**Version**: 1.0.0
-**Last Updated**: 2025-12-30
-**Status**: Active
-
-## Purpose
-
-This standard defines caching strategies and patterns for full-stack applications using Next.js, FastAPI, Redis, and PostgreSQL.
-
-## Scope
-
-- Frontend caching (Next.js)
-- Backend caching (Redis)
-- Database query caching
-- Cache invalidation strategies
-- Distributed caching patterns
-- Rate limiting with cache
-
----
-
-## Caching Architecture Overview
-
-```mermaid
-flowchart TB
-    subgraph Client["Client Layer"]
-        Browser[Browser Cache]
-        SW[Service Worker]
-    end
-
-    subgraph CDN["CDN Layer"]
-        Edge[Edge Cache]
-        Static[Static Assets]
-    end
-
-    subgraph Frontend["Next.js Layer"]
-        Router[Router Cache]
-        Full[Full Route Cache]
-        Data[Data Cache]
-        Fetch[fetch Cache]
-    end
-
-    subgraph Backend["FastAPI Layer"]
-        Memory[In-Memory Cache]
-        Redis[(Redis)]
-        RateLimit[Rate Limiting]
-    end
-
-    subgraph Database["Database Layer"]
-        QueryCache[Query Cache]
-        PG[(PostgreSQL)]
-    end
-
-    Browser --> Edge
-    Edge --> Router
-    Router --> Full
-    Full --> Data
-    Data --> Fetch
-    Fetch --> Redis
-    Redis --> QueryCache
-    QueryCache --> PG
-```
-
----
-
-## Frontend Caching (Next.js)
-
-### Next.js Cache Types
-
-| Cache Type | Location | Duration | Use Case |
-|------------|----------|----------|----------|
-| Router Cache | Client | Session | Navigation between pages |
-| Full Route Cache | Server | Persistent | Static/ISR pages |
-| Data Cache | Server | Persistent | fetch() results |
-| Request Memoization | Server | Request | Duplicate fetch dedup |
-
-### Data Fetching with Cache
-
-```typescript
-// app/actions/products.ts
-'use server';
-
-import { unstable_cache } from 'next/cache';
-
-// Cached server action with tags
-export const getProducts = unstable_cache(
-  async (category: string) => {
-    const response = await fetch(`${API_URL}/products?category=${category}`);
-    return response.json();
-  },
-  ['products'],  // Cache key parts
-  {
-    tags: ['products'],
-    revalidate: 3600,  // Revalidate every hour
-  }
-);
-
-// Direct fetch with cache options
-export async function getProduct(id: string) {
-  const response = await fetch(`${API_URL}/products/${id}`, {
-    next: {
-      tags: [`product-${id}`],
-      revalidate: 60,  // Revalidate every minute
-    },
-  });
-  return response.json();
-}
-
-// No cache for real-time data
-export async function getCurrentUser() {
-  const response = await fetch(`${API_URL}/me`, {
-    cache: 'no-store',  // Always fresh
-  });
-  return response.json();
-}
-```
-
-### Cache Invalidation
-
-```typescript
-// app/actions/mutations.ts
-'use server';
-
-import { revalidatePath, revalidateTag } from 'next/cache';
-
-export async function createProduct(data: ProductInput) {
-  const response = await fetch(`${API_URL}/products`, {
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
-
-  if (response.ok) {
-    // Invalidate by tag (recommended)
-    revalidateTag('products');
-
-    // Or invalidate by path
-    revalidatePath('/products');
-
-    // Invalidate specific product pages
-    revalidatePath('/products/[id]', 'page');
-  }
-
-  return response.json();
-}
-
-export async function updateProduct(id: string, data: ProductInput) {
-  const response = await fetch(`${API_URL}/products/${id}`, {
-    method: 'PUT',
-    body: JSON.stringify(data),
-  });
-
-  if (response.ok) {
-    // Invalidate specific product
-    revalidateTag(`product-${id}`);
-    // Also invalidate list
-    revalidateTag('products');
-  }
-
-  return response.json();
-}
-
-export async function deleteProduct(id: string) {
-  const response = await fetch(`${API_URL}/products/${id}`, {
-    method: 'DELETE',
-  });
-
-  if (response.ok) {
-    revalidateTag('products');
-    revalidateTag(`product-${id}`);
-    revalidatePath('/products');
-  }
-
-  return response.json();
-}
-```
-
-### Client-Side Caching with TanStack Query
-
-```typescript
-// hooks/use-products.ts
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getProducts, createProduct } from '@/app/actions/products';
-
-export function useProducts(category: string) {
-  return useQuery({
-    queryKey: ['products', category],
-    queryFn: () => getProducts(category),
-    staleTime: 5 * 60 * 1000,  // Consider fresh for 5 minutes
-    gcTime: 30 * 60 * 1000,    // Keep in cache for 30 minutes
-  });
-}
-
-export function useCreateProduct() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: createProduct,
-    onSuccess: () => {
-      // Invalidate and refetch
-      queryClient.invalidateQueries({ queryKey: ['products'] });
-    },
-    // Optimistic update
-    onMutate: async (newProduct) => {
-      await queryClient.cancelQueries({ queryKey: ['products'] });
-
-      const previousProducts = queryClient.getQueryData(['products']);
-
-      queryClient.setQueryData(['products'], (old: Product[]) => [
-        ...old,
-        { ...newProduct, id: 'temp-id' },
-      ]);
-
-      return { previousProducts };
-    },
-    onError: (err, newProduct, context) => {
-      queryClient.setQueryData(['products'], context?.previousProducts);
-    },
-  });
-}
-```
-
----
-
-## Backend Caching (Redis)
-
-### Redis Connection
-
-```python
-# app/core/cache.py
-import redis.asyncio as redis
-from contextlib import asynccontextmanager
-from typing import Any
-import json
-
-from app.core.config import settings
-
-
-class RedisCache:
-    """Redis cache client."""
-
-    def __init__(self):
-        self.redis: redis.Redis | None = None
-
-    async def connect(self):
-        """Initialize Redis connection."""
-        self.redis = redis.from_url(
-            settings.REDIS_URL,
-            encoding="utf-8",
-            decode_responses=True,
-        )
-
-    async def disconnect(self):
-        """Close Redis connection."""
-        if self.redis:
-            await self.redis.close()
-
-    async def get(self, key: str) -> Any | None:
-        """Get value from cache."""
-        if not self.redis:
-            return None
-
-        value = await self.redis.get(key)
-        if value:
-            return json.loads(value)
-        return None
-
-    async def set(
-        self,
-        key: str,
-        value: Any,
-        expire: int = 3600,
-    ) -> bool:
-        """Set value in cache with expiration."""
-        if not self.redis:
-            return False
-
-        return await self.redis.setex(
-            key,
-            expire,
-            json.dumps(value, default=str),
-        )
-
-    async def delete(self, key: str) -> bool:
-        """Delete key from cache."""
-        if not self.redis:
-            return False
-
-        return await self.redis.delete(key) > 0
-
-    async def delete_pattern(self, pattern: str) -> int:
-        """Delete all keys matching pattern."""
-        if not self.redis:
-            return 0
-
-        cursor = 0
-        deleted = 0
-
-        while True:
-            cursor, keys = await self.redis.scan(
-                cursor=cursor,
-                match=pattern,
-                count=100,
-            )
-
-            if keys:
-                deleted += await self.redis.delete(*keys)
-
-            if cursor == 0:
-                break
-
-        return deleted
-
-    async def exists(self, key: str) -> bool:
-        """Check if key exists."""
-        if not self.redis:
-            return False
-
-        return await self.redis.exists(key) > 0
-
-    async def incr(self, key: str, expire: int | None = None) -> int:
-        """Increment counter."""
-        if not self.redis:
-            return 0
-
-        value = await self.redis.incr(key)
-
-        if expire and value == 1:
-            await self.redis.expire(key, expire)
-
-        return value
-
-
-cache = RedisCache()
-
-
-# Dependency for FastAPI
-async def get_cache() -> RedisCache:
-    """Get cache instance."""
-    return cache
-```
-
-### Cache Decorator
-
-```python
-# app/core/cache.py (continued)
-from functools import wraps
-from typing import Callable
-import hashlib
-
-
-def cached(
-    prefix: str,
-    expire: int = 3600,
-    key_builder: Callable[..., str] | None = None,
-):
-    """Decorator for caching function results."""
-
-    def decorator(func: Callable):
-        @wraps(func)
-        async def wrapper(*args, **kwargs):
-            # Build cache key
-            if key_builder:
-                cache_key = f"{prefix}:{key_builder(*args, **kwargs)}"
-            else:
-                # Default key from args
-                key_parts = [str(arg) for arg in args]
-                key_parts.extend(f"{k}={v}" for k, v in sorted(kwargs.items()))
-                key_hash = hashlib.md5(":".join(key_parts).encode()).hexdigest()
-                cache_key = f"{prefix}:{key_hash}"
-
-            # Try cache first
-            cached_value = await cache.get(cache_key)
-            if cached_value is not None:
-                return cached_value
-
-            # Execute function
-            result = await func(*args, **kwargs)
-
-            # Cache result
-            await cache.set(cache_key, result, expire)
-
-            return result
-
-        return wrapper
-
-    return decorator
-
-
-# Usage
-@cached(prefix="product", expire=300, key_builder=lambda id: str(id))
-async def get_product_cached(id: int) -> dict:
-    """Get product with caching."""
-    # This only runs on cache miss
-    product = await product_crud.get(db, id=id)
-    return product.model_dump() if product else None
-```
-
-### Service-Level Caching
-
-```python
-# app/services/product_service.py
-from app.core.cache import cache
-from app.crud import product_crud
-from app.schemas.product import ProductResponse
-
-
-class ProductService:
-    """Product service with caching."""
-
-    CACHE_PREFIX = "products"
-    CACHE_TTL = 300  # 5 minutes
-
-    def __init__(self, db):
-        self.db = db
-
-    def _cache_key(self, *parts: str) -> str:
-        """Build cache key."""
-        return f"{self.CACHE_PREFIX}:{':'.join(parts)}"
-
-    async def get_by_id(self, product_id: int) -> ProductResponse | None:
-        """Get product by ID with caching."""
-        cache_key = self._cache_key("id", str(product_id))
-
-        # Try cache
-        cached = await cache.get(cache_key)
-        if cached:
-            return ProductResponse(**cached)
-
-        # Query database
-        product = await product_crud.get(self.db, id=product_id)
-        if not product:
-            return None
-
-        # Cache result
-        result = ProductResponse.model_validate(product)
-        await cache.set(cache_key, result.model_dump(), self.CACHE_TTL)
-
-        return result
-
-    async def get_by_category(
-        self,
-        category: str,
-        skip: int = 0,
-        limit: int = 20,
-    ) -> list[ProductResponse]:
-        """Get products by category with caching."""
-        cache_key = self._cache_key("category", category, str(skip), str(limit))
-
-        # Try cache
-        cached = await cache.get(cache_key)
-        if cached:
-            return [ProductResponse(**p) for p in cached]
-
-        # Query database
-        products = await product_crud.get_by_category(
-            self.db,
-            category=category,
-            skip=skip,
-            limit=limit,
-        )
-
-        # Cache result
-        result = [ProductResponse.model_validate(p) for p in products]
-        await cache.set(
-            cache_key,
-            [r.model_dump() for r in result],
-            self.CACHE_TTL,
-        )
-
-        return result
-
-    async def create(self, data: ProductCreate) -> ProductResponse:
-        """Create product and invalidate cache."""
-        product = await product_crud.create(self.db, obj_in=data)
-
-        # Invalidate category cache
-        await cache.delete_pattern(
-            f"{self.CACHE_PREFIX}:category:{data.category}:*"
-        )
-
-        return ProductResponse.model_validate(product)
-
-    async def update(
-        self,
-        product_id: int,
-        data: ProductUpdate,
-    ) -> ProductResponse | None:
-        """Update product and invalidate cache."""
-        product = await product_crud.get(self.db, id=product_id)
-        if not product:
-            return None
-
-        old_category = product.category
-        updated = await product_crud.update(self.db, db_obj=product, obj_in=data)
-
-        # Invalidate caches
-        await cache.delete(self._cache_key("id", str(product_id)))
-        await cache.delete_pattern(f"{self.CACHE_PREFIX}:category:{old_category}:*")
-
-        if data.category and data.category != old_category:
-            await cache.delete_pattern(
-                f"{self.CACHE_PREFIX}:category:{data.category}:*"
-            )
-
-        return ProductResponse.model_validate(updated)
-
-    async def delete(self, product_id: int) -> bool:
-        """Delete product and invalidate cache."""
-        product = await product_crud.get(self.db, id=product_id)
-        if not product:
-            return False
-
-        category = product.category
-        await product_crud.delete(self.db, id=product_id)
-
-        # Invalidate caches
-        await cache.delete(self._cache_key("id", str(product_id)))
-        await cache.delete_pattern(f"{self.CACHE_PREFIX}:category:{category}:*")
-
-        return True
-```
-
----
-
-## Cache Invalidation Strategies
-
-### 1. Time-Based (TTL)
-
-```python
-# Simple TTL - cache expires after duration
-await cache.set("key", value, expire=3600)  # 1 hour
-```
-
-### 2. Event-Based
-
-```python
-# Invalidate on write operations
-async def update_user(user_id: int, data: UserUpdate):
-    user = await user_crud.update(db, id=user_id, obj_in=data)
-
-    # Invalidate all related caches
-    await cache.delete(f"user:{user_id}")
-    await cache.delete(f"user:email:{user.email}")
-    await cache.delete_pattern(f"user:{user_id}:*")
-
-    return user
-```
-
-### 3. Write-Through
-
-```python
-# Update cache when writing to database
-async def create_user(data: UserCreate) -> User:
-    user = await user_crud.create(db, obj_in=data)
-
-    # Write to cache immediately
-    await cache.set(
-        f"user:{user.id}",
-        user.model_dump(),
-        expire=3600,
-    )
-
-    return user
-```
-
-### 4. Cache-Aside (Lazy Loading)
-
-```python
-# Load into cache on first read
-async def get_user(user_id: int) -> User | None:
-    # Check cache
-    cached = await cache.get(f"user:{user_id}")
-    if cached:
-        return User(**cached)
-
-    # Load from database
-    user = await user_crud.get(db, id=user_id)
-    if not user:
-        return None
-
-    # Store in cache
-    await cache.set(f"user:{user_id}", user.model_dump(), expire=3600)
-
-    return user
-```
-
-### 5. Read-Through (with Cache Decorator)
-
-```python
-@cached(prefix="user", expire=3600)
-async def get_user(user_id: int) -> dict | None:
-    """Automatically cached on read."""
-    user = await user_crud.get(db, id=user_id)
-    return user.model_dump() if user else None
-```
-
----
-
-## Rate Limiting with Redis
-
-```python
-# app/core/rate_limit.py
-from fastapi import Request, HTTPException, status
-from datetime import timedelta
-
-from app.core.cache import cache
-
-
-class RateLimiter:
-    """Token bucket rate limiter using Redis."""
-
-    def __init__(
-        self,
-        requests: int,
-        window: timedelta,
-        key_prefix: str = "rate_limit",
-    ):
-        self.requests = requests
-        self.window_seconds = int(window.total_seconds())
-        self.key_prefix = key_prefix
-
-    def _get_key(self, identifier: str) -> str:
-        """Build rate limit key."""
-        return f"{self.key_prefix}:{identifier}"
-
-    async def check(self, identifier: str) -> tuple[bool, dict]:
-        """Check if request is allowed."""
-        key = self._get_key(identifier)
-
-        # Increment counter
-        current = await cache.incr(key, expire=self.window_seconds)
-
-        # Get TTL for headers
-        ttl = await cache.redis.ttl(key) if cache.redis else self.window_seconds
-
-        headers = {
-            "X-RateLimit-Limit": str(self.requests),
-            "X-RateLimit-Remaining": str(max(0, self.requests - current)),
-            "X-RateLimit-Reset": str(ttl),
-        }
-
-        return current <= self.requests, headers
-
-    async def __call__(self, request: Request):
-        """FastAPI dependency."""
-        # Use user ID if authenticated, otherwise IP
-        identifier = getattr(request.state, "user_id", None)
-        if not identifier:
-            identifier = request.client.host if request.client else "unknown"
-
-        allowed, headers = await self.check(identifier)
-
-        if not allowed:
-            raise HTTPException(
-                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail="Rate limit exceeded",
-                headers=headers,
-            )
-
-        return headers
-
-
-# Create rate limiters
-default_limiter = RateLimiter(requests=100, window=timedelta(minutes=1))
-strict_limiter = RateLimiter(requests=10, window=timedelta(minutes=1))
-
-
-# Usage in routes
-@router.get("/search", dependencies=[Depends(default_limiter)])
-async def search(q: str):
-    pass
-
-
-@router.post("/login", dependencies=[Depends(strict_limiter)])
-async def login(credentials: LoginRequest):
-    pass
-```
-
----
-
-## Distributed Caching Patterns
-
-### Cache Key Namespacing
-
-```python
-# Namespace pattern for multi-tenant apps
-def tenant_key(tenant_id: str, *parts: str) -> str:
-    """Build tenant-scoped cache key."""
-    return f"tenant:{tenant_id}:{':'.join(parts)}"
-
-# Usage
-await cache.set(tenant_key("acme", "user", "123"), user_data)
-await cache.get(tenant_key("acme", "user", "123"))
-```
-
-### Distributed Locking
-
-```python
-# app/core/locks.py
-import asyncio
-from contextlib import asynccontextmanager
-
-from app.core.cache import cache
-
-
-class DistributedLock:
-    """Redis-based distributed lock."""
-
-    def __init__(self, name: str, timeout: int = 10):
-        self.name = f"lock:{name}"
-        self.timeout = timeout
-
-    @asynccontextmanager
-    async def acquire(self):
-        """Acquire lock with context manager."""
-        acquired = False
-
-        try:
-            # Try to acquire lock
-            for _ in range(self.timeout * 10):  # Retry every 100ms
-                if await cache.redis.set(
-                    self.name,
-                    "1",
-                    ex=self.timeout,
-                    nx=True,  # Only if not exists
-                ):
-                    acquired = True
-                    break
-
-                await asyncio.sleep(0.1)
-
-            if not acquired:
-                raise TimeoutError(f"Could not acquire lock: {self.name}")
-
-            yield
-
-        finally:
-            if acquired:
-                await cache.delete(self.name)
-
-
-# Usage
-async def process_order(order_id: int):
-    async with DistributedLock(f"order:{order_id}").acquire():
-        # Only one process can execute this at a time
-        order = await order_crud.get(db, id=order_id)
-        await process_payment(order)
-        await update_inventory(order)
-```
-
-### Cache Stampede Prevention
-
-```python
-# app/core/cache.py
-async def get_or_set(
-    key: str,
-    factory: Callable[[], Awaitable[Any]],
-    expire: int = 3600,
-    lock_timeout: int = 5,
-) -> Any:
-    """Get from cache or compute with stampede prevention."""
-    # Try cache first
-    value = await cache.get(key)
-    if value is not None:
-        return value
-
-    lock_key = f"lock:{key}"
-
-    # Try to acquire lock
-    if await cache.redis.set(lock_key, "1", ex=lock_timeout, nx=True):
-        try:
-            # We got the lock - compute value
-            value = await factory()
-            await cache.set(key, value, expire)
-            return value
-        finally:
-            await cache.delete(lock_key)
-    else:
-        # Wait for other process to compute
-        for _ in range(lock_timeout * 10):
-            await asyncio.sleep(0.1)
-            value = await cache.get(key)
-            if value is not None:
-                return value
-
-        # Timeout - compute ourselves
-        value = await factory()
-        await cache.set(key, value, expire)
-        return value
-
-
-# Usage
-product = await get_or_set(
-    f"product:{product_id}",
-    lambda: product_crud.get(db, id=product_id),
-    expire=300,
-)
-```
-
----
-
-## Monitoring and Debugging
-
-### Cache Metrics
-
-```python
-# app/core/cache.py
-class CacheMetrics:
-    """Track cache performance."""
-
-    def __init__(self):
-        self.hits = 0
-        self.misses = 0
-        self.errors = 0
-
-    @property
-    def hit_rate(self) -> float:
-        total = self.hits + self.misses
-        return self.hits / total if total > 0 else 0.0
-
-    def record_hit(self):
-        self.hits += 1
-
-    def record_miss(self):
-        self.misses += 1
-
-    def record_error(self):
-        self.errors += 1
-
-
-metrics = CacheMetrics()
-
-
-async def get_with_metrics(key: str) -> Any:
-    """Get with metrics tracking."""
-    try:
-        value = await cache.get(key)
-        if value is not None:
-            metrics.record_hit()
-        else:
-            metrics.record_miss()
-        return value
-    except Exception:
-        metrics.record_error()
-        raise
-```
-
-### Debug Endpoint
-
-```python
-# app/api/routers/debug.py
-from fastapi import APIRouter, Depends
-
-from app.core.cache import cache, metrics
-from app.core.auth import require_admin
-
-router = APIRouter()
-
-
-@router.get("/cache/stats", dependencies=[Depends(require_admin)])
-async def cache_stats():
-    """Get cache statistics."""
-    info = await cache.redis.info() if cache.redis else {}
-
-    return {
-        "connected": cache.redis is not None,
-        "hit_rate": metrics.hit_rate,
-        "hits": metrics.hits,
-        "misses": metrics.misses,
-        "errors": metrics.errors,
-        "redis_info": {
-            "used_memory": info.get("used_memory_human"),
-            "connected_clients": info.get("connected_clients"),
-            "total_commands_processed": info.get("total_commands_processed"),
-        },
-    }
-```
-
----
-
-## Best Practices
-
-### Do's
-
-✅ Use appropriate TTLs based on data freshness requirements
-✅ Namespace cache keys by tenant/user when needed
-✅ Implement cache warming for critical data
-✅ Monitor cache hit rates
-✅ Use connection pooling for Redis
-✅ Handle cache failures gracefully (fallback to database)
-
-### Don'ts
-
-❌ Cache user-specific data without proper namespacing
-❌ Use very long TTLs without invalidation strategy
-❌ Store large objects (> 1MB) in Redis
-❌ Rely solely on TTL for cache invalidation
-❌ Cache data that changes frequently without invalidation
-
----
-
-## Related Standards
-
-- [Data Flow Patterns](./data-flow.md)
-- [Backend Tech Stack](../backend/tech-stack.md)
-- [Frontend Tech Stack](../frontend/tech-stack.md)
-- [Security Architecture](./security.md)
-
----
-
-*Effective caching improves performance and reduces database load, but requires careful planning for cache invalidation and consistency.*
-
----
-<!-- Source: /home/tester/.claude/evolv-coder-standards/standards/architecture/data-flow.md -->
 # Data Flow Architecture
 
-**Version**: 1.0.0
-**Last Updated**: 2026-01-04
 **Status**: Active
 
 ## Overview
@@ -2267,18 +688,18 @@ export function UserForm() {
 // app/actions/users.ts
 'use server';
 
-import { auth } from '@clerk/nextjs';
+import { auth } from '@clerk/nextjs/server';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 
 const userSchema = z.object({
   name: z.string().min(2),
-  email: z.string().email(),
+  email: z.email(),
 });
 
 export async function createUser(formData: FormData) {
   // 1. Authentication
-  const { userId } = auth();
+  const { userId, getToken } = await auth();
   if (!userId) {
     return { success: false, error: 'Unauthorized' };
   }
@@ -2292,7 +713,7 @@ export async function createUser(formData: FormData) {
   if (!validation.success) {
     return {
       success: false,
-      errors: validation.error.errors
+      errors: validation.error.issues
     };
   }
 
@@ -2785,12 +1206,2264 @@ For implementation approaches and code examples:
 *This data flow architecture ensures security, performance, and maintainability across the entire application stack.*
 
 ---
-<!-- Source: /home/tester/.claude/evolv-coder-standards/standards/architecture/error-contract.md -->
+
+<!-- Source: standards/architecture/security.md (v1.6.1) -->
+
+# Security Architecture Standard
+
+**Status**: Active
+
+## Purpose
+
+This standard defines security architecture patterns and best practices for full-stack applications using Next.js, FastAPI, and PostgreSQL.
+
+## Scope
+
+- Authentication and authorization architecture
+- Input validation and sanitization
+- Data protection and encryption
+- API security
+- OWASP compliance
+- Secrets management
+- Audit logging
+
+---
+
+## Security Architecture Overview
+
+```mermaid
+flowchart TB
+    subgraph Client["Client Layer"]
+        Browser[Browser]
+        CSP[Content Security Policy]
+        XSS[XSS Prevention]
+    end
+
+    subgraph Frontend["Frontend Layer - Next.js"]
+        Clerk[Clerk Auth]
+        ServerActions[Server Actions]
+        Validation[Zod Validation]
+    end
+
+    subgraph Backend["Backend Layer - FastAPI"]
+        JWT[JWT Validation]
+        RateLimit[Rate Limiting]
+        InputVal[Pydantic Validation]
+        RBAC[Role-Based Access]
+    end
+
+    subgraph Data["Data Layer"]
+        Encryption[Encryption at Rest]
+        TLS[TLS in Transit]
+        Audit[Audit Logs]
+        DB[(PostgreSQL)]
+    end
+
+    Browser --> CSP
+    CSP --> Clerk
+    Clerk --> ServerActions
+    ServerActions --> Validation
+    Validation --> JWT
+    JWT --> RateLimit
+    RateLimit --> InputVal
+    InputVal --> RBAC
+    RBAC --> Encryption
+    Encryption --> DB
+    DB --> Audit
+```
+
+---
+
+## Authentication Architecture
+
+See [`./authentication.md`](./authentication.md) for the full authentication
+standard covering Clerk integration, server action authentication, backend JWT
+validation, session management, and token refresh patterns.
+
+---
+
+## Authorization Patterns
+
+### Role-Based Access Control (RBAC)
+
+```python
+# app/core/permissions.py
+from enum import Enum
+from functools import wraps
+from typing import Callable
+
+from fastapi import HTTPException, status
+
+
+class Permission(str, Enum):
+    """Application permissions."""
+    READ_USERS = "read:users"
+    WRITE_USERS = "write:users"
+    DELETE_USERS = "delete:users"
+    ADMIN = "admin"
+
+
+class Role(str, Enum):
+    """Application roles with permissions."""
+    USER = "user"
+    MODERATOR = "moderator"
+    ADMIN = "admin"
+
+
+ROLE_PERMISSIONS: dict[Role, set[Permission]] = {
+    Role.USER: {Permission.READ_USERS},
+    Role.MODERATOR: {Permission.READ_USERS, Permission.WRITE_USERS},
+    Role.ADMIN: {Permission.READ_USERS, Permission.WRITE_USERS, Permission.DELETE_USERS, Permission.ADMIN},
+}
+
+
+def require_permission(permission: Permission):
+    """Decorator to require specific permission."""
+    def decorator(func: Callable):
+        @wraps(func)
+        async def wrapper(*args, current_user_role: Role, **kwargs):
+            user_permissions = ROLE_PERMISSIONS.get(current_user_role, set())
+
+            if permission not in user_permissions:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail=f"Permission denied: {permission.value} required"
+                )
+
+            return await func(*args, **kwargs)
+        return wrapper
+    return decorator
+```
+
+### Resource-Level Authorization
+
+```python
+# app/api/routers/documents.py
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.api.deps import get_db, get_current_user
+from app.crud import document_crud
+from app.schemas.document import DocumentResponse
+
+router = APIRouter()
+
+
+@router.get("/{document_id}", response_model=DocumentResponse)
+async def get_document(
+    document_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user_id: str = Depends(get_current_user),
+):
+    """Get document with ownership check."""
+    document = await document_crud.get(db, id=document_id)
+
+    if not document:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Document not found"
+        )
+
+    # Resource-level authorization
+    if document.owner_id != current_user_id and not document.is_public:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to access this document"
+        )
+
+    return document
+```
+
+---
+
+## Input Validation
+
+### Frontend Validation (Zod)
+
+```typescript
+// lib/validations/user.ts
+import { z } from 'zod';
+
+export const createUserSchema = z.object({
+  email: z
+    .string()
+    .email('Invalid email address')
+    .max(255, 'Email too long'),
+  password: z
+    .string()
+    .min(12, 'Password must be at least 12 characters')
+    .regex(
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])/,
+      'Password must include uppercase, lowercase, number, and special character'
+    ),
+  fullName: z
+    .string()
+    .min(1, 'Name is required')
+    .max(255, 'Name too long')
+    .regex(/^[a-zA-Z\s'-]+$/, 'Name contains invalid characters'),
+});
+
+export type CreateUserInput = z.infer<typeof createUserSchema>;
+```
+
+### Backend Validation (Pydantic)
+
+```python
+# app/schemas/user.py
+from pydantic import BaseModel, EmailStr, Field, field_validator
+import re
+
+
+class UserCreate(BaseModel):
+    """User creation schema with validation."""
+
+    email: EmailStr = Field(..., max_length=255)
+    password: str = Field(..., min_length=12, max_length=128)
+    full_name: str = Field(..., min_length=1, max_length=255)
+
+    @field_validator("password")
+    @classmethod
+    def validate_password_strength(cls, v: str) -> str:
+        """Validate password meets security requirements."""
+        if not re.search(r"[a-z]", v):
+            raise ValueError("Password must contain lowercase letter")
+        if not re.search(r"[A-Z]", v):
+            raise ValueError("Password must contain uppercase letter")
+        if not re.search(r"\d", v):
+            raise ValueError("Password must contain digit")
+        if not re.search(r"[@$!%*?&]", v):
+            raise ValueError("Password must contain special character")
+        return v
+
+    @field_validator("full_name")
+    @classmethod
+    def validate_name(cls, v: str) -> str:
+        """Validate name contains only allowed characters."""
+        if not re.match(r"^[a-zA-Z\s'-]+$", v):
+            raise ValueError("Name contains invalid characters")
+        return v.strip()
+```
+
+### SQL Injection Prevention
+
+```python
+# ALWAYS use parameterized queries - SQLAlchemy handles this
+
+# ✅ Safe - SQLAlchemy ORM
+user = await db.execute(
+    select(User).where(User.email == email)
+)
+
+# ✅ Safe - Parameterized raw SQL
+result = await db.execute(
+    text("SELECT * FROM users WHERE email = :email"),
+    {"email": email}
+)
+
+# ❌ NEVER do this - SQL injection vulnerability
+# result = await db.execute(f"SELECT * FROM users WHERE email = '{email}'")
+```
+
+---
+
+## XSS Prevention
+
+### Content Security Policy
+
+```typescript
+// next.config.ts
+const securityHeaders = [
+  {
+    key: 'Content-Security-Policy',
+    value: [
+      "default-src 'self'",
+      "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://clerk.com",
+      "style-src 'self' 'unsafe-inline'",
+      "img-src 'self' data: https:",
+      "font-src 'self'",
+      "connect-src 'self' https://api.clerk.com wss:",
+      "frame-ancestors 'none'",
+      "form-action 'self'",
+    ].join('; '),
+  },
+  {
+    key: 'X-Content-Type-Options',
+    value: 'nosniff',
+  },
+  {
+    key: 'X-Frame-Options',
+    value: 'DENY',
+  },
+  {
+    key: 'X-XSS-Protection',
+    value: '1; mode=block',
+  },
+  {
+    key: 'Referrer-Policy',
+    value: 'strict-origin-when-cross-origin',
+  },
+];
+
+export default {
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: securityHeaders,
+      },
+    ];
+  },
+};
+```
+
+### Output Encoding
+
+```typescript
+// React automatically escapes content, but be careful with:
+
+// ❌ Dangerous - renders raw HTML
+<div dangerouslySetInnerHTML={{ __html: userContent }} />
+
+// ✅ Safe - use a sanitizer if HTML is required
+import DOMPurify from 'dompurify';
+
+<div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(userContent) }} />
+
+// ✅ Best - avoid raw HTML entirely
+<div>{userContent}</div>
+```
+
+---
+
+## CSRF Protection
+
+### Server Actions (Built-in Protection)
+
+Next.js server actions include built-in CSRF protection via origin checking.
+
+```typescript
+// Server actions are automatically protected
+'use server';
+
+export async function updateProfile(formData: FormData) {
+  // CSRF token validation is automatic
+  // Origin header is verified by Next.js
+}
+```
+
+### API Routes (Manual Protection)
+
+```typescript
+// app/api/webhook/route.ts
+import { headers } from 'next/headers';
+import crypto from 'crypto';
+
+export async function POST(request: Request) {
+  const headersList = headers();
+  const signature = headersList.get('x-webhook-signature');
+
+  if (!signature) {
+    return Response.json({ error: 'Missing signature' }, { status: 401 });
+  }
+
+  const body = await request.text();
+  const expectedSignature = crypto
+    .createHmac('sha256', process.env.WEBHOOK_SECRET!)
+    .update(body)
+    .digest('hex');
+
+  if (!crypto.timingSafeEqual(
+    Buffer.from(signature),
+    Buffer.from(expectedSignature)
+  )) {
+    return Response.json({ error: 'Invalid signature' }, { status: 401 });
+  }
+
+  // Process webhook
+}
+```
+
+---
+
+## Rate Limiting
+
+Rate limiting is a baseline security control. See
+[`../backend/rate-limiting.md`](../backend/rate-limiting.md) for the
+canonical token-bucket implementation, scope hierarchy
+(per-IP / per-user / per-tenant / per-endpoint), default limits per
+route class (auth `5/min`, mutation `60/min`, read `600/min`, public
+`60/min`), required `RateLimit-*` headers, and the 429 ProblemDetail
+shape. Login and signup endpoints inherit strict limits to defend
+against credential stuffing and bot account creation.
+
+---
+
+## Secrets Management
+
+### Environment Variables
+
+```bash
+# .env.local (never commit)
+DATABASE_URL=postgresql+asyncpg://user:pass@localhost/db
+CLERK_SECRET_KEY=sk_live_xxx
+REDIS_URL=redis://localhost:6379
+ENCRYPTION_KEY=base64-encoded-32-byte-key
+
+# .env.example (commit this)
+DATABASE_URL=postgresql+asyncpg://user:pass@localhost/db
+CLERK_SECRET_KEY=sk_test_xxx
+REDIS_URL=redis://localhost:6379
+ENCRYPTION_KEY=generate-with-openssl
+```
+
+### Settings Configuration
+
+```python
+# app/core/config.py
+from pydantic_settings import BaseSettings
+from pydantic import SecretStr, field_validator
+
+
+class Settings(BaseSettings):
+    """Application settings with secret handling."""
+
+    # Database
+    DATABASE_URL: SecretStr
+
+    # Authentication
+    CLERK_SECRET_KEY: SecretStr
+    CLERK_PEM_PUBLIC_KEY: str
+
+    # Encryption
+    ENCRYPTION_KEY: SecretStr
+
+    # Redis
+    REDIS_URL: SecretStr
+
+    @field_validator("ENCRYPTION_KEY")
+    @classmethod
+    def validate_encryption_key(cls, v: SecretStr) -> SecretStr:
+        """Validate encryption key length."""
+        key_bytes = v.get_secret_value()
+        if len(key_bytes) < 32:
+            raise ValueError("Encryption key must be at least 32 bytes")
+        return v
+
+    class Config:
+        env_file = ".env"
+        case_sensitive = True
+
+
+settings = Settings()
+```
+
+### Using Secrets
+
+```python
+# Always use .get_secret_value() to access secrets
+database_url = settings.DATABASE_URL.get_secret_value()
+
+# Secrets are not logged or exposed in errors
+print(settings.DATABASE_URL)  # Outputs: SecretStr('**********')
+```
+
+---
+
+## Data Encryption
+
+### Encryption at Rest
+
+```python
+# app/core/encryption.py
+from cryptography.fernet import Fernet
+from base64 import b64encode, b64decode
+
+from app.core.config import settings
+
+
+class FieldEncryption:
+    """Encrypt/decrypt sensitive database fields."""
+
+    def __init__(self):
+        key = settings.ENCRYPTION_KEY.get_secret_value()
+        self.fernet = Fernet(key.encode() if isinstance(key, str) else key)
+
+    def encrypt(self, value: str) -> str:
+        """Encrypt a string value."""
+        encrypted = self.fernet.encrypt(value.encode())
+        return b64encode(encrypted).decode()
+
+    def decrypt(self, encrypted_value: str) -> str:
+        """Decrypt an encrypted value."""
+        decoded = b64decode(encrypted_value.encode())
+        return self.fernet.decrypt(decoded).decode()
+
+
+encryption = FieldEncryption()
+
+
+# Usage in model
+class User(BaseModel):
+    """User with encrypted SSN."""
+
+    _ssn_encrypted: str = Column("ssn", String(255))
+
+    @property
+    def ssn(self) -> str:
+        """Decrypt SSN on access."""
+        return encryption.decrypt(self._ssn_encrypted)
+
+    @ssn.setter
+    def ssn(self, value: str):
+        """Encrypt SSN on set."""
+        self._ssn_encrypted = encryption.encrypt(value)
+```
+
+### Password Hashing
+
+```python
+# app/core/security.py
+from argon2 import PasswordHasher
+from argon2.exceptions import VerifyMismatchError
+
+ph = PasswordHasher()
+
+
+def hash_password(password: str) -> str:
+    """Hash a password using Argon2id."""
+    return ph.hash(password)
+
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """Verify a password against hash."""
+    try:
+        return ph.verify(hashed_password, plain_password)
+    except VerifyMismatchError:
+        return False
+```
+
+---
+
+## Audit Logging
+
+### Audit Log Model
+
+```python
+# app/models/audit.py
+from sqlalchemy import Column, String, Integer, DateTime, Text, JSON
+from sqlalchemy.sql import func
+
+from app.db.base import Base
+
+
+class AuditLog(Base):
+    """Audit log for security events."""
+
+    __tablename__ = "audit_logs"
+
+    id = Column(Integer, primary_key=True)
+    timestamp = Column(DateTime(timezone=True), server_default=func.now(), index=True)
+
+    # Actor
+    user_id = Column(String(255), nullable=True, index=True)
+    ip_address = Column(String(45), nullable=True)
+    user_agent = Column(String(500), nullable=True)
+
+    # Action
+    action = Column(String(100), nullable=False, index=True)
+    resource_type = Column(String(100), nullable=True, index=True)
+    resource_id = Column(String(255), nullable=True)
+
+    # Details
+    details = Column(JSON, nullable=True)
+    status = Column(String(50), nullable=False)  # success, failure, error
+    error_message = Column(Text, nullable=True)
+```
+
+### Audit Logger
+
+```python
+# app/core/audit.py
+from fastapi import Request
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models.audit import AuditLog
+
+
+class AuditLogger:
+    """Log security-relevant events."""
+
+    @staticmethod
+    async def log(
+        db: AsyncSession,
+        action: str,
+        status: str,
+        user_id: str | None = None,
+        request: Request | None = None,
+        resource_type: str | None = None,
+        resource_id: str | None = None,
+        details: dict | None = None,
+        error_message: str | None = None,
+    ):
+        """Create audit log entry."""
+        log_entry = AuditLog(
+            user_id=user_id,
+            ip_address=request.client.host if request else None,
+            user_agent=request.headers.get("user-agent") if request else None,
+            action=action,
+            resource_type=resource_type,
+            resource_id=resource_id,
+            details=details,
+            status=status,
+            error_message=error_message,
+        )
+        db.add(log_entry)
+        await db.commit()
+
+
+# Usage
+await AuditLogger.log(
+    db=db,
+    action="user.login",
+    status="success",
+    user_id=user.id,
+    request=request,
+    details={"method": "password"}
+)
+```
+
+---
+
+## OWASP Top 10:2025 Compliance
+
+Mapped to the current OWASP Top 10:2025 taxonomy — the canonical per-risk
+checklist is [`owasp-checklist.md`](../../evaluation/compliance/owasp-checklist.md).
+
+| Risk | Mitigation |
+|------|------------|
+| **A01: Broken Access Control** | RBAC, resource-level checks, server-side validation |
+| **A02: Security Misconfiguration** | CSP, secure headers, hardened defaults, environment isolation |
+| **A03: Software Supply Chain Failures** | SBOM, dependency scanning, signed artifacts + provenance, pinned updates |
+| **A04: Cryptographic Failures** | TLS, encryption at rest, secure password hashing |
+| **A05: Injection** | Parameterized queries, ORM, input validation; SSRF URL allowlists |
+| **A06: Insecure Design** | Threat modeling, secure defaults, defense in depth |
+| **A07: Identification & Authentication Failures** | Clerk integration, JWT validation, rate limiting |
+| **A08: Software & Data Integrity Failures** | Code signing, integrity checks, secure deserialization |
+| **A09: Security Logging & Alerting Failures** | Audit logging, monitoring, alerting |
+| **A10: Mishandling of Exceptional Conditions** | Global exception handler, fail-closed defaults, no stack traces in responses |
+
+---
+
+## Security Checklist
+
+### Development
+- [ ] All secrets in environment variables
+- [ ] Input validation on all endpoints
+- [ ] SQL injection prevention (parameterized queries)
+- [ ] XSS prevention (output encoding, CSP)
+- [ ] CSRF protection enabled
+- [ ] Authentication on all protected routes
+- [ ] Authorization checks at resource level
+
+### Deployment
+- [ ] TLS/HTTPS enforced
+- [ ] Security headers configured
+- [ ] Rate limiting enabled
+- [ ] Audit logging active
+- [ ] Secrets rotated per the [Secrets Rotation runbook](../devops/environments.md#rotate-secrets-regularly) (per-class cadence, T-30 expiry alert, acquire/distribute/verify/revoke phases, graceful overlap)
+- [ ] Dependencies updated
+- [ ] Security scanning in CI/CD
+
+---
+
+## Related Standards
+
+- [Authentication Architecture](./authentication.md)
+- [Backend Tech Stack](../backend/tech-stack.md)
+- [Frontend Tech Stack](../frontend/tech-stack.md)
+- [Database Schema Design](../database/schema-design.md)
+
+---
+
+*Security is not a feature, it's a foundation. Build it into every layer of your application.*
+
+---
+
+<!-- Source: standards/architecture/authentication.md (v1.2.1) -->
+
+# Authentication Architecture Standard
+
+**Status**: Active
+
+## Purpose
+
+This standard defines the authentication architecture using Clerk for full-stack applications with Next.js frontend and FastAPI backend.
+
+## Scope
+
+- Clerk integration architecture
+- JWT token flow
+- Session management
+- Cross-service authentication
+- API key management
+- OAuth2 patterns
+
+---
+
+## Authentication Flow Overview
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant B as Browser
+    participant C as Clerk
+    participant N as Next.js
+    participant SA as Server Action
+    participant F as FastAPI
+    participant DB as PostgreSQL
+
+    U->>B: Visit protected page
+    B->>C: Redirect to Clerk
+    U->>C: Enter credentials
+    C->>C: Verify credentials
+    C->>B: Return JWT + session
+    B->>N: Request with session
+    N->>SA: Call server action
+    SA->>SA: Get JWT from Clerk
+    SA->>F: API call with JWT
+    F->>F: Verify JWT
+    F->>DB: Query with user context
+    DB->>F: Return data
+    F->>SA: Return response
+    SA->>N: Update UI
+    N->>B: Render page
+```
+
+---
+
+## Clerk Integration
+
+### Frontend Setup
+
+```typescript
+// app/layout.tsx
+import { ClerkProvider } from '@clerk/nextjs';
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <ClerkProvider>
+      <html lang="en">
+        <body>{children}</body>
+      </html>
+    </ClerkProvider>
+  );
+}
+```
+
+### Middleware Configuration
+
+```typescript
+// middleware.ts
+import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
+
+const isPublicRoute = createRouteMatcher([
+  '/',
+  '/sign-in(.*)',
+  '/sign-up(.*)',
+  '/api/webhooks(.*)',
+  '/api/public(.*)',
+]);
+
+const isApiRoute = createRouteMatcher(['/api(.*)']);
+
+export default clerkMiddleware(async (auth, req) => {
+  // Protect all non-public routes
+  if (!isPublicRoute(req)) {
+    await auth.protect();
+  }
+});
+
+export const config = {
+  matcher: [
+    // Skip static files and Next.js internals
+    '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
+    // Always run for API routes
+    '/(api|trpc)(.*)',
+  ],
+};
+```
+
+### Authentication Components
+
+```typescript
+// components/auth/user-button.tsx
+'use client';
+
+import { UserButton, SignedIn, SignedOut, SignInButton } from '@clerk/nextjs';
+import { Button } from '@/components/ui/button';
+
+export function AuthButton() {
+  return (
+    <>
+      <SignedIn>
+        <UserButton
+          afterSignOutUrl="/"
+          appearance={{
+            elements: {
+              avatarBox: 'h-8 w-8',
+            },
+          }}
+        />
+      </SignedIn>
+      <SignedOut>
+        <SignInButton mode="modal">
+          <Button variant="outline" size="sm">
+            Sign In
+          </Button>
+        </SignInButton>
+      </SignedOut>
+    </>
+  );
+}
+```
+
+---
+
+## Server Action Authentication
+
+### Getting User Context
+
+```typescript
+// app/actions/user.ts
+'use server';
+
+import { auth, currentUser } from '@clerk/nextjs/server';
+
+export async function getCurrentUserProfile() {
+  const { userId } = await auth();
+
+  if (!userId) {
+    return { success: false, error: 'Unauthorized' };
+  }
+
+  // Get full user object from Clerk
+  const user = await currentUser();
+
+  if (!user) {
+    return { success: false, error: 'User not found' };
+  }
+
+  return {
+    success: true,
+    data: {
+      id: user.id,
+      email: user.emailAddresses[0]?.emailAddress,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      imageUrl: user.imageUrl,
+    },
+  };
+}
+```
+
+### Passing Token to Backend
+
+```typescript
+// app/actions/api.ts
+'use server';
+
+import { auth } from '@clerk/nextjs/server';
+
+const API_URL = process.env.BACKEND_URL;
+
+export async function fetchFromBackend<T>(
+  endpoint: string,
+  options: RequestInit = {}
+): Promise<T> {
+  const { getToken } = await auth();
+
+  // Get JWT token from Clerk
+  const token = await getToken();
+
+  if (!token) {
+    throw new Error('No authentication token available');
+  }
+
+  const response = await fetch(`${API_URL}${endpoint}`, {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+      ...options.headers,
+    },
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.detail || `API error: ${response.status}`);
+  }
+
+  return response.json();
+}
+
+// Usage in other server actions
+export async function getProjects() {
+  return fetchFromBackend<Project[]>('/api/v1/projects');
+}
+
+export async function createProject(data: CreateProjectInput) {
+  return fetchFromBackend<Project>('/api/v1/projects', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+```
+
+---
+
+## Backend JWT Validation
+
+### Clerk JWT Verification
+
+```python
+# app/core/auth.py
+from fastapi import Depends, Request
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+import jwt
+from jwt import PyJWKClient, InvalidTokenError
+from pydantic import BaseModel
+import httpx
+
+from app.core.config import settings
+from app.core.exceptions import NotFoundException, UnauthorizedException
+
+security = HTTPBearer()
+
+
+class ClerkUser(BaseModel):
+    """Clerk user from JWT."""
+    id: str
+    email: str | None = None
+    first_name: str | None = None
+    last_name: str | None = None
+
+
+class JWTPayload(BaseModel):
+    """JWT payload structure."""
+    sub: str  # User ID
+    exp: int
+    iat: int
+    nbf: int | None = None
+    iss: str | None = None
+    azp: str | None = None  # Authorized party
+
+
+async def get_clerk_jwks_url() -> str:
+    """Return Clerk's JWKS URL for token verification."""
+    return f"https://{settings.CLERK_FRONTEND_API}/.well-known/jwks.json"
+
+
+async def verify_jwt_token(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+) -> JWTPayload:
+    """Verify JWT token from Clerk.
+
+    Two manual verification paths are shown (Clerk PEM public key, or
+    dynamic JWKS via ``PyJWKClient``). Clerk's official Python backend SDK
+    ``clerk-backend-api`` is an alternative that verifies session tokens
+    with higher-level helpers (e.g. ``authenticate_request``) — prefer it
+    when you want Clerk-managed verification rather than the manual
+    PyJWT/JWKS path here.
+    """
+    token = credentials.credentials
+
+    try:
+        # Option 1: Use Clerk's PEM public key (faster)
+        if settings.CLERK_PEM_PUBLIC_KEY:
+            payload = jwt.decode(
+                token,
+                settings.CLERK_PEM_PUBLIC_KEY,
+                algorithms=["RS256"],
+                options={"verify_aud": False},
+            )
+        # Option 2: Fetch JWKS dynamically via PyJWKClient
+        else:
+            jwks_client = PyJWKClient(await get_clerk_jwks_url())
+            signing_key = jwks_client.get_signing_key_from_jwt(token)
+            payload = jwt.decode(
+                token,
+                signing_key.key,
+                algorithms=["RS256"],
+                options={"verify_aud": False},
+            )
+
+        return JWTPayload(**payload)
+
+    except InvalidTokenError as e:
+        raise UnauthorizedException(f"Invalid token: {str(e)}")
+
+
+async def get_current_user_id(
+    payload: JWTPayload = Depends(verify_jwt_token),
+) -> str:
+    """Extract user ID from verified JWT."""
+    return payload.sub
+
+
+async def get_current_user(
+    user_id: str = Depends(get_current_user_id),
+) -> ClerkUser:
+    """Get full user details from Clerk."""
+    async with httpx.AsyncClient() as client:
+        response = await client.get(
+            f"https://api.clerk.com/v1/users/{user_id}",
+            headers={"Authorization": f"Bearer {settings.CLERK_SECRET_KEY}"},
+        )
+
+        if response.status_code == 404:
+            raise NotFoundException("User not found")
+
+        response.raise_for_status()
+        data = response.json()
+
+        return ClerkUser(
+            id=data["id"],
+            email=data.get("email_addresses", [{}])[0].get("email_address"),
+            first_name=data.get("first_name"),
+            last_name=data.get("last_name"),
+        )
+```
+
+### Protecting Routes
+
+```python
+# app/api/routers/projects.py
+from fastapi import APIRouter, Depends
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.auth import get_current_user_id, get_current_user, ClerkUser
+from app.api.deps import get_db
+from app.schemas.project import ProjectResponse, ProjectCreate
+from app.crud import project_crud
+
+router = APIRouter()
+
+
+@router.get("/", response_model=list[ProjectResponse])
+async def list_projects(
+    db: AsyncSession = Depends(get_db),
+    user_id: str = Depends(get_current_user_id),  # Just need ID
+):
+    """List projects for current user."""
+    return await project_crud.get_by_owner(db, owner_id=user_id)
+
+
+@router.post("/", response_model=ProjectResponse)
+async def create_project(
+    project_in: ProjectCreate,
+    db: AsyncSession = Depends(get_db),
+    user: ClerkUser = Depends(get_current_user),  # Need full user
+):
+    """Create a new project."""
+    return await project_crud.create(
+        db,
+        obj_in=project_in,
+        owner_id=user.id,
+        owner_email=user.email,
+    )
+```
+
+---
+
+## User Synchronization
+
+### Webhook Handler
+
+```typescript
+// app/api/webhooks/clerk/route.ts
+import { Webhook } from 'svix';
+import { headers } from 'next/headers';
+import { WebhookEvent } from '@clerk/nextjs/server';
+
+const webhookSecret = process.env.CLERK_WEBHOOK_SECRET!;
+
+export async function POST(req: Request) {
+  const headerPayload = headers();
+  const svixId = headerPayload.get('svix-id');
+  const svixTimestamp = headerPayload.get('svix-timestamp');
+  const svixSignature = headerPayload.get('svix-signature');
+
+  if (!svixId || !svixTimestamp || !svixSignature) {
+    return new Response('Missing svix headers', { status: 400 });
+  }
+
+  const payload = await req.json();
+  const body = JSON.stringify(payload);
+
+  const wh = new Webhook(webhookSecret);
+  let evt: WebhookEvent;
+
+  try {
+    evt = wh.verify(body, {
+      'svix-id': svixId,
+      'svix-timestamp': svixTimestamp,
+      'svix-signature': svixSignature,
+    }) as WebhookEvent;
+  } catch (err) {
+    console.error('Webhook verification failed:', err);
+    return new Response('Webhook verification failed', { status: 400 });
+  }
+
+  // Handle webhook events
+  switch (evt.type) {
+    case 'user.created':
+      await syncUserToBackend(evt.data);
+      break;
+    case 'user.updated':
+      await updateUserInBackend(evt.data);
+      break;
+    case 'user.deleted':
+      await deleteUserFromBackend(evt.data.id);
+      break;
+  }
+
+  return new Response('Webhook processed', { status: 200 });
+}
+
+async function syncUserToBackend(userData: any) {
+  await fetch(`${process.env.BACKEND_URL}/api/v1/users/sync`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Webhook-Secret': process.env.INTERNAL_WEBHOOK_SECRET!,
+    },
+    body: JSON.stringify({
+      clerk_id: userData.id,
+      email: userData.email_addresses[0]?.email_address,
+      first_name: userData.first_name,
+      last_name: userData.last_name,
+    }),
+  });
+}
+```
+
+### Backend User Sync Endpoint
+
+```python
+# app/api/routers/users.py
+from fastapi import APIRouter, Depends, Header
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.config import settings
+from app.core.exceptions import ForbiddenException
+from app.api.deps import get_db
+from app.schemas.user import UserSync
+from app.crud import user_crud
+
+router = APIRouter()
+
+
+@router.post("/sync")
+async def sync_user(
+    user_in: UserSync,
+    db: AsyncSession = Depends(get_db),
+    x_webhook_secret: str = Header(...),
+):
+    """Sync user from Clerk webhook."""
+    # Verify internal webhook secret
+    if x_webhook_secret != settings.INTERNAL_WEBHOOK_SECRET:
+        raise ForbiddenException("Invalid webhook secret")
+
+    # Upsert user
+    user = await user_crud.get_by_clerk_id(db, clerk_id=user_in.clerk_id)
+
+    if user:
+        user = await user_crud.update(db, db_obj=user, obj_in=user_in)
+    else:
+        user = await user_crud.create(db, obj_in=user_in)
+
+    return {"status": "synced", "user_id": user.id}
+```
+
+---
+
+## API Key Authentication
+
+### For Machine-to-Machine Communication
+
+```python
+# app/core/api_keys.py
+from fastapi import Depends, Security
+from fastapi.security import APIKeyHeader
+from sqlalchemy.ext.asyncio import AsyncSession
+import secrets
+import hashlib
+
+from app.core.exceptions import UnauthorizedException
+from app.api.deps import get_db
+from app.models.api_key import APIKey
+
+api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
+
+
+def hash_api_key(key: str) -> str:
+    """Hash API key for storage."""
+    return hashlib.sha256(key.encode()).hexdigest()
+
+
+def generate_api_key() -> tuple[str, str]:
+    """Generate API key and its hash."""
+    key = secrets.token_urlsafe(32)
+    key_hash = hash_api_key(key)
+    return key, key_hash
+
+
+async def verify_api_key(
+    api_key: str = Security(api_key_header),
+    db: AsyncSession = Depends(get_db),
+) -> APIKey:
+    """Verify API key and return associated record."""
+    if not api_key:
+        raise UnauthorizedException("API key required")
+
+    key_hash = hash_api_key(api_key)
+
+    # Look up API key
+    api_key_record = await db.execute(
+        select(APIKey)
+        .where(APIKey.key_hash == key_hash)
+        .where(APIKey.is_active == True)
+    )
+    api_key_obj = api_key_record.scalar_one_or_none()
+
+    if not api_key_obj:
+        raise UnauthorizedException("Invalid API key")
+
+    # Update last used timestamp
+    api_key_obj.last_used_at = func.now()
+    await db.commit()
+
+    return api_key_obj
+
+
+# Usage in routes
+@router.get("/data", dependencies=[Depends(verify_api_key)])
+async def get_data():
+    """Endpoint protected by API key."""
+    pass
+```
+
+### API Key Model
+
+```python
+# app/models/api_key.py
+from sqlalchemy import Column, String, Boolean, DateTime, Integer, ForeignKey
+from sqlalchemy.sql import func
+
+from app.db.base import BaseModel
+
+
+class APIKey(BaseModel):
+    """API key for machine-to-machine auth."""
+
+    __tablename__ = "api_keys"
+
+    name = Column(String(255), nullable=False)
+    key_hash = Column(String(64), unique=True, nullable=False, index=True)
+    key_prefix = Column(String(8), nullable=False)  # For identification
+
+    # Ownership
+    user_id = Column(String(255), ForeignKey("users.clerk_id"), nullable=False)
+
+    # Status
+    is_active = Column(Boolean, default=True, nullable=False)
+    expires_at = Column(DateTime(timezone=True), nullable=True)
+    last_used_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Permissions
+    scopes = Column(ARRAY(String), nullable=False, server_default='{}')
+```
+
+---
+
+## Session Management
+
+### Clerk Session Tokens
+
+```typescript
+// lib/session.ts
+import { auth } from '@clerk/nextjs/server';
+
+export async function getSessionToken(): Promise<string | null> {
+  const { getToken } = await auth();
+  return getToken();
+}
+
+export async function getSessionWithTemplate(template: string): Promise<string | null> {
+  const { getToken } = await auth();
+  // Use custom JWT template for specific claims
+  return getToken({ template });
+}
+```
+
+### Session Verification Middleware
+
+```python
+# app/middleware/session.py
+from fastapi import Request
+from starlette.middleware.base import BaseHTTPMiddleware
+
+from app.core.auth import verify_jwt_token
+
+
+class SessionMiddleware(BaseHTTPMiddleware):
+    """Middleware to attach user context to request."""
+
+    async def dispatch(self, request: Request, call_next):
+        # Skip for public routes
+        if request.url.path.startswith("/api/public"):
+            return await call_next(request)
+
+        # Try to extract user from token
+        auth_header = request.headers.get("Authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            try:
+                token = auth_header.split(" ")[1]
+                payload = await verify_jwt_token_from_string(token)
+                request.state.user_id = payload.sub
+            except Exception:
+                request.state.user_id = None
+        else:
+            request.state.user_id = None
+
+        return await call_next(request)
+```
+
+---
+
+## Multi-Tenant Authentication
+
+### Organization-Based Access
+
+```python
+# app/core/tenant.py
+from fastapi import Depends
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.auth import get_current_user_id
+from app.core.exceptions import ForbiddenException
+from app.api.deps import get_db
+from app.crud import organization_member_crud
+
+
+async def get_current_organization(
+    org_id: str,
+    user_id: str = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """Verify user belongs to organization."""
+    membership = await organization_member_crud.get_by_user_and_org(
+        db, user_id=user_id, org_id=org_id
+    )
+
+    if not membership:
+        raise ForbiddenException("Not a member of this organization")
+
+    return membership
+
+
+# Usage
+@router.get("/orgs/{org_id}/projects")
+async def list_org_projects(
+    org_id: str,
+    membership = Depends(get_current_organization),
+    db: AsyncSession = Depends(get_db),
+):
+    """List projects for organization."""
+    return await project_crud.get_by_organization(db, org_id=org_id)
+```
+
+---
+
+## Security Considerations
+
+### Token Storage
+
+```typescript
+// Clerk handles token storage securely
+// - HttpOnly cookies for session
+// - In-memory for short-lived JWTs
+// - No localStorage for sensitive tokens
+```
+
+### Token Refresh
+
+```typescript
+// Clerk automatically handles token refresh
+// Server actions get fresh tokens on each call
+const token = await getToken(); // Always fresh
+```
+
+### Logout Flow
+
+```typescript
+// components/auth/logout-button.tsx
+'use client';
+
+import { useClerk } from '@clerk/nextjs';
+import { useRouter } from 'next/navigation';
+
+export function LogoutButton() {
+  const { signOut } = useClerk();
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    await signOut();
+    router.push('/');
+  };
+
+  return (
+    <button onClick={handleLogout}>
+      Sign Out
+    </button>
+  );
+}
+```
+
+---
+
+## Environment Configuration
+
+```bash
+# Frontend (.env.local)
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_xxx
+CLERK_SECRET_KEY=sk_test_xxx
+NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
+NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up
+NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL=/dashboard
+NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL=/onboarding
+
+# Backend (.env)
+CLERK_SECRET_KEY=sk_test_xxx
+CLERK_FRONTEND_API=clerk.your-app.com
+CLERK_PEM_PUBLIC_KEY="-----BEGIN PUBLIC KEY-----\n...\n-----END PUBLIC KEY-----"
+```
+
+---
+
+## Related Standards
+
+- [Security Architecture](./security.md)
+- [Data Flow Patterns](./data-flow.md)
+- [Frontend Server Actions](../frontend/server-actions.md)
+- [Backend Tech Stack](../backend/tech-stack.md)
+
+---
+
+*Proper authentication architecture ensures secure, seamless user experiences across your entire application stack.*
+
+---
+
+<!-- Source: standards/architecture/caching.md (v1.3.0) -->
+
+# Caching Architecture Standard
+
+**Status**: Active
+
+## Purpose
+
+This standard defines caching strategies and patterns for full-stack applications using Next.js, FastAPI, Redis, and PostgreSQL.
+
+## Scope
+
+- Frontend caching (Next.js)
+- Backend caching (Redis)
+- Database query caching
+- Cache invalidation strategies
+- Distributed caching patterns
+- Rate limiting with cache
+
+---
+
+## Caching Architecture Overview
+
+```mermaid
+flowchart TB
+    subgraph Client["Client Layer"]
+        Browser[Browser Cache]
+        SW[Service Worker]
+    end
+
+    subgraph CDN["CDN Layer"]
+        Edge[Edge Cache]
+        Static[Static Assets]
+    end
+
+    subgraph Frontend["Next.js Layer"]
+        Router[Router Cache]
+        Full[Full Route Cache]
+        Data[Data Cache]
+        Fetch[fetch Cache]
+    end
+
+    subgraph Backend["FastAPI Layer"]
+        Memory[In-Memory Cache]
+        Redis[(Redis)]
+        RateLimit[Rate Limiting]
+    end
+
+    subgraph Database["Database Layer"]
+        QueryCache[Query Cache]
+        PG[(PostgreSQL)]
+    end
+
+    Browser --> Edge
+    Edge --> Router
+    Router --> Full
+    Full --> Data
+    Data --> Fetch
+    Fetch --> Redis
+    Redis --> QueryCache
+    QueryCache --> PG
+```
+
+---
+
+## Frontend Caching (Next.js)
+
+### Next.js Cache Types
+
+| Cache Type | Location | Duration | Use Case |
+|------------|----------|----------|----------|
+| Router Cache | Client | Session | Navigation between pages |
+| Full Route Cache | Server | Persistent | Static/ISR pages |
+| Data Cache | Server | Persistent | fetch() results |
+| Request Memoization | Server | Request | Duplicate fetch dedup |
+
+### Data Fetching with Cache
+
+```typescript
+// app/actions/products.ts
+'use server';
+
+import { unstable_cache } from 'next/cache';
+
+// Cached server action with tags
+export const getProducts = unstable_cache(
+  async (category: string) => {
+    const response = await fetch(`${API_URL}/products?category=${category}`);
+    return response.json();
+  },
+  ['products'],  // Cache key parts
+  {
+    tags: ['products'],
+    revalidate: 3600,  // Revalidate every hour
+  }
+);
+
+// Direct fetch with cache options
+export async function getProduct(id: string) {
+  const response = await fetch(`${API_URL}/products/${id}`, {
+    next: {
+      tags: [`product-${id}`],
+      revalidate: 60,  // Revalidate every minute
+    },
+  });
+  return response.json();
+}
+
+// No cache for real-time data
+export async function getCurrentUser() {
+  const response = await fetch(`${API_URL}/me`, {
+    cache: 'no-store',  // Always fresh
+  });
+  return response.json();
+}
+```
+
+### Cache Invalidation
+
+```typescript
+// app/actions/mutations.ts
+'use server';
+
+import { revalidatePath, revalidateTag } from 'next/cache';
+
+export async function createProduct(data: ProductInput) {
+  const response = await fetch(`${API_URL}/products`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+
+  if (response.ok) {
+    // Invalidate by tag (recommended)
+    revalidateTag('products');
+
+    // Or invalidate by path
+    revalidatePath('/products');
+
+    // Invalidate specific product pages
+    revalidatePath('/products/[id]', 'page');
+  }
+
+  return response.json();
+}
+
+export async function updateProduct(id: string, data: ProductInput) {
+  const response = await fetch(`${API_URL}/products/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+
+  if (response.ok) {
+    // Invalidate specific product
+    revalidateTag(`product-${id}`);
+    // Also invalidate list
+    revalidateTag('products');
+  }
+
+  return response.json();
+}
+
+export async function deleteProduct(id: string) {
+  const response = await fetch(`${API_URL}/products/${id}`, {
+    method: 'DELETE',
+  });
+
+  if (response.ok) {
+    revalidateTag('products');
+    revalidateTag(`product-${id}`);
+    revalidatePath('/products');
+  }
+
+  return response.json();
+}
+```
+
+### Client-Side Caching with TanStack Query
+
+```typescript
+// hooks/use-products.ts
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { getProducts, createProduct } from '@/app/actions/products';
+
+export function useProducts(category: string) {
+  return useQuery({
+    queryKey: ['products', category],
+    queryFn: () => getProducts(category),
+    staleTime: 5 * 60 * 1000,  // Consider fresh for 5 minutes
+    gcTime: 30 * 60 * 1000,    // Keep in cache for 30 minutes
+  });
+}
+
+export function useCreateProduct() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: createProduct,
+    onSuccess: () => {
+      // Invalidate and refetch
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+    },
+    // Optimistic update
+    onMutate: async (newProduct) => {
+      await queryClient.cancelQueries({ queryKey: ['products'] });
+
+      const previousProducts = queryClient.getQueryData(['products']);
+
+      queryClient.setQueryData(['products'], (old: Product[]) => [
+        ...old,
+        { ...newProduct, id: 'temp-id' },
+      ]);
+
+      return { previousProducts };
+    },
+    onError: (err, newProduct, context) => {
+      queryClient.setQueryData(['products'], context?.previousProducts);
+    },
+  });
+}
+```
+
+---
+
+## Backend Caching (Redis)
+
+### Redis Connection
+
+```python
+# app/core/cache.py
+import redis.asyncio as redis
+from contextlib import asynccontextmanager
+from typing import Any
+import json
+
+from app.core.config import settings
+
+
+class RedisCache:
+    """Redis cache client."""
+
+    def __init__(self):
+        self.redis: redis.Redis | None = None
+
+    async def connect(self):
+        """Initialize Redis connection."""
+        self.redis = redis.from_url(
+            settings.REDIS_URL,
+            encoding="utf-8",
+            decode_responses=True,
+        )
+
+    async def disconnect(self):
+        """Close Redis connection."""
+        if self.redis:
+            await self.redis.close()
+
+    async def get(self, key: str) -> Any | None:
+        """Get value from cache."""
+        if not self.redis:
+            return None
+
+        value = await self.redis.get(key)
+        if value:
+            return json.loads(value)
+        return None
+
+    async def set(
+        self,
+        key: str,
+        value: Any,
+        expire: int = 3600,
+    ) -> bool:
+        """Set value in cache with expiration."""
+        if not self.redis:
+            return False
+
+        return await self.redis.setex(
+            key,
+            expire,
+            json.dumps(value, default=str),
+        )
+
+    async def delete(self, key: str) -> bool:
+        """Delete key from cache."""
+        if not self.redis:
+            return False
+
+        return await self.redis.delete(key) > 0
+
+    async def delete_pattern(self, pattern: str) -> int:
+        """Delete all keys matching pattern."""
+        if not self.redis:
+            return 0
+
+        cursor = 0
+        deleted = 0
+
+        while True:
+            cursor, keys = await self.redis.scan(
+                cursor=cursor,
+                match=pattern,
+                count=100,
+            )
+
+            if keys:
+                deleted += await self.redis.delete(*keys)
+
+            if cursor == 0:
+                break
+
+        return deleted
+
+    async def exists(self, key: str) -> bool:
+        """Check if key exists."""
+        if not self.redis:
+            return False
+
+        return await self.redis.exists(key) > 0
+
+    async def incr(self, key: str, expire: int | None = None) -> int:
+        """Increment counter."""
+        if not self.redis:
+            return 0
+
+        value = await self.redis.incr(key)
+
+        if expire and value == 1:
+            await self.redis.expire(key, expire)
+
+        return value
+
+
+cache = RedisCache()
+
+
+# Dependency for FastAPI
+async def get_cache() -> RedisCache:
+    """Get cache instance."""
+    return cache
+```
+
+### Cache Decorator
+
+```python
+# app/core/cache.py (continued)
+from functools import wraps
+from typing import Callable
+import hashlib
+
+
+def cached(
+    prefix: str,
+    expire: int = 3600,
+    key_builder: Callable[..., str] | None = None,
+):
+    """Decorator for caching function results."""
+
+    def decorator(func: Callable):
+        @wraps(func)
+        async def wrapper(*args, **kwargs):
+            # Build cache key
+            if key_builder:
+                cache_key = f"{prefix}:{key_builder(*args, **kwargs)}"
+            else:
+                # Default key from args
+                key_parts = [str(arg) for arg in args]
+                key_parts.extend(f"{k}={v}" for k, v in sorted(kwargs.items()))
+                key_hash = hashlib.md5(":".join(key_parts).encode()).hexdigest()
+                cache_key = f"{prefix}:{key_hash}"
+
+            # Try cache first
+            cached_value = await cache.get(cache_key)
+            if cached_value is not None:
+                return cached_value
+
+            # Execute function
+            result = await func(*args, **kwargs)
+
+            # Cache result
+            await cache.set(cache_key, result, expire)
+
+            return result
+
+        return wrapper
+
+    return decorator
+
+
+# Usage
+@cached(prefix="product", expire=300, key_builder=lambda id: str(id))
+async def get_product_cached(id: int) -> dict:
+    """Get product with caching."""
+    # This only runs on cache miss
+    product = await product_crud.get(db, id=id)
+    return product.model_dump() if product else None
+```
+
+### Service-Level Caching
+
+```python
+# app/services/product_service.py
+from app.core.cache import cache
+from app.crud import product_crud
+from app.schemas.product import ProductResponse
+
+
+class ProductService:
+    """Product service with caching."""
+
+    CACHE_PREFIX = "products"
+    CACHE_TTL = 300  # 5 minutes
+
+    def __init__(self, db):
+        self.db = db
+
+    def _cache_key(self, *parts: str) -> str:
+        """Build cache key."""
+        return f"{self.CACHE_PREFIX}:{':'.join(parts)}"
+
+    async def get_by_id(self, product_id: int) -> ProductResponse | None:
+        """Get product by ID with caching."""
+        cache_key = self._cache_key("id", str(product_id))
+
+        # Try cache
+        cached = await cache.get(cache_key)
+        if cached:
+            return ProductResponse(**cached)
+
+        # Query database
+        product = await product_crud.get(self.db, id=product_id)
+        if not product:
+            return None
+
+        # Cache result
+        result = ProductResponse.model_validate(product)
+        await cache.set(cache_key, result.model_dump(), self.CACHE_TTL)
+
+        return result
+
+    async def get_by_category(
+        self,
+        category: str,
+        params: "PaginationParams",
+    ) -> "PaginatedResponse[ProductResponse]":
+        """Get products by category with cursor-paginated caching."""
+        # Cache by the cursor tuple — see standards/backend/pagination.md
+        cache_key = self._cache_key(
+            "category",
+            category,
+            params.cursor or "",
+            str(params.limit),
+            params.sort_by,
+            params.sort_order,
+        )
+
+        # Try cache
+        cached = await cache.get(cache_key)
+        if cached:
+            return PaginatedResponse(**cached)
+
+        # Query database
+        page = await product_crud.get_by_category(
+            self.db,
+            category=category,
+            params=params,
+        )
+
+        # Cache result
+        await cache.set(cache_key, page.model_dump(), self.CACHE_TTL)
+
+        return page
+
+    async def create(self, data: ProductCreate) -> ProductResponse:
+        """Create product and invalidate cache."""
+        product = await product_crud.create(self.db, obj_in=data)
+
+        # Invalidate category cache
+        await cache.delete_pattern(
+            f"{self.CACHE_PREFIX}:category:{data.category}:*"
+        )
+
+        return ProductResponse.model_validate(product)
+
+    async def update(
+        self,
+        product_id: int,
+        data: ProductUpdate,
+    ) -> ProductResponse | None:
+        """Update product and invalidate cache."""
+        product = await product_crud.get(self.db, id=product_id)
+        if not product:
+            return None
+
+        old_category = product.category
+        updated = await product_crud.update(self.db, db_obj=product, obj_in=data)
+
+        # Invalidate caches
+        await cache.delete(self._cache_key("id", str(product_id)))
+        await cache.delete_pattern(f"{self.CACHE_PREFIX}:category:{old_category}:*")
+
+        if data.category and data.category != old_category:
+            await cache.delete_pattern(
+                f"{self.CACHE_PREFIX}:category:{data.category}:*"
+            )
+
+        return ProductResponse.model_validate(updated)
+
+    async def delete(self, product_id: int) -> bool:
+        """Delete product and invalidate cache."""
+        product = await product_crud.get(self.db, id=product_id)
+        if not product:
+            return False
+
+        category = product.category
+        await product_crud.delete(self.db, id=product_id)
+
+        # Invalidate caches
+        await cache.delete(self._cache_key("id", str(product_id)))
+        await cache.delete_pattern(f"{self.CACHE_PREFIX}:category:{category}:*")
+
+        return True
+```
+
+---
+
+## Cache Invalidation Strategies
+
+### 1. Time-Based (TTL)
+
+```python
+# Simple TTL - cache expires after duration
+await cache.set("key", value, expire=3600)  # 1 hour
+```
+
+### 2. Event-Based
+
+```python
+# Invalidate on write operations
+async def update_user(user_id: int, data: UserUpdate):
+    user = await user_crud.update(db, id=user_id, obj_in=data)
+
+    # Invalidate all related caches
+    await cache.delete(f"user:{user_id}")
+    await cache.delete(f"user:email:{user.email}")
+    await cache.delete_pattern(f"user:{user_id}:*")
+
+    return user
+```
+
+### 3. Write-Through
+
+```python
+# Update cache when writing to database
+async def create_user(data: UserCreate) -> User:
+    user = await user_crud.create(db, obj_in=data)
+
+    # Write to cache immediately
+    await cache.set(
+        f"user:{user.id}",
+        user.model_dump(),
+        expire=3600,
+    )
+
+    return user
+```
+
+### 4. Cache-Aside (Lazy Loading)
+
+```python
+# Load into cache on first read
+async def get_user(user_id: int) -> User | None:
+    # Check cache
+    cached = await cache.get(f"user:{user_id}")
+    if cached:
+        return User(**cached)
+
+    # Load from database
+    user = await user_crud.get(db, id=user_id)
+    if not user:
+        return None
+
+    # Store in cache
+    await cache.set(f"user:{user_id}", user.model_dump(), expire=3600)
+
+    return user
+```
+
+### 5. Read-Through (with Cache Decorator)
+
+```python
+@cached(prefix="user", expire=3600)
+async def get_user(user_id: int) -> dict | None:
+    """Automatically cached on read."""
+    user = await user_crud.get(db, id=user_id)
+    return user.model_dump() if user else None
+```
+
+---
+
+## Rate Limiting with Redis
+
+Rate limiting is its own standard. See
+[`../backend/rate-limiting.md`](../backend/rate-limiting.md) for the
+canonical token-bucket implementation, default limits per route class,
+required `RateLimit-*` headers, and the 429 ProblemDetail shape. The
+Redis client setup in this file is the same one the rate limiter
+shares.
+
+---
+
+## Distributed Caching Patterns
+
+### Cache Key Namespacing
+
+```python
+# Namespace pattern for multi-tenant apps
+def tenant_key(tenant_id: str, *parts: str) -> str:
+    """Build tenant-scoped cache key."""
+    return f"tenant:{tenant_id}:{':'.join(parts)}"
+
+# Usage
+await cache.set(tenant_key("acme", "user", "123"), user_data)
+await cache.get(tenant_key("acme", "user", "123"))
+```
+
+### Distributed Locking
+
+```python
+# app/core/locks.py
+import asyncio
+from contextlib import asynccontextmanager
+
+from app.core.cache import cache
+
+
+class DistributedLock:
+    """Redis-based distributed lock."""
+
+    def __init__(self, name: str, timeout: int = 10):
+        self.name = f"lock:{name}"
+        self.timeout = timeout
+
+    @asynccontextmanager
+    async def acquire(self):
+        """Acquire lock with context manager."""
+        acquired = False
+
+        try:
+            # Try to acquire lock
+            for _ in range(self.timeout * 10):  # Retry every 100ms
+                if await cache.redis.set(
+                    self.name,
+                    "1",
+                    ex=self.timeout,
+                    nx=True,  # Only if not exists
+                ):
+                    acquired = True
+                    break
+
+                await asyncio.sleep(0.1)
+
+            if not acquired:
+                raise TimeoutError(f"Could not acquire lock: {self.name}")
+
+            yield
+
+        finally:
+            if acquired:
+                await cache.delete(self.name)
+
+
+# Usage
+async def process_order(order_id: int):
+    async with DistributedLock(f"order:{order_id}").acquire():
+        # Only one process can execute this at a time
+        order = await order_crud.get(db, id=order_id)
+        await process_payment(order)
+        await update_inventory(order)
+```
+
+### Cache Stampede Prevention
+
+```python
+# app/core/cache.py
+async def get_or_set(
+    key: str,
+    factory: Callable[[], Awaitable[Any]],
+    expire: int = 3600,
+    lock_timeout: int = 5,
+) -> Any:
+    """Get from cache or compute with stampede prevention."""
+    # Try cache first
+    value = await cache.get(key)
+    if value is not None:
+        return value
+
+    lock_key = f"lock:{key}"
+
+    # Try to acquire lock
+    if await cache.redis.set(lock_key, "1", ex=lock_timeout, nx=True):
+        try:
+            # We got the lock - compute value
+            value = await factory()
+            await cache.set(key, value, expire)
+            return value
+        finally:
+            await cache.delete(lock_key)
+    else:
+        # Wait for other process to compute
+        for _ in range(lock_timeout * 10):
+            await asyncio.sleep(0.1)
+            value = await cache.get(key)
+            if value is not None:
+                return value
+
+        # Timeout - compute ourselves
+        value = await factory()
+        await cache.set(key, value, expire)
+        return value
+
+
+# Usage
+product = await get_or_set(
+    f"product:{product_id}",
+    lambda: product_crud.get(db, id=product_id),
+    expire=300,
+)
+```
+
+---
+
+## Monitoring and Debugging
+
+### Cache Metrics
+
+Track hits, misses, and errors. Expose hit rate as `hits / (hits + misses)`.
+
+```python
+# app/core/cache.py
+class CacheMetrics:
+    def __init__(self):
+        self.hits = 0
+        self.misses = 0
+        self.errors = 0
+
+    @property
+    def hit_rate(self) -> float:
+        total = self.hits + self.misses
+        return self.hits / total if total > 0 else 0.0
+
+
+metrics = CacheMetrics()
+```
+
+### Debug Endpoint
+
+Expose `/cache/stats` behind admin auth. Return `hit_rate`, `hits`, `misses`,
+`errors`, and relevant `redis.info()` fields (`used_memory_human`,
+`connected_clients`, `total_commands_processed`).
+
+---
+
+## Best Practices
+
+### Do's
+
+✅ Use appropriate TTLs based on data freshness requirements
+✅ Namespace cache keys by tenant/user when needed
+✅ Implement cache warming for critical data
+✅ Monitor cache hit rates
+✅ Use connection pooling for Redis
+✅ Handle cache failures gracefully (fallback to database)
+
+### Don'ts
+
+❌ Cache user-specific data without proper namespacing
+❌ Use very long TTLs without invalidation strategy
+❌ Store large objects (> 1MB) in Redis
+❌ Rely solely on TTL for cache invalidation
+❌ Cache data that changes frequently without invalidation
+
+---
+
+## Related Standards
+
+- [Data Flow Patterns](./data-flow.md)
+- [Backend Tech Stack](../backend/tech-stack.md)
+- [Frontend Tech Stack](../frontend/tech-stack.md)
+- [Security Architecture](./security.md)
+
+---
+
+<!-- Source: standards/architecture/error-contract.md (v2.0.1) -->
 
 # Error Response Contract — RFC 9457 Problem Details
 
-**Version**: 2.0.0
-**Last Updated**: 2026-03-25
 **Status**: Active
 **Supersedes**: v1.0.0 (custom error envelope)
 
@@ -2827,6 +3500,8 @@ Content-Type: application/problem+json
   "timestamp": "2026-03-25T14:32:00.123456Z"
 }
 ```
+
+> **Note:** RFC 9457 §3.1 makes all standard members optional. We elevate `type`, `title`, `status`, `detail`, `instance`, `request_id`, and `timestamp` to required for consistency across our services. This local policy is stricter than the spec; conformance with RFC 9457 is preserved, since supplying these fields is permitted by the spec.
 
 ### Required Fields
 
@@ -2989,11 +3664,11 @@ For projects using the v1.0.0 custom envelope (`{ "error": { "code": "...", ... 
 _RFC 9457 Problem Details provide a standardized, machine-readable error format across the stack._
 
 ---
-<!-- Source: /home/tester/.claude/evolv-coder-standards/standards/architecture/observability.md -->
+
+<!-- Source: standards/architecture/observability.md (v1.2.0) -->
+
 # Observability Standard
 
-**Version**: 1.0.0
-**Last Updated**: 2026-01-03
 **Status**: Active
 
 ## Purpose
@@ -3006,7 +3681,7 @@ For metrics, alerting, and dashboards, see [Monitoring & Alerting](../devops/mon
 
 - Structured logging patterns
 - Log levels and when to use them
-- Correlation ID propagation
+- Correlation ID propagation (the `request_id` triple — see CLAUDE.md "Correlation ID convention")
 - Health check endpoints
 - OpenTelemetry integration (tracing)
 
@@ -3046,7 +3721,7 @@ from contextvars import ContextVar
 from loguru import logger
 
 # Context variable for request correlation
-correlation_id_var: ContextVar[str] = ContextVar("correlation_id", default="")
+request_id_var: ContextVar[str] = ContextVar("request_id", default="")
 
 
 class JSONFormatter:
@@ -3063,10 +3738,10 @@ class JSONFormatter:
             "line": record["line"],
         }
 
-        # Add correlation ID if present
-        correlation_id = correlation_id_var.get()
-        if correlation_id:
-            log_record["correlation_id"] = correlation_id
+        # Add request ID if present
+        request_id = request_id_var.get()
+        if request_id:
+            log_record["request_id"] = request_id
 
         # Add extra fields
         if record["extra"]:
@@ -3103,7 +3778,7 @@ def setup_logging(log_level: str = "INFO", json_output: bool = True) -> None:
             format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | "
                    "<level>{level: <8}</level> | "
                    "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> | "
-                   "{extra[correlation_id]} | "
+                   "{extra[request_id]} | "
                    "<level>{message}</level>",
             level=log_level,
         )
@@ -3131,45 +3806,45 @@ class InterceptHandler(logging.Handler):
         )
 ```
 
-### Correlation ID Middleware
+### Request ID Middleware
 
 ```python
-# app/middleware/correlation.py
+# app/middleware/request_id.py
 import uuid
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 
-from app.core.logging import correlation_id_var, logger
+from app.core.logging import request_id_var, logger
 
 
-class CorrelationIdMiddleware(BaseHTTPMiddleware):
-    """Add correlation ID to all requests for tracing."""
+class RequestIdMiddleware(BaseHTTPMiddleware):
+    """Add request ID to all requests for tracing."""
 
-    HEADER_NAME = "X-Correlation-ID"
+    HEADER_NAME = "X-Request-ID"
 
     async def dispatch(self, request: Request, call_next):
-        # Get or generate correlation ID
-        correlation_id = request.headers.get(
+        # Get or generate request ID
+        request_id = request.headers.get(
             self.HEADER_NAME,
             str(uuid.uuid4())
         )
 
         # Set in context variable
-        token = correlation_id_var.set(correlation_id)
+        token = request_id_var.set(request_id)
 
         # Log request
         logger.info(
             "Request started",
             method=request.method,
             path=request.url.path,
-            correlation_id=correlation_id,
+            request_id=request_id,
         )
 
         try:
             response = await call_next(request)
 
-            # Add correlation ID to response
-            response.headers[self.HEADER_NAME] = correlation_id
+            # Add request ID to response
+            response.headers[self.HEADER_NAME] = request_id
 
             # Log response
             logger.info(
@@ -3177,7 +3852,7 @@ class CorrelationIdMiddleware(BaseHTTPMiddleware):
                 method=request.method,
                 path=request.url.path,
                 status_code=response.status_code,
-                correlation_id=correlation_id,
+                request_id=request_id,
             )
 
             return response
@@ -3187,11 +3862,11 @@ class CorrelationIdMiddleware(BaseHTTPMiddleware):
                 method=request.method,
                 path=request.url.path,
                 error=str(e),
-                correlation_id=correlation_id,
+                request_id=request_id,
             )
             raise
         finally:
-            correlation_id_var.reset(token)
+            request_id_var.reset(token)
 ```
 
 ### Frontend (Next.js)
@@ -3205,14 +3880,14 @@ interface LogEntry {
   level: LogLevel;
   message: string;
   context?: Record<string, unknown>;
-  correlationId?: string;
+  requestId?: string;
 }
 
 class Logger {
-  private correlationId: string | null = null;
+  private requestId: string | null = null;
 
-  setCorrelationId(id: string) {
-    this.correlationId = id;
+  setRequestId(id: string) {
+    this.requestId = id;
   }
 
   private log(level: LogLevel, message: string, context?: Record<string, unknown>) {
@@ -3221,7 +3896,7 @@ class Logger {
       level,
       message,
       context,
-      correlationId: this.correlationId || undefined,
+      requestId: this.requestId || undefined,
     };
 
     // In production, send to logging service
@@ -3331,7 +4006,7 @@ async def liveness():
     Liveness probe - is the application running?
     Used by Kubernetes to restart unhealthy containers.
     """
-    return {"status": "alive"}
+    return {"status": "healthy"}
 
 
 @router.get("/ready", response_model=HealthResponse)
@@ -3600,7 +4275,7 @@ If you've had 20 minutes of downtime this month:
 ### Do
 
 - Use structured logging (JSON format) in production
-- Include correlation IDs in all log entries
+- Include request IDs in all log entries (the `request_id` field; see CLAUDE.md "Correlation ID convention")
 - Log at appropriate levels
 - Include context (user ID, request ID, etc.)
 - Set up health check endpoints
@@ -3632,857 +4307,11 @@ If you've had 20 minutes of downtime this month:
 *Observability is the foundation for understanding and improving your system.*
 
 ---
-<!-- Source: /home/tester/.claude/evolv-coder-standards/standards/architecture/security.md -->
-# Security Architecture Standard
 
-**Version**: 1.0.0
-**Last Updated**: 2025-12-30
-**Status**: Active
+<!-- Source: standards/architecture/testing-strategy.md (v1.2.3) -->
 
-## Purpose
-
-This standard defines security architecture patterns and best practices for full-stack applications using Next.js, FastAPI, and PostgreSQL.
-
-## Scope
-
-- Authentication and authorization architecture
-- Input validation and sanitization
-- Data protection and encryption
-- API security
-- OWASP compliance
-- Secrets management
-- Audit logging
-
----
-
-## Security Architecture Overview
-
-```mermaid
-flowchart TB
-    subgraph Client["Client Layer"]
-        Browser[Browser]
-        CSP[Content Security Policy]
-        XSS[XSS Prevention]
-    end
-
-    subgraph Frontend["Frontend Layer - Next.js"]
-        Clerk[Clerk Auth]
-        ServerActions[Server Actions]
-        Validation[Zod Validation]
-    end
-
-    subgraph Backend["Backend Layer - FastAPI"]
-        JWT[JWT Validation]
-        RateLimit[Rate Limiting]
-        InputVal[Pydantic Validation]
-        RBAC[Role-Based Access]
-    end
-
-    subgraph Data["Data Layer"]
-        Encryption[Encryption at Rest]
-        TLS[TLS in Transit]
-        Audit[Audit Logs]
-        DB[(PostgreSQL)]
-    end
-
-    Browser --> CSP
-    CSP --> Clerk
-    Clerk --> ServerActions
-    ServerActions --> Validation
-    Validation --> JWT
-    JWT --> RateLimit
-    RateLimit --> InputVal
-    InputVal --> RBAC
-    RBAC --> Encryption
-    Encryption --> DB
-    DB --> Audit
-```
-
----
-
-## Authentication Architecture
-
-### Clerk Integration
-
-```typescript
-// Frontend: middleware.ts
-import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
-
-const isPublicRoute = createRouteMatcher([
-  '/',
-  '/sign-in(.*)',
-  '/sign-up(.*)',
-  '/api/webhooks(.*)',
-]);
-
-export default clerkMiddleware((auth, req) => {
-  if (!isPublicRoute(req)) {
-    auth().protect();
-  }
-});
-
-export const config = {
-  matcher: ['/((?!.*\\..*|_next).*)', '/', '/(api|trpc)(.*)'],
-};
-```
-
-### Server Action Authentication
-
-```typescript
-// app/actions/protected.ts
-'use server';
-
-import { auth, currentUser } from '@clerk/nextjs/server';
-
-export async function protectedAction(data: FormData): Promise<ActionResult> {
-  // Get and verify authentication
-  const { userId } = auth();
-
-  if (!userId) {
-    return { success: false, error: 'Unauthorized' };
-  }
-
-  // Get full user object if needed
-  const user = await currentUser();
-
-  // Proceed with authenticated action
-  const response = await fetch(`${API_URL}/resource`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${await auth().getToken()}`,
-    },
-    body: JSON.stringify(data),
-  });
-
-  return response.json();
-}
-```
-
-### Backend JWT Validation
-
-```python
-# app/core/security.py
-from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from jose import jwt, JWTError
-from pydantic import BaseModel
-
-from app.core.config import settings
-
-security = HTTPBearer()
-
-
-class TokenPayload(BaseModel):
-    """JWT token payload."""
-    sub: str
-    exp: int
-    iat: int
-    azp: str | None = None
-
-
-async def verify_token(
-    credentials: HTTPAuthorizationCredentials = Depends(security)
-) -> TokenPayload:
-    """Verify and decode JWT token from Clerk."""
-    token = credentials.credentials
-
-    try:
-        # Verify token with Clerk's public key
-        payload = jwt.decode(
-            token,
-            settings.CLERK_PEM_PUBLIC_KEY,
-            algorithms=["RS256"],
-            audience=settings.CLERK_FRONTEND_API,
-        )
-        return TokenPayload(**payload)
-    except JWTError as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid authentication token",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-
-async def get_current_user(
-    token: TokenPayload = Depends(verify_token)
-) -> str:
-    """Get current user ID from token."""
-    return token.sub
-```
-
----
-
-## Authorization Patterns
-
-### Role-Based Access Control (RBAC)
-
-```python
-# app/core/permissions.py
-from enum import Enum
-from functools import wraps
-from typing import Callable
-
-from fastapi import HTTPException, status
-
-
-class Permission(str, Enum):
-    """Application permissions."""
-    READ_USERS = "read:users"
-    WRITE_USERS = "write:users"
-    DELETE_USERS = "delete:users"
-    ADMIN = "admin"
-
-
-class Role(str, Enum):
-    """Application roles with permissions."""
-    USER = "user"
-    MODERATOR = "moderator"
-    ADMIN = "admin"
-
-
-ROLE_PERMISSIONS: dict[Role, set[Permission]] = {
-    Role.USER: {Permission.READ_USERS},
-    Role.MODERATOR: {Permission.READ_USERS, Permission.WRITE_USERS},
-    Role.ADMIN: {Permission.READ_USERS, Permission.WRITE_USERS, Permission.DELETE_USERS, Permission.ADMIN},
-}
-
-
-def require_permission(permission: Permission):
-    """Decorator to require specific permission."""
-    def decorator(func: Callable):
-        @wraps(func)
-        async def wrapper(*args, current_user_role: Role, **kwargs):
-            user_permissions = ROLE_PERMISSIONS.get(current_user_role, set())
-
-            if permission not in user_permissions:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail=f"Permission denied: {permission.value} required"
-                )
-
-            return await func(*args, **kwargs)
-        return wrapper
-    return decorator
-```
-
-### Resource-Level Authorization
-
-```python
-# app/api/routers/documents.py
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.api.deps import get_db, get_current_user
-from app.crud import document_crud
-from app.schemas.document import DocumentResponse
-
-router = APIRouter()
-
-
-@router.get("/{document_id}", response_model=DocumentResponse)
-async def get_document(
-    document_id: int,
-    db: AsyncSession = Depends(get_db),
-    current_user_id: str = Depends(get_current_user),
-):
-    """Get document with ownership check."""
-    document = await document_crud.get(db, id=document_id)
-
-    if not document:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Document not found"
-        )
-
-    # Resource-level authorization
-    if document.owner_id != current_user_id and not document.is_public:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not authorized to access this document"
-        )
-
-    return document
-```
-
----
-
-## Input Validation
-
-### Frontend Validation (Zod)
-
-```typescript
-// lib/validations/user.ts
-import { z } from 'zod';
-
-export const createUserSchema = z.object({
-  email: z
-    .string()
-    .email('Invalid email address')
-    .max(255, 'Email too long'),
-  password: z
-    .string()
-    .min(8, 'Password must be at least 8 characters')
-    .regex(
-      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])/,
-      'Password must include uppercase, lowercase, number, and special character'
-    ),
-  fullName: z
-    .string()
-    .min(1, 'Name is required')
-    .max(255, 'Name too long')
-    .regex(/^[a-zA-Z\s'-]+$/, 'Name contains invalid characters'),
-});
-
-export type CreateUserInput = z.infer<typeof createUserSchema>;
-```
-
-### Backend Validation (Pydantic)
-
-```python
-# app/schemas/user.py
-from pydantic import BaseModel, EmailStr, Field, field_validator
-import re
-
-
-class UserCreate(BaseModel):
-    """User creation schema with validation."""
-
-    email: EmailStr = Field(..., max_length=255)
-    password: str = Field(..., min_length=8, max_length=128)
-    full_name: str = Field(..., min_length=1, max_length=255)
-
-    @field_validator("password")
-    @classmethod
-    def validate_password_strength(cls, v: str) -> str:
-        """Validate password meets security requirements."""
-        if not re.search(r"[a-z]", v):
-            raise ValueError("Password must contain lowercase letter")
-        if not re.search(r"[A-Z]", v):
-            raise ValueError("Password must contain uppercase letter")
-        if not re.search(r"\d", v):
-            raise ValueError("Password must contain digit")
-        if not re.search(r"[@$!%*?&]", v):
-            raise ValueError("Password must contain special character")
-        return v
-
-    @field_validator("full_name")
-    @classmethod
-    def validate_name(cls, v: str) -> str:
-        """Validate name contains only allowed characters."""
-        if not re.match(r"^[a-zA-Z\s'-]+$", v):
-            raise ValueError("Name contains invalid characters")
-        return v.strip()
-```
-
-### SQL Injection Prevention
-
-```python
-# ALWAYS use parameterized queries - SQLAlchemy handles this
-
-# ✅ Safe - SQLAlchemy ORM
-user = await db.execute(
-    select(User).where(User.email == email)
-)
-
-# ✅ Safe - Parameterized raw SQL
-result = await db.execute(
-    text("SELECT * FROM users WHERE email = :email"),
-    {"email": email}
-)
-
-# ❌ NEVER do this - SQL injection vulnerability
-# result = await db.execute(f"SELECT * FROM users WHERE email = '{email}'")
-```
-
----
-
-## XSS Prevention
-
-### Content Security Policy
-
-```typescript
-// next.config.ts
-const securityHeaders = [
-  {
-    key: 'Content-Security-Policy',
-    value: [
-      "default-src 'self'",
-      "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://clerk.com",
-      "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data: https:",
-      "font-src 'self'",
-      "connect-src 'self' https://api.clerk.com wss:",
-      "frame-ancestors 'none'",
-      "form-action 'self'",
-    ].join('; '),
-  },
-  {
-    key: 'X-Content-Type-Options',
-    value: 'nosniff',
-  },
-  {
-    key: 'X-Frame-Options',
-    value: 'DENY',
-  },
-  {
-    key: 'X-XSS-Protection',
-    value: '1; mode=block',
-  },
-  {
-    key: 'Referrer-Policy',
-    value: 'strict-origin-when-cross-origin',
-  },
-];
-
-export default {
-  async headers() {
-    return [
-      {
-        source: '/(.*)',
-        headers: securityHeaders,
-      },
-    ];
-  },
-};
-```
-
-### Output Encoding
-
-```typescript
-// React automatically escapes content, but be careful with:
-
-// ❌ Dangerous - renders raw HTML
-<div dangerouslySetInnerHTML={{ __html: userContent }} />
-
-// ✅ Safe - use a sanitizer if HTML is required
-import DOMPurify from 'dompurify';
-
-<div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(userContent) }} />
-
-// ✅ Best - avoid raw HTML entirely
-<div>{userContent}</div>
-```
-
----
-
-## CSRF Protection
-
-### Server Actions (Built-in Protection)
-
-Next.js server actions include built-in CSRF protection via origin checking.
-
-```typescript
-// Server actions are automatically protected
-'use server';
-
-export async function updateProfile(formData: FormData) {
-  // CSRF token validation is automatic
-  // Origin header is verified by Next.js
-}
-```
-
-### API Routes (Manual Protection)
-
-```typescript
-// app/api/webhook/route.ts
-import { headers } from 'next/headers';
-import crypto from 'crypto';
-
-export async function POST(request: Request) {
-  const headersList = headers();
-  const signature = headersList.get('x-webhook-signature');
-
-  if (!signature) {
-    return Response.json({ error: 'Missing signature' }, { status: 401 });
-  }
-
-  const body = await request.text();
-  const expectedSignature = crypto
-    .createHmac('sha256', process.env.WEBHOOK_SECRET!)
-    .update(body)
-    .digest('hex');
-
-  if (!crypto.timingSafeEqual(
-    Buffer.from(signature),
-    Buffer.from(expectedSignature)
-  )) {
-    return Response.json({ error: 'Invalid signature' }, { status: 401 });
-  }
-
-  // Process webhook
-}
-```
-
----
-
-## Rate Limiting
-
-### FastAPI Rate Limiting
-
-```python
-# app/core/rate_limit.py
-from fastapi import Request, HTTPException, status
-from slowapi import Limiter
-from slowapi.util import get_remote_address
-
-limiter = Limiter(key_func=get_remote_address)
-
-
-def get_rate_limit_key(request: Request) -> str:
-    """Get rate limit key from user or IP."""
-    # Use user ID if authenticated, otherwise IP
-    user_id = getattr(request.state, "user_id", None)
-    if user_id:
-        return f"user:{user_id}"
-    return get_remote_address(request)
-
-
-# Apply to routes
-@router.post("/login")
-@limiter.limit("5/minute")
-async def login(request: Request, credentials: LoginCredentials):
-    """Login with rate limiting."""
-    pass
-
-
-@router.get("/search")
-@limiter.limit("100/minute")
-async def search(request: Request, q: str):
-    """Search with rate limiting."""
-    pass
-```
-
-### Redis-Based Rate Limiting
-
-```python
-# app/core/rate_limit.py
-import redis.asyncio as redis
-from fastapi import HTTPException, status
-from datetime import timedelta
-
-
-class RateLimiter:
-    """Redis-based rate limiter."""
-
-    def __init__(self, redis_client: redis.Redis):
-        self.redis = redis_client
-
-    async def check_rate_limit(
-        self,
-        key: str,
-        limit: int,
-        window: timedelta
-    ) -> bool:
-        """Check if request is within rate limit."""
-        current = await self.redis.incr(key)
-
-        if current == 1:
-            await self.redis.expire(key, int(window.total_seconds()))
-
-        if current > limit:
-            raise HTTPException(
-                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail="Rate limit exceeded",
-                headers={"Retry-After": str(int(window.total_seconds()))}
-            )
-
-        return True
-```
-
----
-
-## Secrets Management
-
-### Environment Variables
-
-```bash
-# .env.local (never commit)
-DATABASE_URL=postgresql+asyncpg://user:pass@localhost/db
-CLERK_SECRET_KEY=sk_live_xxx
-REDIS_URL=redis://localhost:6379
-ENCRYPTION_KEY=base64-encoded-32-byte-key
-
-# .env.example (commit this)
-DATABASE_URL=postgresql+asyncpg://user:pass@localhost/db
-CLERK_SECRET_KEY=sk_test_xxx
-REDIS_URL=redis://localhost:6379
-ENCRYPTION_KEY=generate-with-openssl
-```
-
-### Settings Configuration
-
-```python
-# app/core/config.py
-from pydantic_settings import BaseSettings
-from pydantic import SecretStr, field_validator
-
-
-class Settings(BaseSettings):
-    """Application settings with secret handling."""
-
-    # Database
-    DATABASE_URL: SecretStr
-
-    # Authentication
-    CLERK_SECRET_KEY: SecretStr
-    CLERK_PEM_PUBLIC_KEY: str
-
-    # Encryption
-    ENCRYPTION_KEY: SecretStr
-
-    # Redis
-    REDIS_URL: SecretStr
-
-    @field_validator("ENCRYPTION_KEY")
-    @classmethod
-    def validate_encryption_key(cls, v: SecretStr) -> SecretStr:
-        """Validate encryption key length."""
-        key_bytes = v.get_secret_value()
-        if len(key_bytes) < 32:
-            raise ValueError("Encryption key must be at least 32 bytes")
-        return v
-
-    class Config:
-        env_file = ".env"
-        case_sensitive = True
-
-
-settings = Settings()
-```
-
-### Using Secrets
-
-```python
-# Always use .get_secret_value() to access secrets
-database_url = settings.DATABASE_URL.get_secret_value()
-
-# Secrets are not logged or exposed in errors
-print(settings.DATABASE_URL)  # Outputs: SecretStr('**********')
-```
-
----
-
-## Data Encryption
-
-### Encryption at Rest
-
-```python
-# app/core/encryption.py
-from cryptography.fernet import Fernet
-from base64 import b64encode, b64decode
-
-from app.core.config import settings
-
-
-class FieldEncryption:
-    """Encrypt/decrypt sensitive database fields."""
-
-    def __init__(self):
-        key = settings.ENCRYPTION_KEY.get_secret_value()
-        self.fernet = Fernet(key.encode() if isinstance(key, str) else key)
-
-    def encrypt(self, value: str) -> str:
-        """Encrypt a string value."""
-        encrypted = self.fernet.encrypt(value.encode())
-        return b64encode(encrypted).decode()
-
-    def decrypt(self, encrypted_value: str) -> str:
-        """Decrypt an encrypted value."""
-        decoded = b64decode(encrypted_value.encode())
-        return self.fernet.decrypt(decoded).decode()
-
-
-encryption = FieldEncryption()
-
-
-# Usage in model
-class User(BaseModel):
-    """User with encrypted SSN."""
-
-    _ssn_encrypted: str = Column("ssn", String(255))
-
-    @property
-    def ssn(self) -> str:
-        """Decrypt SSN on access."""
-        return encryption.decrypt(self._ssn_encrypted)
-
-    @ssn.setter
-    def ssn(self, value: str):
-        """Encrypt SSN on set."""
-        self._ssn_encrypted = encryption.encrypt(value)
-```
-
-### Password Hashing
-
-```python
-# app/core/security.py
-from passlib.context import CryptContext
-
-pwd_context = CryptContext(
-    schemes=["argon2"],  # Use Argon2 (winner of Password Hashing Competition)
-    deprecated="auto"
-)
-
-
-def hash_password(password: str) -> str:
-    """Hash a password."""
-    return pwd_context.hash(password)
-
-
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verify a password against hash."""
-    return pwd_context.verify(plain_password, hashed_password)
-```
-
----
-
-## Audit Logging
-
-### Audit Log Model
-
-```python
-# app/models/audit.py
-from sqlalchemy import Column, String, Integer, DateTime, Text, JSON
-from sqlalchemy.sql import func
-
-from app.db.base import Base
-
-
-class AuditLog(Base):
-    """Audit log for security events."""
-
-    __tablename__ = "audit_logs"
-
-    id = Column(Integer, primary_key=True)
-    timestamp = Column(DateTime(timezone=True), server_default=func.now(), index=True)
-
-    # Actor
-    user_id = Column(String(255), nullable=True, index=True)
-    ip_address = Column(String(45), nullable=True)
-    user_agent = Column(String(500), nullable=True)
-
-    # Action
-    action = Column(String(100), nullable=False, index=True)
-    resource_type = Column(String(100), nullable=True, index=True)
-    resource_id = Column(String(255), nullable=True)
-
-    # Details
-    details = Column(JSON, nullable=True)
-    status = Column(String(50), nullable=False)  # success, failure, error
-    error_message = Column(Text, nullable=True)
-```
-
-### Audit Logger
-
-```python
-# app/core/audit.py
-from fastapi import Request
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.models.audit import AuditLog
-
-
-class AuditLogger:
-    """Log security-relevant events."""
-
-    @staticmethod
-    async def log(
-        db: AsyncSession,
-        action: str,
-        status: str,
-        user_id: str | None = None,
-        request: Request | None = None,
-        resource_type: str | None = None,
-        resource_id: str | None = None,
-        details: dict | None = None,
-        error_message: str | None = None,
-    ):
-        """Create audit log entry."""
-        log_entry = AuditLog(
-            user_id=user_id,
-            ip_address=request.client.host if request else None,
-            user_agent=request.headers.get("user-agent") if request else None,
-            action=action,
-            resource_type=resource_type,
-            resource_id=resource_id,
-            details=details,
-            status=status,
-            error_message=error_message,
-        )
-        db.add(log_entry)
-        await db.commit()
-
-
-# Usage
-await AuditLogger.log(
-    db=db,
-    action="user.login",
-    status="success",
-    user_id=user.id,
-    request=request,
-    details={"method": "password"}
-)
-```
-
----
-
-## OWASP Top 10 Compliance
-
-| Risk | Mitigation |
-|------|------------|
-| **A01: Broken Access Control** | RBAC, resource-level checks, server-side validation |
-| **A02: Cryptographic Failures** | TLS, encryption at rest, secure password hashing |
-| **A03: Injection** | Parameterized queries, ORM, input validation |
-| **A04: Insecure Design** | Threat modeling, secure defaults, defense in depth |
-| **A05: Security Misconfiguration** | CSP, secure headers, environment isolation |
-| **A06: Vulnerable Components** | Dependency scanning, regular updates |
-| **A07: Auth Failures** | Clerk integration, JWT validation, rate limiting |
-| **A08: Data Integrity Failures** | Input validation, code signing, integrity checks |
-| **A09: Logging Failures** | Audit logging, monitoring, alerting |
-| **A10: SSRF** | URL validation, allowlists, network segmentation |
-
----
-
-## Security Checklist
-
-### Development
-- [ ] All secrets in environment variables
-- [ ] Input validation on all endpoints
-- [ ] SQL injection prevention (parameterized queries)
-- [ ] XSS prevention (output encoding, CSP)
-- [ ] CSRF protection enabled
-- [ ] Authentication on all protected routes
-- [ ] Authorization checks at resource level
-
-### Deployment
-- [ ] TLS/HTTPS enforced
-- [ ] Security headers configured
-- [ ] Rate limiting enabled
-- [ ] Audit logging active
-- [ ] Secrets rotated regularly
-- [ ] Dependencies updated
-- [ ] Security scanning in CI/CD
-
----
-
-## Related Standards
-
-- [Authentication Architecture](./authentication.md)
-- [Backend Tech Stack](../backend/tech-stack.md)
-- [Frontend Tech Stack](../frontend/tech-stack.md)
-- [Database Schema Design](../database/schema-design.md)
-
----
-
-*Security is not a feature, it's a foundation. Build it into every layer of your application.*
-
----
-<!-- Source: /home/tester/.claude/evolv-coder-standards/standards/architecture/testing-strategy.md -->
 # Testing Strategy
 
-**Version**: 1.0.0
-**Last Updated**: 2026-01-03
 **Status**: Active
 
 ## Overview
@@ -4502,20 +4331,24 @@ This document is the **central hub** for testing strategy across all layers. It 
                     │   Tests   │
                    ─┴───────────┴─
                   ┌───────────────┐
-                  │  Integration  │  ← Some, medium speed
+                  │  Integration  │  ← Cross-service boundaries
                   │     Tests     │
                  ─┴───────────────┴─
                 ┌───────────────────┐
-                │    Unit Tests     │  ← Many, fast, focused
+                │  Component Tests  │  ← Shallow render, isolated
                 └───────────────────┘
+              ┌───────────────────────┐
+              │      Unit Tests       │  ← Many, fast, focused
+              └───────────────────────┘
 ```
 
 ### Distribution Guidelines
 
 | Test Type | Percentage | Speed | Scope |
 |-----------|-----------|-------|-------|
-| Unit | 70% | Milliseconds | Single function/component |
-| Integration | 20% | Seconds | Multiple components/services |
+| Unit | 40% | Milliseconds | Single function/method |
+| Component | 25% | Milliseconds–seconds | Single component in isolation (shallow render, mocked deps) |
+| Integration | 25% | Seconds | Multiple components/services |
 | E2E | 10% | Minutes | Full user flow |
 
 ## Test Types
@@ -4697,8 +4530,8 @@ import { z } from 'zod';
 
 // Define schemas that match backend
 export const UserSchema = z.object({
-  id: z.string().uuid(),
-  email: z.string().email(),
+  id: z.uuid(),
+  email: z.email(),
   name: z.string(),
   created_at: z.string().datetime(),
 });
@@ -4956,7 +4789,7 @@ jobs:
   unit-tests:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Run backend unit tests
         run: pytest tests/unit -v --cov
@@ -4969,6 +4802,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
+        # pg16 to match the prod Postgres major (timescale/timescaledb-ha:pg16).
         image: postgres:16
         env:
           POSTGRES_PASSWORD: test
@@ -4976,7 +4810,7 @@ jobs:
           - 5432:5432
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Run integration tests
         run: pytest tests/integration -v
@@ -4985,7 +4819,7 @@ jobs:
     needs: integration-tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install Playwright
         run: npx playwright install --with-deps
@@ -5141,12 +4975,928 @@ class TestAPIPerformance:
 - [Quality Gates](../devops/quality-gates.md) - Coverage thresholds, DoD
 - [CI/CD](../devops/ci-cd.md) - Test execution in pipelines
 
-**Templates:**
-- [test-api-endpoint.py](../templates/test-api-endpoint.py) - Backend API tests
-- [test-server-action.ts](../templates/test-server-action.ts) - Server action tests
-- [test-react-component.tsx](../templates/test-react-component.tsx) - Component tests
-- [test-e2e.ts](../templates/test-e2e.ts) - E2E tests
+**Templates:** (planned — see `standards/templates/README.md` and `BACKLOG.md`)
+
+- *test-api-endpoint.py* — Backend API tests
+- *test-server-action.ts* — Server action tests
+- *test-react-component.tsx* — Component tests
+- *test-e2e.ts* — E2E tests
 
 ---
 
 *Testing is not about finding bugs, it's about building confidence in your code.*
+
+---
+
+<!-- Source: standards/architecture/api-versioning.md (v1.0.0) -->
+
+# API Versioning Standard
+
+**Status**: Active
+
+## Overview
+
+The API uses URL path versioning. Breaking changes require a new version prefix. Non-breaking changes go into the current version. A schema-first workflow using OpenAPI snapshot testing enforces contract discipline.
+
+## URL Versioning Pattern
+
+```
+/api/v1/companies
+/api/v1/deals
+/api/v2/companies     (future breaking change)
+```
+
+- Version is in the URL path, not a header or query parameter
+- All routers mount under the versioned prefix
+- Multiple versions can coexist during deprecation periods
+
+## Breaking vs. Non-Breaking Changes
+
+### Breaking (requires new version)
+
+- Removing an endpoint or response field
+- Changing a field's type
+- Renaming a path parameter
+- Adding a required field to a request body
+- Changing an HTTP status code for an existing outcome
+- Changing a problem `type` URI
+
+### Non-breaking (current version)
+
+- New endpoints
+- New optional fields in request/response bodies
+- New optional query parameters
+- New problem types that didn't previously exist
+
+**When in doubt, treat it as breaking.**
+
+## Deprecation Policy
+
+**Minimum period**: 6 months from new version release.
+
+During deprecation:
+
+1. Old version continues functioning unchanged
+2. Deprecated endpoints return headers:
+   ```
+   Deprecation: true
+   Sunset: 2027-09-22
+   ```
+3. Deprecation announced in release notes
+4. After sunset date: `410 Gone`
+
+## Schema-First Workflow
+
+1. Modify the API contract (endpoint, schema, response model)
+2. Implement the change in code
+3. Run `make openapi-export` to regenerate `openapi.json`
+4. Commit both implementation and updated spec together
+5. CI validates spec matches runtime — build fails on drift
+
+See [OpenAPI Contract Enforcement](../backend/openapi-contract.md) for implementation details.
+
+## Migration Guidance
+
+For each version bump:
+
+1. Create a migration guide documenting every breaking change
+2. Update `openapi.json`
+3. Update FE API client base paths
+4. Remove old version mounts only after sunset date
+
+## Route Deduplication Rules
+
+- **One canonical URL per resource**: No duplicate route hierarchies
+- **Sub-resources use scoped auth**: Use dependency-based access checks instead of manual assertions
+- **Verify FE uses canonical paths** before removing duplicates
+
+## Quick Reference
+
+| Scenario                       | Action                                         |
+| ------------------------------ | ---------------------------------------------- |
+| New optional endpoint or field | Add to current version, update spec            |
+| Breaking change                | New version prefix, deprecation headers on old |
+| Removing an endpoint           | Wait for 6-month deprecation period            |
+| Forgot `make openapi-export`   | CI fails — run it, commit                      |
+| Not sure if breaking           | Treat as breaking                              |
+
+---
+
+## Related Standards
+
+- [OpenAPI Contract Enforcement](../backend/openapi-contract.md)
+- [Error Response Contract](./error-contract.md)
+
+---
+
+<!-- Source: standards/architecture/adr/adr-template.md (v1.0.0) -->
+
+# ADR-[NNN]: [Title]
+
+**Status**: Proposed | Accepted | Rejected | Deprecated | Superseded
+**Date**: YYYY-MM-DD
+**Deciders**: [List people involved in the decision]
+**Supersedes**: [ADR-XXX if this replaces a previous decision]
+**Superseded by**: [ADR-XXX if this has been replaced]
+
+---
+
+## Context
+
+[Describe the situation, problem, or need that led to this decision. Include:
+- What is the current state?
+- What constraints exist?
+- What forces are at play?
+- Why is a decision needed now?]
+
+---
+
+## Decision
+
+[State the decision clearly and directly. Use present tense.
+
+Example: "We will use PostgreSQL as the primary database for user data storage."]
+
+---
+
+## Consequences
+
+### Positive
+
+- [Benefit 1]
+- [Benefit 2]
+- [Benefit 3]
+
+### Negative
+
+- [Drawback 1]
+- [Drawback 2]
+
+### Neutral
+
+- [Observation that is neither good nor bad]
+
+---
+
+## Alternatives Considered
+
+### [Alternative 1 Name]
+
+**Description**: [Brief description of this alternative]
+
+**Pros**:
+- [Pro 1]
+- [Pro 2]
+
+**Cons**:
+- [Con 1]
+- [Con 2]
+
+**Why Rejected**: [Reason this option was not chosen]
+
+### [Alternative 2 Name]
+
+**Description**: [Brief description of this alternative]
+
+**Pros**:
+- [Pro 1]
+
+**Cons**:
+- [Con 1]
+- [Con 2]
+
+**Why Rejected**: [Reason this option was not chosen]
+
+---
+
+## Related ADRs
+
+| ADR | Relationship |
+|-----|--------------|
+| ADR-XXX (placeholder for the ID of the related ADR) | [How it relates: builds on, conflicts with, etc.] |
+
+---
+
+## References
+
+- [Link to relevant documentation]
+- [Link to external resources]
+- [Link to RFCs or specifications]
+
+---
+
+## Notes
+
+[Any additional context, implementation notes, or follow-up items]
+
+---
+
+*Template from [Standards Documentation](../../../README.md)*
+
+---
+
+<!-- Source: standards/architecture/adr/ADR-000-template-example.md (v1.0.0) -->
+
+# ADR-000: Use PostgreSQL for Primary Database
+
+**Status**: Accepted
+**Date**: 2026-01-03
+**Deciders**: Engineering Team, Tech Lead
+**Supersedes**: None
+**Superseded by**: None
+
+---
+
+## Context
+
+Our application requires a relational database for storing user data, orders, and product information. We need to select a database that:
+
+- Supports complex queries and joins
+- Handles transactional workloads reliably
+- Scales to our expected user base (10K-100K users)
+- Has strong ecosystem support and tooling
+- Works well with our chosen ORM (SQLAlchemy)
+- Supports both synchronous and asynchronous access
+
+The team has experience with various databases including MySQL, PostgreSQL, and SQLite. We are building a FastAPI backend with SQLAlchemy 2.0.
+
+---
+
+## Decision
+
+We will use PostgreSQL 16+ as the primary database for all persistent data storage.
+
+---
+
+## Consequences
+
+### Positive
+
+- **Strong ACID compliance**: Reliable transactions for financial and order data
+- **Excellent SQLAlchemy support**: First-class async support with asyncpg driver
+- **Rich feature set**: JSON support, full-text search, array types reduce need for additional services
+- **Mature ecosystem**: Well-documented, widely understood, easy to hire for
+- **Cloud availability**: Available as managed service on all major cloud providers
+- **Performance**: Excellent query optimizer, supports complex queries efficiently
+
+### Negative
+
+- **Operational overhead**: More complex to manage than SQLite for development
+- **Resource usage**: Requires dedicated process, more memory than embedded alternatives
+- **Learning curve**: Some team members need to learn PostgreSQL-specific features
+
+### Neutral
+
+- Team will use Docker Compose for local development PostgreSQL instances
+- Production will use managed PostgreSQL (AWS RDS, Cloud SQL, etc.)
+
+---
+
+## Alternatives Considered
+
+### MySQL 8.0
+
+**Description**: Popular open-source relational database with wide adoption.
+
+**Pros**:
+- Wide adoption, familiar to many developers
+- Good performance for read-heavy workloads
+- Available as managed service everywhere
+
+**Cons**:
+- Less robust JSON support compared to PostgreSQL
+- Fewer advanced features (no native array types, limited full-text search)
+- asyncio support less mature than PostgreSQL
+
+**Why Rejected**: PostgreSQL's richer feature set and better async support align better with our FastAPI architecture.
+
+### SQLite
+
+**Description**: Embedded database requiring no separate server process.
+
+**Pros**:
+- Zero configuration
+- No separate process needed
+- Excellent for development and testing
+
+**Cons**:
+- Not suitable for production multi-user applications
+- Limited concurrent write support
+- No native async support
+
+**Why Rejected**: While useful for testing, SQLite cannot scale to our production requirements.
+
+### MongoDB
+
+**Description**: Document database with flexible schema.
+
+**Pros**:
+- Flexible schema for rapidly evolving data models
+- Native JSON storage
+- Horizontal scaling built-in
+
+**Cons**:
+- Less suitable for relational data with many joins
+- Transaction support less robust than PostgreSQL
+- Different query paradigm requires learning curve
+
+**Why Rejected**: Our data model is inherently relational (users, orders, products with foreign keys). A relational database is more appropriate.
+
+---
+
+## Related ADRs
+
+| ADR | Relationship |
+|-----|--------------|
+| ADR-002-adopt-sqlalchemy-orm | Builds on this decision for ORM choice |
+| ADR-005-caching-strategy | Uses Redis to cache PostgreSQL queries |
+
+---
+
+## References
+
+- [PostgreSQL 16 Documentation](https://www.postgresql.org/docs/16/)
+- [SQLAlchemy 2.0 AsyncIO Support](https://docs.sqlalchemy.org/en/20/orm/extensions/asyncio.html)
+- [asyncpg Driver](https://magicstack.github.io/asyncpg/)
+
+---
+
+## Notes
+
+Implementation details:
+- Development: Docker Compose with PostgreSQL 16 image
+- Testing: Use PostgreSQL in CI (not SQLite) for parity
+- Production: Managed PostgreSQL with automated backups
+
+Follow-up items:
+- Set up Alembic migrations
+- Configure connection pooling
+- Establish backup strategy
+
+---
+
+*Example ADR for [Standards Documentation](../../../README.md)*
+
+---
+
+<!-- Source: standards/architecture/adr/README.md (v1.0.1) -->
+
+# Architecture Decision Records (ADRs)
+
+**Status**: Active
+
+---
+
+## Purpose
+
+Architecture Decision Records (ADRs) capture significant architectural decisions made during a project's lifecycle. They provide context, rationale, and consequences for decisions that affect the system's structure, technology choices, or development patterns.
+
+ADRs serve as institutional memory, helping current and future team members understand why the system is built the way it is.
+
+---
+
+## When to Create an ADR
+
+### Required
+
+- Choosing a technology, framework, or library
+- Defining architectural patterns (e.g., microservices vs monolith)
+- Establishing coding conventions that affect multiple teams
+- Making security or compliance decisions
+- Selecting infrastructure or deployment approaches
+- Changing previously documented decisions
+
+### Optional
+
+- Explaining non-obvious design choices
+- Documenting rejected alternatives for future reference
+- Recording decisions that may need revisiting
+
+### Not Needed
+
+- Implementation details that don't affect architecture
+- Bug fixes or minor enhancements
+- Decisions already covered by existing standards
+
+---
+
+## ADR Lifecycle
+
+```mermaid
+stateDiagram-v2
+    [*] --> Proposed
+    Proposed --> Accepted: Approved
+    Proposed --> Rejected: Not approved
+    Accepted --> Deprecated: Outdated
+    Accepted --> Superseded: Replaced
+    Deprecated --> [*]
+    Superseded --> [*]
+    Rejected --> [*]
+```
+
+| Status | Meaning |
+|--------|---------|
+| **Proposed** | Under discussion, not yet approved |
+| **Accepted** | Approved and in effect |
+| **Rejected** | Considered but not approved |
+| **Deprecated** | No longer relevant but historically accurate |
+| **Superseded** | Replaced by a newer ADR |
+
+---
+
+## Naming Convention
+
+```
+ADR-[NNN]-[kebab-case-title].md
+
+Where:
+- NNN = Sequential 3-digit number (001, 002, ...)
+- kebab-case-title = Brief description in kebab-case
+
+Examples:
+ADR-001-use-postgresql-for-primary-database.md
+ADR-002-adopt-server-actions-pattern.md
+ADR-003-authentication-with-clerk.md
+```
+
+---
+
+## ADR Template
+
+Use the template: [adr-template.md](./adr-template.md)
+
+### Required Sections
+
+| Section | Purpose |
+|---------|---------|
+| **Title** | Clear, descriptive name for the decision |
+| **Status** | Current lifecycle status |
+| **Context** | Background, problem statement, constraints |
+| **Decision** | What we decided to do |
+| **Consequences** | Positive, negative, and neutral outcomes |
+
+### Optional Sections
+
+| Section | When to Include |
+|---------|-----------------|
+| **Alternatives Considered** | When multiple options were evaluated |
+| **Related ADRs** | When building on or superseding other ADRs |
+| **References** | External documentation, RFCs, articles |
+
+---
+
+## Creating an ADR
+
+### Step 1: Assign Number
+
+Check the highest existing ADR number and increment:
+
+```bash
+ls -1 architecture/adr/ADR-*.md | tail -1
+# If ADR-005-xxx.md exists, next is ADR-006
+```
+
+### Step 2: Create File
+
+```bash
+cp architecture/adr/adr-template.md architecture/adr/ADR-006-your-decision.md
+```
+
+### Step 3: Fill Template
+
+- Write clear, concise content
+- Focus on "why" not just "what"
+- Document alternatives that were rejected
+- Be honest about trade-offs
+
+### Step 4: Review
+
+- Share with relevant stakeholders
+- Incorporate feedback
+- Update status to "Accepted" when approved
+
+---
+
+## ADR Index
+
+Maintain an index of all ADRs for quick reference:
+
+| ADR | Title | Status | Date |
+|-----|-------|--------|------|
+| [ADR-000](./ADR-000-template-example.md) | Template Example | Example | 2026-01-03 |
+
+*Update this table when adding new ADRs.*
+
+---
+
+## Best Practices
+
+### Writing ADRs
+
+- **Be concise**: 1-2 pages is ideal
+- **Focus on context**: Future readers need to understand the situation
+- **Document alternatives**: Explain why they were rejected
+- **Be honest about trade-offs**: No decision is perfect
+- **Use present tense**: "We decide to..." not "We decided to..."
+
+### Maintaining ADRs
+
+- **Don't delete ADRs**: Mark as Deprecated or Superseded instead
+- **Link related ADRs**: Create a trail of related decisions
+- **Update status promptly**: Keep lifecycle accurate
+- **Review periodically**: Flag outdated decisions
+
+### Anti-Patterns
+
+| Anti-Pattern | Problem | Solution |
+|--------------|---------|----------|
+| Too much detail | Hard to read, quickly outdated | Focus on decision, not implementation |
+| No alternatives | Looks like rubber-stamping | Always document at least one alternative |
+| Missing context | Future readers can't understand why | Explain the situation that led to the decision |
+| Never updating | Misleading historical record | Mark superseded/deprecated when appropriate |
+
+---
+
+## Integration with Specifications
+
+ADRs should be referenced in specifications when relevant:
+
+```markdown
+## Related ADRs
+
+| ADR | Impact |
+|-----|--------|
+| `ADR-001-database-choice.md` | Defines database choice |
+| `ADR-003-authentication-pattern.md` | Establishes auth pattern |
+```
+
+---
+
+## Workflow Phase
+
+ADRs are created during **Phase 1.5** of the documentation workflow:
+
+```
+Discovery → BRD → PRD → Constitution → Architecture → ADRs → Specifications
+```
+
+They capture key decisions made during architecture definition that specifications must follow.
+
+---
+
+## Related Documents
+
+- [ADR Template](./adr-template.md)
+- [ADR Example](./ADR-000-template-example.md)
+- [Architecture Overview](../README.md)
+- [CLAUDE.md](../../../CLAUDE.md) - Workflow guidance
+
+---
+
+*Part of the Standards Documentation Repository*
+
+---
+
+<!-- Source: standards/architecture/threat-modeling.md (v1.0.0) -->
+
+# Threat Modeling Standard
+
+**Status**: Active
+
+## Purpose
+
+Define a lightweight, repeatable methodology for identifying and mitigating threats at design time. Every security-relevant feature must include a threat model before implementation begins.
+
+## Scope
+
+- New features handling authentication, authorization, or sensitive data
+- External integrations and API surfaces
+- Infrastructure changes affecting trust boundaries
+- Data flow changes crossing security domains
+
+## Methodology
+
+Use **STRIDE per-component** as the default approach. For each component in the feature's data flow, evaluate all six STRIDE categories.
+
+### STRIDE Categories
+
+| Category | Threat | Property Violated | Question |
+|----------|--------|-------------------|----------|
+| **S**poofing | Identity impersonation | Authentication | Can an attacker pretend to be someone else? |
+| **T**ampering | Data modification | Integrity | Can an attacker modify data in transit or at rest? |
+| **R**epudiation | Denying actions | Non-repudiation | Can an attacker deny performing an action? |
+| **I**nformation Disclosure | Data exposure | Confidentiality | Can an attacker access unauthorized data? |
+| **D**enial of Service | Availability disruption | Availability | Can an attacker degrade or prevent service? |
+| **E**levation of Privilege | Unauthorized access | Authorization | Can an attacker gain higher privileges? |
+
+### Process
+
+1. **Identify assets** — data, services, and capabilities worth protecting
+2. **Map trust boundaries** — where privilege levels change (client/server, service/database, internal/external)
+3. **Enumerate components** — each service, API endpoint, data store, or queue in the feature's data flow
+4. **Apply STRIDE** — evaluate each category against each component
+5. **Rate risk** — likelihood × impact using the matrix below
+6. **Define mitigations** — controls that reduce likelihood or impact
+7. **Document residual risk** — accepted risk after mitigations
+
+## Risk Rating
+
+### Likelihood
+
+| Level | Description |
+|-------|-------------|
+| High | Easily exploitable, public attack tooling exists |
+| Medium | Requires moderate skill or specific conditions |
+| Low | Requires insider access or unlikely preconditions |
+
+### Impact
+
+| Level | Description |
+|-------|-------------|
+| High | Data breach, full compromise, regulatory violation |
+| Medium | Partial data exposure, service degradation |
+| Low | Limited scope, no sensitive data, quick recovery |
+
+### Risk Matrix
+
+| | Impact: Low | Impact: Medium | Impact: High |
+|---|---|---|---|
+| **Likelihood: High** | Medium | High | Critical |
+| **Likelihood: Medium** | Low | Medium | High |
+| **Likelihood: Low** | Low | Low | Medium |
+
+### Risk Thresholds
+
+- **Critical/High**: Must mitigate before implementation proceeds
+- **Medium**: Mitigate before production release
+- **Low**: Accept with documented rationale or address in future iteration
+
+## Threat Model Template
+
+Include this section in specifications for security-relevant features:
+
+```markdown
+## Threat Model
+
+### Assets
+| Asset | Sensitivity | Location |
+|-------|-------------|----------|
+| [Data or capability] | [Public/Internal/Confidential/Restricted] | [Component] |
+
+### Trust Boundaries
+| Boundary | From | To | Controls |
+|----------|------|----|----------|
+| [Name] | [Lower trust zone] | [Higher trust zone] | [Auth mechanism] |
+
+### STRIDE Analysis
+| Component | Category | Threat | Likelihood | Impact | Risk | Mitigation |
+|-----------|----------|--------|------------|--------|------|------------|
+| [Component] | [S/T/R/I/D/E] | [Description] | [H/M/L] | [H/M/L] | [Rating] | [Control] |
+
+### Residual Risks
+| Risk | Rating | Rationale for Acceptance |
+|------|--------|--------------------------|
+| [Remaining threat] | [Rating] | [Why acceptable] |
+```
+
+## When to Perform Threat Modeling
+
+### Required (Tier 1 and Tier 2 specs)
+
+- Features handling PII or financial data
+- Authentication/authorization changes
+- New API endpoints exposed to external clients
+- Third-party integrations
+- Infrastructure or deployment topology changes
+- Multi-tenant data access patterns
+
+### Recommended (Tier 3 specs)
+
+- Internal-only API changes
+- UI changes that modify data submission
+- Configuration changes affecting security controls
+
+### Not Required
+
+- Documentation-only changes
+- UI styling or layout changes with no data flow impact
+- Dependency updates (covered by vulnerability scanning)
+
+## Integration with Specification Workflow
+
+1. Threat model is authored during specification (before implementation)
+2. Security-relevant specs must include the Threat Model section
+3. Tech Lead or Security reviewer validates the threat model during spec review
+4. Mitigations become functional requirements (FR-XXX) in the spec
+5. Residual risks are documented in the Assumptions & Ambiguities section
+
+## Lightweight Alternative: Threat Checklist
+
+For lower-risk features where full STRIDE analysis is excessive, use this checklist:
+
+- [ ] All inputs validated and sanitized
+- [ ] Authentication required for all non-public endpoints
+- [ ] Authorization checks enforce least privilege
+- [ ] Sensitive data encrypted in transit and at rest
+- [ ] Rate limiting applied to public-facing endpoints
+- [ ] Audit logging captures security-relevant actions
+- [ ] Error messages do not leak internal details
+- [ ] Dependencies checked for known vulnerabilities
+
+## Related Standards
+
+- [Security Architecture](./security.md) — security controls and patterns
+- [Authentication](./authentication.md) — identity verification patterns
+- [Error Contract](./error-contract.md) — safe error responses
+- [Specification Standard](../documentation/specification-standard.md) — spec template with Threat Model section
+- [Testing Strategy](./testing-strategy.md) — security test requirements
+
+## References
+
+- [STRIDE Threat Model](https://learn.microsoft.com/en-us/azure/security/develop/threat-modeling-tool-threats) — Microsoft
+- [OWASP Threat Modeling](https://owasp.org/www-community/Threat_Modeling) — OWASP
+- [Attack Trees](https://www.schneier.com/academic/archives/1999/12/attack_trees.html) — Bruce Schneier
+
+---
+
+<!-- Source: standards/architecture/gdpr-data-rights.md (v1.0.0) -->
+
+# GDPR Data Rights Standard
+
+**Status**: Active
+
+## Purpose
+
+Implementation rules for satisfying GDPR Articles 15 (right of access /
+DSAR), 16 (rectification), 17 (erasure / right-to-be-forgotten), 20
+(data portability), and 30 (records of processing). This standard
+defines the technical contract every service handling personal data
+MUST honour.
+
+## Scope
+
+In scope:
+
+- Technical implementation contracts: export shape, deletion contract,
+  anonymization rules, audit-log retention.
+- Cross-store coordination (primary stores, derived stores, third-party
+  consumers).
+- API surface for DSAR and erasure requests.
+
+Out of scope:
+
+- Legal-basis determination (handled in legal/compliance docs).
+- Data Processing Agreement (DPA) negotiation.
+- Controller-vs-processor distinction (handled in legal/compliance docs).
+
+## Data classification (prerequisite)
+
+Every table containing personal data MUST declare its DSAR/RTBF policy
+in its schema documentation. The four categories:
+
+| Category        | DSAR (export) | RTBF (erase)            |
+|-----------------|---------------|-------------------------|
+| Identifying     | MUST export   | MUST erase              |
+| Behavioral      | MUST export   | MAY anonymize           |
+| Derived         | MAY anonymize | MAY retain in aggregate |
+| System / Audit  | excluded      | retain per schedule     |
+
+Tables that store any column resolvable to a natural person MUST be
+classified before they ship. Unclassified tables are blocked at review.
+
+## Data Subject Access Request (Article 15 / 20)
+
+- **SLA**: respond within 30 days of verified request (GDPR maximum);
+  operational target 7 days.
+- **Identity verification**: REQUIRED before export. Re-authentication
+  plus email-link confirmation.
+- **Output format**: machine-readable. JSON Lines per table plus
+  `manifest.json` describing schema versions and per-table row counts.
+- **Scope**: every row keyed by `user_id` (or equivalent natural key)
+  across all primary stores AND all derived stores — search indexes,
+  analytics warehouse, ML feature stores.
+- **Excluded from export**: data lawfully held under another legal
+  basis (e.g., financial transaction logs under tax-retention law).
+  The export manifest MUST list these excluded categories with their
+  retention rationale so the data subject sees the exclusion is
+  deliberate.
+- **Encryption**: archive encrypted at rest in temp storage; signed-URL
+  TTL ≤ 24h; one-time-download enforced.
+- **Audit**: the `request_id` of the originating HTTP request is
+  recorded in the audit log alongside the DSAR id.
+
+## Right to Erasure (Article 17 / RTBF)
+
+- **SLA**: complete within 30 days; operational target 7 days for
+  primary stores, 30 days for derived stores.
+- **Decision matrix**: each table MUST declare exactly one disposition:
+
+  - **Hard-delete**: row removed entirely. Use when the table has no
+    aggregate value beyond the user.
+  - **Anonymize-in-place**: PII fields nulled or replaced with
+    `anonymized_user_<hash>`. Use when foreign-key referential
+    integrity matters and aggregates are needed (e.g., transaction
+    history rolled into financial reports).
+  - **Retain under legal basis**: row preserved in full because of a
+    non-consent legal basis (tax, anti-fraud, regulatory). REQUIRES
+    explicit basis citation in schema documentation.
+
+- **Cascading**: deletion walks the user's foreign-key graph in
+  topological order — children first. Out-of-band consumers
+  (third-party services such as Stripe, Intercom, Sentry) MUST also be
+  processed. Maintain a registry of "downstream consumers per data
+  class."
+- **Audit log retention**: audit logs are NOT subject to RTBF (legal
+  basis: legitimate interest in security and fraud detection).
+  Retention 13 months minimum. Redaction of `request_id` is not
+  required, but PII fields within audit-log payloads MUST be replaced
+  with the anonymized id.
+- **Tombstone records**: anonymization writes a tombstone row to a
+  `gdpr_erasures` table:
+  `{erasure_id, original_user_id_hash, completed_at, completed_by, downstream_status}`.
+  The original `user_id` MUST NEVER be stored in plaintext after
+  erasure.
+- **Backup interaction**: backups taken before erasure may still
+  contain the data. Restore-from-backup procedures MUST re-apply the
+  latest erasure log before bringing the restored data online.
+
+## Records of processing (Article 30)
+
+For each personal-data field, record:
+
+- Lawful basis: consent, contract, legal obligation, vital interest,
+  public interest, or legitimate interest.
+- Retention period.
+- Downstream processors.
+
+Maintained in `docs/data-inventory.md` (or equivalent) and reviewed
+each release that touches a personal-data column.
+
+## API contract
+
+All payloads use `snake_case`. All endpoints rate-limited.
+
+- `POST /me/dsar` →
+  `{dsar_id, status_url, expected_completion}`. Rate limit 1/day per
+  user.
+- `GET /me/dsar/{dsar_id}/status` →
+  `{status, download_url?, expires_at?}` where `status` is one of
+  `queued`, `processing`, `ready`, or `expired`.
+- `DELETE /me` →
+  `{erasure_id, status_url, scope_summary}`. Synchronous response
+  acknowledges receipt; processing is asynchronous (background job).
+  Rate limit 1/lifetime per user with re-confirmation.
+
+DSAR and erasure endpoints are idempotent on `dsar_id` / `erasure_id`
+respectively (see `../backend/idempotency.md`). The originating HTTP
+request's `request_id` is logged with each state transition.
+
+## Multi-tenancy interaction
+
+- DSAR scope is per-data-subject. For B2B SaaS, the request comes from
+  the end user, not the tenant admin. Tenant-scoped data MAY require
+  redaction of co-occurring users in the export.
+- When tenant-data ownership is disputed (controller vs processor),
+  default to the tenant admin's right to extract.
+
+## Anti-patterns
+
+- Soft-deletes used as RTBF — rows still exist with PII.
+- DSAR exports built ad-hoc per request via manual SQL.
+- Forgetting derived stores: search index, analytics warehouse,
+  feature store.
+- Forgetting third-party consumers: Stripe customer, Intercom contact,
+  Sentry user.
+- Anonymization that retains an email hash (rainbow-tableable). Use an
+  opaque hash with an org-wide secret instead.
+- Audit logs that contain PII fields and never get redacted.
+- "Erasure" jobs that report success without verifying downstream
+  completion.
+
+## References
+
+- [`../../evaluation/compliance/gdpr-checklist.md`](../../evaluation/compliance/gdpr-checklist.md)
+- [`./security.md`](./security.md) — audit logging
+- [`./error-contract.md`](./error-contract.md) — status URL contracts
+- [`../database/schema-design.md`](../database/schema-design.md) — per-table classification
+- [`../backend/idempotency.md`](../backend/idempotency.md) — DSAR/erasure endpoints idempotent on `dsar_id` / `erasure_id`
+- [`../backend/file-storage.md`](../backend/file-storage.md) — export-archive storage
+- [`../devops/backup-disaster-recovery.md`](../devops/backup-disaster-recovery.md) — restore + re-apply erasure log
+- [`../../evaluation/compliance/controls-mapping.md`](../../evaluation/compliance/controls-mapping.md) — lands same wave
+- External: GDPR Articles 15 / 16 / 17 / 20 / 30; ICO Subject Access
+  Requests guidance.
+
+## Acceptance
+
+Standard exists; declares DSAR and RTBF rules with decision matrix;
+cross-references the GDPR checklist.
+
+---
+
+<!-- Compilation Metadata
+  domain: core-standards
+  domain_version: 2.0.1
+  compiled_at: 2026-06-01 20:55
+  source: evolv-coder-standards
+  files_compiled: 15/15
+-->

@@ -2,7 +2,7 @@
 
 > Dart development standards
 
-**Compiled**: 2026-03-25 13:07
+**Compiled**: 2026-06-01 20:55
 **Source**: evolv-coder-standards
 **Domain Version**: 1.0.0
 
@@ -18,8 +18,6 @@
 
 # Dart Coding Standards
 
-**Version**: 1.0.0
-**Last Updated**: 2026-02-28
 **Status**: Active
 
 ## Overview
@@ -426,7 +424,7 @@ dart analyze && dart format --set-exit-if-changed . && flutter test
 <!-- Compilation Metadata
   domain: dart-standards
   domain_version: 1.0.0
-  compiled_at: 2026-03-25 13:07
+  compiled_at: 2026-06-01 20:55
   source: evolv-coder-standards
   files_compiled: 1/1
 -->

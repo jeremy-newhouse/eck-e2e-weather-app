@@ -2,9 +2,9 @@
 
 > Kotlin development standards
 
-**Compiled**: 2026-03-25 13:07
+**Compiled**: 2026-06-01 20:55
 **Source**: evolv-coder-standards
-**Domain Version**: 1.0.0
+**Domain Version**: 1.3.0
 
 ---
 
@@ -14,12 +14,10 @@
 
 ---
 
-<!-- Source: standards/backend/kotlin.md (v1.0.0) -->
+<!-- Source: standards/backend/kotlin.md (v1.3.0) -->
 
 # Kotlin Coding Standards
 
-**Version**: 1.0.0
-**Last Updated**: 2026-02-28
 **Status**: Active
 
 ## Overview
@@ -27,7 +25,7 @@ This document outlines Kotlin coding standards and best practices for Ktor and S
 
 ## Style Guide Foundation
 - **Kotlin Official Style Guide**: Foundation for all Kotlin code
-- **Kotlin 1.9+**: Use modern features (value classes, sealed interfaces, context receivers, data objects)
+- **Kotlin 2.3+**: Use modern features (value classes, sealed interfaces, context parameters [experimental], data objects)
 - **Line length**: 120 characters maximum
 
 ## Code Formatting
@@ -280,40 +278,72 @@ class UserService(
 ```kotlin
 sealed class AppException(
     message: String,
-    val errorCode: ErrorCode,
+    val problemType: String,   // RFC 9457 type URI, e.g. "/problems/resource-not-found"
+    val title: String,         // Stable human-readable summary
     val status: HttpStatusCode,
     cause: Throwable? = null,
 ) : RuntimeException(message, cause)
 
 class UserNotFoundException(id: Long) : AppException(
     message = "User not found: $id",
-    errorCode = ErrorCode.USER_NOT_FOUND,
+    problemType = "/problems/resource-not-found",
+    title = "Resource Not Found",
     status = HttpStatusCode.NotFound,
 )
 
 class DuplicateEmailException(email: String) : AppException(
     message = "Email already registered: $email",
-    errorCode = ErrorCode.DUPLICATE_EMAIL,
+    problemType = "/problems/conflict",
+    title = "Conflict",
     status = HttpStatusCode.Conflict,
 )
 ```
 
 ### Ktor Exception Handler
 ```kotlin
+// ProblemDetail is the RFC 9457 error response body. See
+// standards/architecture/error-contract.md for the authoritative shape.
+@Serializable
+data class ProblemDetail(
+    val type: String,
+    val title: String,
+    val status: Int,
+    val detail: String,
+    val instance: String,
+    @SerialName("request_id") val requestId: String,
+    val timestamp: String,
+)
+
+private val ProblemJson = ContentType.parse("application/problem+json")
+
 fun Application.configureErrorHandling() {
     install(StatusPages) {
         exception<AppException> { call, cause ->
-            call.respond(
-                cause.status,
-                ErrorResponse(cause.errorCode, cause.message, Clock.System.now()),
+            val body = ProblemDetail(
+                type = cause.problemType,
+                title = cause.title,
+                status = cause.status.value,
+                detail = cause.message ?: cause.title,
+                instance = call.request.path(),
+                requestId = call.callId.orEmpty(),
+                timestamp = Clock.System.now().toString(),
             )
+            call.response.header(HttpHeaders.ContentType, ProblemJson.toString())
+            call.respond(cause.status, body)
         }
         exception<Throwable> { call, cause ->
             logger.error(cause) { "Unhandled exception" }
-            call.respond(
-                HttpStatusCode.InternalServerError,
-                ErrorResponse(ErrorCode.INTERNAL, "Internal server error", Clock.System.now()),
+            val body = ProblemDetail(
+                type = "/problems/internal-error",
+                title = "Internal Server Error",
+                status = HttpStatusCode.InternalServerError.value,
+                detail = "Internal server error",
+                instance = call.request.path(),
+                requestId = call.callId.orEmpty(),
+                timestamp = Clock.System.now().toString(),
             )
+            call.response.header(HttpHeaders.ContentType, ProblemJson.toString())
+            call.respond(HttpStatusCode.InternalServerError, body)
         }
     }
 }
@@ -325,6 +355,7 @@ fun Application.configureErrorHandling() {
 - Use `runCatching` / `Result` for operations that may fail without exceptions
 - Always include context in exception messages using string templates
 - Coroutine cancellation: never swallow `CancellationException`
+- Serialize HTTP error responses as RFC 9457 ProblemDetail with `Content-Type: application/problem+json`. See [`architecture/error-contract.md`](../architecture/error-contract.md) for the authoritative shape.
 
 ## Testing Standards
 
@@ -455,8 +486,8 @@ class UserServiceSpec : FunSpec({
 
 <!-- Compilation Metadata
   domain: kotlin-standards
-  domain_version: 1.0.0
-  compiled_at: 2026-03-25 13:07
+  domain_version: 1.3.0
+  compiled_at: 2026-06-01 20:55
   source: evolv-coder-standards
   files_compiled: 1/1
 -->

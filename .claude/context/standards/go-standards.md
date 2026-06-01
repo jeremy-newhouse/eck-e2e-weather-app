@@ -2,9 +2,9 @@
 
 > Go development standards
 
-**Compiled**: 2026-03-25 13:07
+**Compiled**: 2026-06-01 20:55
 **Source**: evolv-coder-standards
-**Domain Version**: 1.0.0
+**Domain Version**: 1.2.0
 
 ---
 
@@ -14,12 +14,10 @@
 
 ---
 
-<!-- Source: standards/backend/go.md (v1.0.0) -->
+<!-- Source: standards/backend/go.md (v1.2.0) -->
 
 # Go Coding Standards
 
-**Version**: 1.0.0
-**Last Updated**: 2026-02-28
 **Status**: Active
 
 ## Overview
@@ -27,7 +25,7 @@ This document outlines Go coding standards and best practices for backend servic
 
 ## Style Guide Foundation
 - **Effective Go** and **Go Code Review Comments**: Foundation for all Go code
-- **Go 1.22+**: Use modern features (range-over-func, enhanced routing, structured logging with `log/slog`)
+- **Go 1.23+**: Use modern features (range-over-func, enhanced routing, structured logging with `log/slog`)
 - **Line length**: No hard limit, but keep lines readable (aim for under 100 characters)
 - **gofmt**: All code must be formatted with `gofmt` (non-negotiable)
 
@@ -194,9 +192,8 @@ func (h *UserHandler) GetUser(c *gin.Context) {
 func (h *UserHandler) CreateUser(c *gin.Context) {
     var req CreateUserRequest
     if err := c.ShouldBindJSON(&req); err != nil {
-        c.JSON(http.StatusBadRequest, gin.H{
-            "error": err.Error(),
-        })
+        writeProblem(c, http.StatusUnprocessableEntity,
+            "/problems/validation-error", "Validation Error", err.Error())
         return
     }
 
@@ -308,20 +305,48 @@ func (r *userRepo) GetByID(ctx context.Context,
     return &user, nil
 }
 
+// ProblemDetail is the RFC 9457 error response body. See
+// standards/architecture/error-contract.md for the authoritative shape.
+type ProblemDetail struct {
+    Type      string `json:"type"`
+    Title     string `json:"title"`
+    Status    int    `json:"status"`
+    Detail    string `json:"detail"`
+    Instance  string `json:"instance"`
+    RequestID string `json:"request_id"`
+    Timestamp string `json:"timestamp"`
+}
+
+func writeProblem(c *gin.Context, status int, problemType, title, detail string) {
+    c.Header("Content-Type", "application/problem+json")
+    c.JSON(status, ProblemDetail{
+        Type:      problemType,
+        Title:     title,
+        Status:    status,
+        Detail:    detail,
+        Instance:  c.Request.URL.Path,
+        RequestID: c.GetString("request_id"),
+        Timestamp: time.Now().UTC().Format(time.RFC3339Nano),
+    })
+}
+
 // Map domain errors to HTTP responses
 func handleError(c *gin.Context, err error) {
     switch {
     case errors.Is(err, ErrNotFound):
-        c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+        writeProblem(c, http.StatusNotFound,
+            "/problems/resource-not-found", "Resource Not Found", err.Error())
     case errors.Is(err, ErrDuplicateEmail):
-        c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
+        writeProblem(c, http.StatusConflict,
+            "/problems/conflict", "Conflict", err.Error())
     case errors.Is(err, ErrUnauthorized):
-        c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+        writeProblem(c, http.StatusUnauthorized,
+            "/problems/unauthorized", "Unauthorized", err.Error())
     default:
         slog.Error("unhandled error", "error", err)
-        c.JSON(http.StatusInternalServerError, gin.H{
-            "error": "internal server error",
-        })
+        writeProblem(c, http.StatusInternalServerError,
+            "/problems/internal-error", "Internal Server Error",
+            "internal server error")
     }
 }
 ```
@@ -332,6 +357,7 @@ func handleError(c *gin.Context, err error) {
 - Use `errors.Is()` and `errors.As()` for error comparison
 - Pass `context.Context` as the first parameter in all functions that do I/O
 - Return errors, do not panic (except in truly unrecoverable init scenarios)
+- Serialize HTTP error responses as RFC 9457 ProblemDetail with `Content-Type: application/problem+json`. See [`architecture/error-contract.md`](../architecture/error-contract.md) for the authoritative shape.
 
 ## Testing Standards
 
@@ -466,8 +492,8 @@ govulncheck ./...
 
 <!-- Compilation Metadata
   domain: go-standards
-  domain_version: 1.0.0
-  compiled_at: 2026-03-25 13:07
+  domain_version: 1.2.0
+  compiled_at: 2026-06-01 20:55
   source: evolv-coder-standards
   files_compiled: 1/1
 -->
